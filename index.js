@@ -455,17 +455,20 @@ function hideTypingIndicator() {
 
 // (DOM-based, v2) 检查最后一条消息是否来自AI
 function isLastMessageFromAI() {
-    logger.log('检查最后一条消息 (DOM模式, v2)...');
+    logger.log('检查最后一条消息 (DOM模式, v3)...');
     try {
         // 只选择明确来自用户或机器人的消息
         const allMessages = document.querySelectorAll('#chat .mes.bot_mes, #chat .mes.user_mes');
+        logger.log(`找到 ${allMessages.length} 条有效对话消息。`);
+
         if (allMessages.length === 0) {
             logger.log('聊天记录中未找到用户或机器人消息，判定为非AI。');
             return false;
         }
         const lastMessage = allMessages[allMessages.length - 1];
         const isBot = lastMessage.classList.contains('bot_mes');
-        logger.log(`找到最后一条有效消息元素。ClassList: ${Array.from(lastMessage.classList)}. 结论: ${isBot ? '是' : '不是'} AI消息。`);
+        const messageText = (lastMessage.querySelector('.mes_text')?.textContent || '').substring(0, 50);
+        logger.log(`找到最后一条有效消息元素。内容预览: "${messageText}...". ClassList: ${Array.from(lastMessage.classList)}. 结论: ${isBot ? '是' : '不是'} AI消息。`);
         return isBot;
     } catch (error) {
         logger.error('通过DOM检查最后一条消息时出错:', error);
@@ -478,31 +481,39 @@ function isLastMessageFromAI() {
 const OptionsGenerator = {
     isGenerating: false,
 
-    // (DOM-based) 获取API上下文
+    // (DOM-based) 获取API上下文，增加详细日志
     getContextForAPI() {
-        logger.log('从DOM获取API上下文...');
+        logger.log('从DOM获取API上下文 (增强日志模式)...');
         try {
             const messageElements = document.querySelectorAll('#chat .mes');
             const messages = [];
+            logger.log(`发现 ${messageElements.length} 个 .mes 元素。开始遍历...`);
 
-            messageElements.forEach(el => {
+            messageElements.forEach((el, index) => {
                 const contentEl = el.querySelector('.mes_text');
                 if (contentEl) {
-                    const role = el.classList.contains('user_mes') ? 'user' : 'assistant';
+                    const role = el.classList.contains('user_mes') ? 'user' : (el.classList.contains('bot_mes') ? 'assistant' : 'system');
                     
                     const tempDiv = document.createElement('div');
                     tempDiv.innerHTML = contentEl.innerHTML.replace(/<br\s*\/?>/gi, '\n');
                     const content = (tempDiv.textContent || tempDiv.innerText || '').trim();
 
                     if (content) {
-                        messages.push({ role, content });
+                        const messageData = { role, content };
+                        messages.push(messageData);
+                        logger.log(`[消息 ${index}] -> 有效:`, messageData);
+                    } else {
+                        logger.log(`[消息 ${index}] -> 跳过 (无内容)`);
                     }
+                } else {
+                     logger.log(`[消息 ${index}] -> 跳过 (无 .mes_text 子元素)`);
                 }
             });
             
-            logger.log(`从DOM中提取了 ${messages.length} 条消息。`);
-            // Limit context to last 20 messages for performance and token limits
-            return messages.slice(-20);
+            logger.log(`从DOM中提取了 ${messages.length} 条有效消息。`);
+            const finalMessages = messages.slice(-20);
+            logger.log('最终用于API的上下文:', finalMessages);
+            return finalMessages;
         } catch (error) {
             logger.error('从DOM获取API上下文失败:', error);
             return [];
@@ -579,30 +590,28 @@ const OptionsGenerator = {
                 logger.log('Gemini API 响应数据:', data);
                 content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
             } else { // 'openai'
-                const baseUrl = settings.optionsBaseUrl.endsWith('/') ? settings.optionsBaseUrl.slice(0, -1) : settings.optionsBaseUrl;
-                const apiUrl = `${baseUrl}/chat/completions`;
+                const { optionsApiKey, optionsBaseUrl, optionsApiModel } = settings;
+                const apiUrl = `${optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
                 logger.log('Requesting options from OpenAI-compatible API:', apiUrl);
-                logger.log('Sending messages:', finalMessages);
-
+                
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${settings.optionsApiKey}`,
+                        'Authorization': `Bearer ${optionsApiKey}`,
                     },
                     body: JSON.stringify({
-                        model: settings.optionsApiModel,
+                        model: optionsApiModel,
                         messages: finalMessages,
                         temperature: 0.8,
-                        max_tokens: 1024,
-                        stream: false,
+                        stream: false, // 强制非流式，与参考脚本一致
                     }),
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    logger.error('API 响应错误:', errorData);
-                    throw new Error(`API请求失败: ${response.status} - ${errorData.error?.message || '未知错误'}`);
+                    const errorText = await response.text();
+                    logger.error('API 响应错误 (raw):', errorText);
+                    throw new Error(`API请求失败: ${response.status} - ${errorText}`);
                 }
                 const data = await response.json();
                 logger.log('API 响应数据 (OpenAI-兼容模式):', data);
