@@ -7,26 +7,19 @@ import {
 } from '../../../../script.js';
 import { extension_settings } from '../../../extensions.js';
 import { selected_group } from '../../../group-chats.js';
-import { t } from '../../../i18n.js';
 
 const MODULE = 'typing_indicator';
 const legacyIndicatorTemplate = document.getElementById('typing_indicator_template');
 
-/**
- * @typedef {Object} Theme
- * @property {string} css - 主题的 CSS 内容。
- */
+// 删除主题类型定义
 
 /**
  * @typedef {Object} TypingIndicatorSettings
  * @property {boolean} enabled
- * @property {boolean} streaming
  * @property {boolean} showCharName
  * @property {boolean} animationEnabled - 是否启用末尾的...动画。
  * @property {string} fontColor
  * @property {string} customText
- * @property {Object.<string, Theme>} themes
- * @property {string} activeTheme
  */
 
 /**
@@ -34,36 +27,10 @@ const legacyIndicatorTemplate = document.getElementById('typing_indicator_templa
  */
 const defaultSettings = {
     enabled: false,
-    streaming: false,
     showCharName: false,
     animationEnabled: true,
     fontColor: '',
-    customText: '正在输入',
-    activeTheme: '默认',
-    themes: {
-        '默认': {
-            css: '/* 默认主题：不应用额外样式。 */',
-        },
-        '渐变脉冲': {
-            css: `
-#typing_indicator .typing-ellipsis { display: none; }
-#typing_indicator div.typing-indicator-text {
-    font-weight: bold;
-    background: linear-gradient(90deg, #ff00de, #00f2ff, #ff00de);
-    background-size: 200% 200%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: gradient-pulse 3s ease-in-out infinite;
-}
-@keyframes gradient-pulse {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-            `,
-        },
-    },
+    customText: '正在输入'
 };
 
 /**
@@ -82,22 +49,28 @@ function getSettings() {
 }
 
 /**
- * 应用指定主题的 CSS。
+ * 应用固定样式
  */
-function applyTheme(themeName) {
-    const settings = getSettings();
-    const theme = settings.themes[themeName];
-    if (!theme) {
-        console.warn(`正在输入中…：未找到主题 "${themeName}"。`);
-        return;
-    }
+function applyBasicStyle() {
     let styleTag = document.getElementById('typing-indicator-theme-style');
     if (!styleTag) {
         styleTag = document.createElement('style');
         styleTag.id = 'typing-indicator-theme-style';
         document.head.appendChild(styleTag);
     }
-    styleTag.textContent = theme.css;
+    
+    // 使用简单的默认样式
+    styleTag.textContent = `
+        .typing_indicator {
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 8px 16px;
+            border-radius: 8px;
+            margin: 8px auto;
+            width: fit-content;
+            max-width: 90%;
+            text-align: center;
+        }
+    `;
 }
 
 /**
@@ -205,7 +178,7 @@ function addExtensionSettings(settings) {
     const inlineDrawerToggle = document.createElement('div');
     inlineDrawerToggle.classList.add('inline-drawer-toggle', 'inline-drawer-header');
     const extensionName = document.createElement('b');
-    extensionName.textContent = t`正在输入中…`;
+    extensionName.textContent = '正在输入中…';
     const inlineDrawerIcon = document.createElement('div');
     inlineDrawerIcon.classList.add('inline-drawer-icon', 'fa-solid', 'fa-circle-chevron-down', 'down');
     inlineDrawerToggle.append(extensionName, inlineDrawerIcon);
@@ -233,24 +206,12 @@ function addExtensionSettings(settings) {
         saveSettingsDebounced();
     });
     const enabledCheckboxText = document.createElement('span');
-    enabledCheckboxText.textContent = t`启用`;
+    enabledCheckboxText.textContent = '启用';
     enabledCheckboxLabel.append(enabledCheckbox, enabledCheckboxText);
     inlineDrawerContent.append(enabledCheckboxLabel);
 
     // 流式传输时显示
-    const showIfStreamingCheckboxLabel = document.createElement('label');
-    showIfStreamingCheckboxLabel.classList.add('checkbox_label');
-    const showIfStreamingCheckbox = document.createElement('input');
-    showIfStreamingCheckbox.type = 'checkbox';
-    showIfStreamingCheckbox.checked = settings.streaming;
-    showIfStreamingCheckbox.addEventListener('change', () => {
-        settings.streaming = showIfStreamingCheckbox.checked;
-        saveSettingsDebounced();
-    });
-    const showIfStreamingCheckboxText = document.createElement('span');
-    showIfStreamingCheckboxText.textContent = t`流式传输时显示`;
-    showIfStreamingCheckboxLabel.append(showIfStreamingCheckbox, showIfStreamingCheckboxText);
-    inlineDrawerContent.append(showIfStreamingCheckboxLabel);
+    // 已移除流式传输相关设置
 
     // 启用动画
     const animationEnabledCheckboxLabel = document.createElement('label');
@@ -264,7 +225,7 @@ function addExtensionSettings(settings) {
         refreshIndicator();
     });
     const animationEnabledCheckboxText = document.createElement('span');
-    animationEnabledCheckboxText.textContent = t`启用动画`;
+    animationEnabledCheckboxText.textContent = '启用动画';
     animationEnabledCheckboxLabel.append(animationEnabledCheckbox, animationEnabledCheckboxText);
     inlineDrawerContent.append(animationEnabledCheckboxLabel);
 
@@ -272,7 +233,7 @@ function addExtensionSettings(settings) {
     const colorPickerWrapper = document.createElement('div');
     colorPickerWrapper.className = 'ti_color_picker_wrapper';
     const colorPickerTextLabel = document.createElement('span');
-    colorPickerTextLabel.textContent = t`字体颜色`;
+    colorPickerTextLabel.textContent = '字体颜色';
     const colorInputContainer = document.createElement('div');
     colorInputContainer.className = 'ti_color_input_container';
     const colorPicker = document.createElement('input');
@@ -285,7 +246,7 @@ function addExtensionSettings(settings) {
     });
     const resetButton = document.createElement('button');
     resetButton.className = 'ti_reset_color_btn';
-    resetButton.title = t`重置`;
+    resetButton.title = '重置';
     resetButton.innerHTML = '<i class="fa-solid fa-arrow-rotate-left"></i>';
     resetButton.addEventListener('click', () => {
         settings.fontColor = '';
@@ -313,18 +274,18 @@ function addExtensionSettings(settings) {
         refreshIndicator();
     });
     const showNameCheckboxText = document.createElement('span');
-    showNameCheckboxText.textContent = t`显示角色名称`;
+    showNameCheckboxText.textContent = '显示角色名称';
     showNameCheckboxLabel.append(showNameCheckbox, showNameCheckboxText);
     customContentContainer.append(showNameCheckboxLabel);
 
     // 文字内容
     const customTextLabel = document.createElement('label');
-    customTextLabel.textContent = t`自定义内容：`;
+    customTextLabel.textContent = '自定义内容：';
     customTextLabel.style.display = 'block';
     const customTextInput = document.createElement('input');
     customTextInput.type = 'text';
     customTextInput.value = settings.customText;
-    customTextInput.placeholder = t`输入显示的文字`;
+    customTextInput.placeholder = '输入显示的文字';
     customTextInput.style.width = '80%';
     customTextInput.addEventListener('input', () => {
         settings.customText = customTextInput.value;
@@ -333,7 +294,7 @@ function addExtensionSettings(settings) {
     });
 
     const placeholderHint = document.createElement('small');
-    placeholderHint.textContent = t`使用 {char} 作为角色名称的占位符。`;
+    placeholderHint.textContent = '使用 {char} 作为角色名称的占位符。';
     placeholderHint.style.display = 'block';
     placeholderHint.style.marginTop = '4px';
     placeholderHint.style.color = 'var(--text_color_secondary)';
@@ -341,97 +302,14 @@ function addExtensionSettings(settings) {
     customContentContainer.append(customTextLabel, customTextInput, placeholderHint);
     inlineDrawerContent.append(customContentContainer);
 
-    // 主题管理部分
-    const divider = document.createElement('hr');
-    inlineDrawerContent.append(divider);
+    // 已移除主题管理分隔线
 
-    const themeSelectorLabel = document.createElement('label');
-    themeSelectorLabel.textContent = t`外观主题：`;
-    const themeSelector = document.createElement('select');
-    const populateThemes = () => {
-        themeSelector.innerHTML = '';
-        Object.keys(settings.themes).forEach(themeName => {
-            const option = document.createElement('option');
-            option.value = themeName;
-            option.textContent = themeName;
-            themeSelector.appendChild(option);
-        });
-        themeSelector.value = settings.activeTheme;
-    };
-    populateThemes();
-    inlineDrawerContent.append(themeSelectorLabel, themeSelector);
+    // 已移除主题选择器
+    // 已移除主题填充逻辑
 
-    const cssEditorLabel = document.createElement('label');
-    cssEditorLabel.textContent = t`主题 CSS (高级)：`;
-    cssEditorLabel.style.display = 'block';
-    cssEditorLabel.style.marginTop = '10px';
-    const cssEditor = document.createElement('textarea');
-    cssEditor.rows = 8;
-    cssEditor.placeholder = t`在此处输入 CSS 代码。`;
-    cssEditor.style.width = '100%';
-    inlineDrawerContent.append(cssEditorLabel, cssEditor);
-    
-    const buttonContainer = document.createElement('div');
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.gap = '10px';
-    buttonContainer.style.marginTop = '5px';
-    const saveButton = document.createElement('button');
-    saveButton.textContent = t`保存当前主题`;
-    saveButton.classList.add('primary-button');
-    const newButton = document.createElement('button');
-    newButton.textContent = t`新建主题`;
-    newButton.classList.add('primary-button');
-    const deleteButton = document.createElement('button');
-    deleteButton.textContent = t`删除主题`;
-    deleteButton.classList.add('danger-button'); 
-    buttonContainer.append(saveButton, newButton, deleteButton);
-    inlineDrawerContent.append(buttonContainer);
+    // 已移除CSS编辑器和主题按钮
 
-    const loadThemeIntoEditor = (themeName) => {
-        cssEditor.value = settings.themes[themeName]?.css || '';
-    };
-    themeSelector.addEventListener('change', () => {
-        const selectedTheme = themeSelector.value;
-        settings.activeTheme = selectedTheme;
-        applyTheme(selectedTheme);
-        loadThemeIntoEditor(selectedTheme);
-        saveSettingsDebounced();
-    });
-    saveButton.addEventListener('click', () => {
-        const currentThemeName = themeSelector.value;
-        settings.themes[currentThemeName].css = cssEditor.value;
-        applyTheme(currentThemeName);
-        saveSettingsDebounced();
-        alert(t`主题 '${currentThemeName}' 已保存！`);
-    });
-    newButton.addEventListener('click', () => {
-        const newThemeName = prompt(t`请输入新主题的名称：`);
-        if (newThemeName && !settings.themes[newThemeName]) {
-            settings.themes[newThemeName] = { css: `/* ${newThemeName} 的 CSS */` };
-            settings.activeTheme = newThemeName;
-            populateThemes();
-            loadThemeIntoEditor(newThemeName);
-            saveSettingsDebounced();
-        } else if (settings.themes[newThemeName]) {
-            alert(t`该名称的主题已存在！`);
-        }
-    });
-    deleteButton.addEventListener('click', () => {
-        const themeToDelete = themeSelector.value;
-        if (themeToDelete === '默认') {
-            alert(t`无法删除默认主题。`);
-            return;
-        }
-        if (confirm(t`您确定要删除主题 '${themeToDelete}' 吗？`)) {
-            delete settings.themes[themeToDelete];
-            settings.activeTheme = '默认';
-            populateThemes();
-            applyTheme(settings.activeTheme);
-            loadThemeIntoEditor(settings.activeTheme);
-            saveSettingsDebounced();
-        }
-    });
-    loadThemeIntoEditor(settings.activeTheme);
+    // 已移除所有主题相关事件处理和函数
 }
 
 /**
@@ -445,7 +323,7 @@ function showTypingIndicator(type, _args, dryRun) {
         return;
     }
 
-    if (!settings.enabled || (!settings.streaming && isStreamingEnabled())) {
+    if (!settings.enabled) {
         return;
     }
     
@@ -521,7 +399,7 @@ function hideTypingIndicator() {
     const settings = getSettings();
     addExtensionSettings(settings);
 
-    applyTheme(settings.activeTheme);
+    applyBasicStyle();
 
     const showIndicatorEvents = [ event_types.GENERATION_AFTER_COMMANDS ];
     const hideIndicatorEvents = [ event_types.GENERATION_STOPPED, event_types.GENERATION_ENDED, event_types.CHAT_CHANGED ];
