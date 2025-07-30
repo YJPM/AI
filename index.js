@@ -31,9 +31,10 @@ const logger = {
  * @property {string} customText
  * @property {boolean} debug - 是否启用调试日志
  * @property {boolean} optionsGenEnabled - 是否启用选项生成功能
+ * @property {string} optionsApiType - API类型 ('openai' 或 'gemini')
  * @property {string} optionsApiKey - API密钥
  * @property {string} optionsApiModel - 使用的模型
- * @property {string} optionsBaseUrl - API基础URL
+ * @property {string} optionsBaseUrl - API基础URL (仅限OpenAI)
  * @property {number} optionsCount - 生成选项数量
  * @property {string} optionsTemplate - 选项生成提示模板
  */
@@ -49,28 +50,34 @@ const defaultSettings = {
     debug: false,
     // 选项生成相关设置
     optionsGenEnabled: false,
+    optionsApiType: 'openai',
     optionsApiKey: '',
-    optionsApiModel: 'gemini-2.5-falsh-free',
-    optionsBaseUrl: 'https://newapi.sisuo.de/v1',
+    optionsApiModel: 'gpt-4o-mini',
+    optionsBaseUrl: 'https://api.openai.com/v1',
     optionsCount: 3,
-    optionsTemplate: `你是用户的AI助手。分析以下对话和用户当前输入，生成3-5个用户可能想问的后续问题或回应选项，每个选项应简洁、多样化，并根据上下文高度相关。不要解释你的选择，只需提供选项列表，每个选项用"-"开头，格式如下：
-- 第一个选项
-- 第二个选项
-- 第三个选项
+    optionsTemplate: `
+# 角色
+你是一位拥有顶级创作能力的AI叙事导演。
 
-对话历史：
-{{context}}
+# 核心目标
+基于完整的聊天上下文，通过一个严谨的内部思考过程，为“我”（用户角色）生成3-5个接下来可能发生的、最具戏剧性的行动或事件选项。
 
-用户当前输入：
-{{user_input}}
+# 内部思考过程
+1.  **[情境分析]**: 快速分析当前场景、我的情绪和目标、以及当前的冲突点。
+2.  **[选项构思]**: 基于分析，在内部构思多个多样化的选项（升级冲突、探索未知、反映内心、意外转折等）。
+3.  **[排序与决策]**: 根据戏剧性、角色一致性和叙事推动力，对构思的选项进行排序，将你认为的“最优选项”放在第一位。
 
-角色卡：
-{{char_card}}
+# 最终输出格式 (!!!至关重要!!!)
+- 你的最终输出必须是一个不换行的单行文本，包含3-5个高质量选项。
+- **第一个选项必须是你决策出的最优选项。**
+- 每个选项都必须用全角括号【】包裹。
+- **绝对禁止**包含任何序号、JSON、思考过程、解释或其他多余字符。
 
-世界设定：
-{{world_info}}
+# 对话上下文
+[完整的上下文在上方消息中提供，请基于此进行创作]
 
-注意：生成的选项应考虑角色、世界观和上下文。不要表现得像一个AI，应该扮演用户的角色。`,
+# 开始执行导演任务，并输出你的最终选项列表：
+`.trim(),
 };
 
 /**
@@ -136,6 +143,24 @@ function injectGlobalStyles() {
             0% { content: '.'; }
             33% { content: '..'; }
             66%, 100% { content: '...'; }
+        }
+
+        /* 选项按钮样式 */
+        #ti-options-container {
+            width: 100%;
+            padding: 8px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+        .ti-options-capsule {
+            flex: 1;
+            white-space: normal;
+            text-align: center;
+            margin: 0 !important;
+            height: auto;
+            min-width: 120px;
         }
     `;
     let styleTag = document.getElementById('typing-indicator-global-style');
@@ -303,6 +328,22 @@ function addExtensionSettings(settings) {
     optionsSettingsContainer.style.marginTop = '10px';
     optionsSettingsContainer.style.display = settings.optionsGenEnabled ? 'block' : 'none';
 
+    // API Type
+    const apiTypeLabel = document.createElement('label');
+    apiTypeLabel.textContent = 'API 类型:';
+    apiTypeLabel.style.display = 'block';
+    apiTypeLabel.style.marginTop = '10px';
+    const apiTypeSelect = document.createElement('select');
+    apiTypeSelect.id = 'options-api-type';
+    apiTypeSelect.style.width = '100%';
+    apiTypeSelect.innerHTML = `
+        <option value="openai">OpenAI-兼容</option>
+        <option value="gemini">Google Gemini</option>
+    `;
+    apiTypeSelect.value = settings.optionsApiType;
+    optionsSettingsContainer.appendChild(apiTypeLabel);
+    optionsSettingsContainer.appendChild(apiTypeSelect);
+
     // API Key
     const apiKeyLabel = document.createElement('label');
     apiKeyLabel.textContent = 'API密钥:';
@@ -338,6 +379,8 @@ function addExtensionSettings(settings) {
     optionsSettingsContainer.appendChild(modelInput);
 
     // 基础URL
+    const baseUrlGroup = document.createElement('div');
+    baseUrlGroup.id = 'options-base-url-group';
     const baseUrlLabel = document.createElement('label');
     baseUrlLabel.textContent = '基础URL:';
     baseUrlLabel.style.display = 'block';
@@ -351,8 +394,19 @@ function addExtensionSettings(settings) {
         settings.optionsBaseUrl = baseUrlInput.value;
         saveSettingsDebounced();
     });
-    optionsSettingsContainer.appendChild(baseUrlLabel);
-    optionsSettingsContainer.appendChild(baseUrlInput);
+    baseUrlGroup.appendChild(baseUrlLabel);
+    baseUrlGroup.appendChild(baseUrlInput);
+    optionsSettingsContainer.appendChild(baseUrlGroup);
+
+
+    apiTypeSelect.addEventListener('change', () => {
+        settings.optionsApiType = apiTypeSelect.value;
+        baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
+        saveSettingsDebounced();
+    });
+    // Initial state
+    baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
+
 
     // 选项数量
     const countLabel = document.createElement('label');
@@ -484,64 +538,72 @@ function hideTypingIndicator() {
 
 // 检查最后一条消息是否来自AI
 function isLastMessageFromAI() {
+    logger.log('检查最后一条消息...');
     const messages = document.querySelectorAll('#chat .mes');
-    if (messages.length === 0) return false;
+    if (messages.length === 0) {
+        logger.log('聊天记录为空，判定为非AI。');
+        return false;
+    }
 
     const lastMessage = messages[messages.length - 1];
-    return lastMessage.classList.contains('bot_mes');
+    const isBot = lastMessage.classList.contains('bot_mes');
+    logger.log(`找到 ${messages.length} 条消息。最后一条消息 ${isBot ? '是' : '不是'} AI消息。`);
+    return isBot;
 }
 
 // 选项生成器对象
 const OptionsGenerator = {
     isGenerating: false,
 
-    getCharacterCard() {
-        try {
-            if (typeof getCharacters === 'function' && typeof characterId !== 'undefined') {
-                const char = getCharacters().find(c => c.id === characterId);
-                return char ? `${char.name}:\n${char.description}` : '';
-            }
-        } catch (error) {
-            logger.error('获取角色卡信息失败:', error);
+    getContextForAPI(limit = 20) {
+        if (typeof getChatMessages !== 'function' || typeof getLastMessageId !== 'function') {
+            logger.error('核心函数 getChatMessages 或 getLastMessageId 未找到。');
+            return [];
         }
-        return '';
+        try {
+            const lastMessageId = getLastMessageId();
+            if (lastMessageId < 0) return [];
+
+            const startId = Math.max(0, lastMessageId - limit);
+            const messageObjects = getChatMessages(`${startId}-${lastMessageId}`);
+
+            const extractText = (msgHtml) => {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = msgHtml.replace(/<br\s*\/?>/gi, '\n');
+                return tempDiv.textContent || tempDiv.innerText || '';
+            };
+
+            return messageObjects.map(msg => ({
+                role: msg.is_user ? 'user' : 'assistant',
+                content: extractText(msg.message),
+            }));
+        } catch (error) {
+            logger.error('获取API上下文失败:', error);
+            return [];
+        }
     },
 
-    getWorldInfo() {
-        try {
-            if (typeof getLorebooks === 'function') {
-                const activeLorebooks = getLorebooks().filter(book => book.enabled);
-                return activeLorebooks.map(book => `${book.name}:\n${book.content}`).join('\n\n');
-            }
-        } catch (error) {
-            logger.error('获取世界设定信息失败:', error);
-        }
-        return '';
-    },
 
-    getChatContext() {
-        try {
-            if (typeof getContext === 'function') {
-                return getContext().text;
+    transformMessagesForGemini(messages) {
+        const contents = [];
+        let lastRole = '';
+        messages.forEach(msg => {
+            const currentRole = msg.role === 'assistant' ? 'model' : 'user';
+            if (currentRole === 'user' && lastRole === 'user') {
+                contents[contents.length - 1].parts[0].text += `\n\n${msg.content}`;
+            } else {
+                contents.push({ role: currentRole, parts: [{ text: msg.content }] });
             }
-        } catch (error) {
-            logger.error('获取聊天上下文失败:', error);
-        }
-        return '';
-    },
-
-    getUserInput() {
-        try {
-            const textarea = document.querySelector('#send_textarea, .send_textarea');
-            return textarea ? textarea.value : '';
-        } catch (error) {
-            logger.error('获取用户输入失败:', error);
-            return '';
-        }
+            lastRole = currentRole;
+        });
+        return contents;
     },
 
     async generateOptions() {
-        if (this.isGenerating) return;
+        if (this.isGenerating) {
+            logger.log('已在生成选项，跳过本次请求。');
+            return;
+        }
 
         const settings = getSettings();
         if (!settings.optionsGenEnabled || !settings.optionsApiKey) {
@@ -549,53 +611,73 @@ const OptionsGenerator = {
             return;
         }
 
-        this.showGeneratingUI('正在生成回复选项...');
+        this.showGeneratingUI('导演思考中...');
         this.isGenerating = true;
-        logger.log('开始生成选项...');
 
         try {
-            const characterCard = this.getCharacterCard();
-            const worldInfo = this.getWorldInfo();
-            const context = this.getChatContext();
-            const userInput = this.getUserInput();
-
-            let prompt = settings.optionsTemplate;
-            prompt = prompt.replace('{{context}}', context);
-            prompt = prompt.replace('{{user_input}}', userInput);
-            prompt = prompt.replace('{{char_card}}', characterCard);
-            prompt = prompt.replace('{{world_info}}', worldInfo);
-
-            logger.log('生成选项的最终提示:', prompt);
-
-            const baseUrl = settings.optionsBaseUrl.endsWith('/') ? settings.optionsBaseUrl.slice(0, -1) : settings.optionsBaseUrl;
-            const apiUrl = `${baseUrl}/chat/completions`;
-
-            logger.log('Requesting options from:', apiUrl);
-
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${settings.optionsApiKey}`
-                },
-                body: JSON.stringify({
-                    model: settings.optionsApiModel,
-                    messages: [{ role: 'user', content: prompt }],
-                    temperature: 0.7,
-                    max_tokens: 1024,
-                    stream: false,
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                logger.error('API 响应错误:', errorData);
-                throw new Error(`API请求失败: ${response.status} - ${errorData.error?.message || '未知错误'}`);
+            const apiContext = this.getContextForAPI();
+            if (apiContext.length === 0) {
+                throw new Error('无法获取聊天上下文');
             }
 
-            const data = await response.json();
-            logger.log('API 响应数据:', data);
-            const content = data.choices[0]?.message?.content || '';
+            const finalMessages = [
+                ...apiContext,
+                { role: 'user', content: settings.optionsTemplate }
+            ];
+
+            let content = '';
+
+            if (settings.optionsApiType === 'gemini') {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.optionsApiModel}:generateContent?key=${settings.optionsApiKey}`;
+                logger.log('Requesting options from Gemini:', url);
+                const body = { contents: this.transformMessagesForGemini(finalMessages) };
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    logger.error('Gemini API 响应错误:', errorText);
+                    throw new Error(`Gemini API请求失败: ${response.status} - ${errorText}`);
+                }
+                const data = await response.json();
+                logger.log('Gemini API 响应数据:', data);
+                content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            } else { // 'openai'
+                const baseUrl = settings.optionsBaseUrl.endsWith('/') ? settings.optionsBaseUrl.slice(0, -1) : settings.optionsBaseUrl;
+                const apiUrl = `${baseUrl}/chat/completions`;
+                logger.log('Requesting options from OpenAI-compatible API:', apiUrl);
+                logger.log('Sending messages:', finalMessages);
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${settings.optionsApiKey}`,
+                    },
+                    body: JSON.stringify({
+                        model: settings.optionsApiModel,
+                        messages: finalMessages,
+                        temperature: 0.8,
+                        max_tokens: 1024, // Keep it reasonable
+                        stream: false,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    logger.error('API 响应错误:', errorData);
+                    throw new Error(`API请求失败: ${response.status} - ${errorData.error?.message || '未知错误'}`);
+                }
+                const data = await response.json();
+                logger.log('API 响应数据:', data);
+                content = data.choices[0]?.message?.content || '';
+            }
+
+
             const options = this.parseOptions(content);
             logger.log('解析出的选项:', options);
             this.displayOptions(options);
@@ -608,36 +690,32 @@ const OptionsGenerator = {
     },
 
     parseOptions(content) {
-        return content.split('\n')
-            .map(line => line.trim())
-            .filter(line => /^[-*]\s*|^\d+\.\s*/.test(line))
-            .map(line => line.replace(/^[-*]\s*|^\d+\.\s*/, '').trim())
-            .filter(option => option);
+        return (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
     },
 
+
     showGeneratingUI(message, duration = null) {
-        let container = document.getElementById('options-loading-container');
+        let container = document.getElementById('ti-loading-container');
+        const sendForm = document.getElementById('send_form');
+        if (!sendForm) return;
+
         if (!container) {
             container = document.createElement('div');
-            container.id = 'options-loading-container';
+            container.id = 'ti-loading-container';
             Object.assign(container.style, {
-                position: 'fixed',
-                bottom: '10px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                padding: '10px 20px',
-                backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                borderRadius: '8px',
-                color: 'white',
-                zIndex: '1000',
                 display: 'flex',
-                alignItems: 'center',
                 justifyContent: 'center',
-                gap: '10px'
+                alignItems: 'center',
+                padding: '10px',
+                color: 'var(--text_color_secondary)',
+                opacity: '0.8',
+                width: '100%',
             });
-            document.body.appendChild(container);
+            sendForm.insertAdjacentElement('beforebegin', container);
         }
-        container.textContent = message;
+        container.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span style="margin-left: 8px;">${message}</span>`;
+        container.style.display = 'flex';
+
 
         if (duration) {
             setTimeout(() => this.hideGeneratingUI(), duration);
@@ -645,100 +723,49 @@ const OptionsGenerator = {
     },
 
     hideGeneratingUI() {
-        const loadingContainer = document.getElementById('options-loading-container');
-        if (loadingContainer) loadingContainer.remove();
+        const loadingContainer = document.getElementById('ti-loading-container');
+        if (loadingContainer) loadingContainer.style.display = 'none';
     },
 
-    displayOptions(options) {
+    async displayOptions(options) {
         this.hideGeneratingUI();
-        const oldContainer = document.getElementById('options-container');
+        const oldContainer = document.getElementById('ti-options-container');
         if (oldContainer) oldContainer.remove();
 
-        if (!options || options.length === 0) {
-            this.showGeneratingUI('未能生成有效选项', 3000);
+        const sendForm = document.getElementById('send_form');
+        if (!sendForm || !options || options.length === 0) {
+            if (!options || options.length === 0) {
+                this.showGeneratingUI('未能生成有效选项', 3000);
+            }
             return;
         }
 
         const container = document.createElement('div');
-        container.id = 'options-container';
-        Object.assign(container.style, {
-            position: 'fixed',
-            bottom: '10px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '15px',
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            borderRadius: '8px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-            maxWidth: '80%',
-            zIndex: '1000'
-        });
+        container.id = 'ti-options-container';
+        sendForm.insertAdjacentElement('beforebegin', container);
 
-        const title = document.createElement('div');
-        title.textContent = '推荐回复选项:';
-        Object.assign(title.style, {
-            color: 'white',
-            fontSize: '14px',
-            marginBottom: '5px',
-            textAlign: 'center'
-        });
-        container.appendChild(title);
+        const sleep = ms => new Promise(res => setTimeout(res, ms));
 
-        const closeBtn = document.createElement('button');
-        closeBtn.textContent = '×';
-        Object.assign(closeBtn.style, {
-            position: 'absolute',
-            top: '5px',
-            right: '5px',
-            background: 'none',
-            border: 'none',
-            color: 'white',
-            fontSize: '16px',
-            cursor: 'pointer'
-        });
-        closeBtn.onclick = () => container.remove();
-        container.appendChild(closeBtn);
-
-        const optionsContainer = document.createElement('div');
-        Object.assign(optionsContainer.style, {
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px'
-        });
-
-        options.forEach(option => {
+        for (const text of options) {
             const btn = document.createElement('button');
-            btn.textContent = option;
-            Object.assign(btn.style, {
-                backgroundColor: 'rgba(60, 60, 60, 0.8)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                padding: '8px 15px',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'background-color 0.2s'
-            });
+            btn.className = 'qr--button menu_button interactable ti-options-capsule';
+            container.appendChild(btn);
 
-            btn.onmouseover = () => { btn.style.backgroundColor = 'rgba(90, 90, 90, 0.8)'; };
-            btn.onmouseout = () => { btn.style.backgroundColor = 'rgba(60, 60, 60, 0.8)'; };
+            for (let i = 0; i < text.length; i++) {
+                btn.textContent = text.substring(0, i + 1);
+                await sleep(15);
+            }
 
             btn.onclick = () => {
                 const textarea = document.querySelector('#send_textarea, .send_textarea');
                 if (textarea) {
-                    textarea.value = option;
+                    textarea.value = text;
                     textarea.dispatchEvent(new Event('input', { bubbles: true }));
                     textarea.focus();
                 }
                 container.remove();
             };
-            optionsContainer.appendChild(btn);
-        });
-
-        container.appendChild(optionsContainer);
-        document.body.appendChild(container);
+        }
     }
 };
 
@@ -769,7 +796,7 @@ const OptionsGenerator = {
     const hideIndicatorEvents = [event_types.GENERATION_STOPPED, event_types.GENERATION_ENDED, event_types.CHAT_CHANGED];
 
     showIndicatorEvents.forEach(e => eventSource.on(e, showTypingIndicator));
-    hideIndicatorEvents.forEach(e => eventSource.on(e, hideTypingIndicator));
+    hideIndicatorEvents.forEach(e => eventSource.on(e, hideIndicatorEvents));
 
     eventSource.on(event_types.GENERATION_ENDED, () => {
         if (getSettings().optionsGenEnabled) {
@@ -778,21 +805,34 @@ const OptionsGenerator = {
     });
 
     eventSource.on(event_types.CHAT_CHANGED, () => {
+        logger.log('CHAT_CHANGED event triggered.');
         // 首先，像往常一样隐藏所有UI
         OptionsGenerator.hideGeneratingUI();
-        const oldContainer = document.getElementById('options-container');
-        if (oldContainer) oldContainer.remove();
+        const oldContainer = document.getElementById('ti-options-container');
+        if (oldContainer) {
+            logger.log('隐藏已存在的选项容器。');
+            oldContainer.remove();
+        }
 
         // 然后，在新聊天加载后，检查是否需要自动生成选项
         // 使用setTimeout确保DOM更新完毕
         setTimeout(() => {
-            if (getSettings().optionsGenEnabled && isLastMessageFromAI()) {
-                const optionsContainer = document.getElementById('options-container');
-                if (!optionsContainer && !OptionsGenerator.isGenerating) {
-                    logger.log('检测到最后一条消息来自AI，且无选项，自动生成。');
-                    OptionsGenerator.generateOptions();
-                }
+            logger.log('开始延时检查...');
+            const settings = getSettings();
+            if (!settings.optionsGenEnabled) {
+                logger.log('选项生成已禁用，跳过检查。');
+                return;
             }
-        }, 100); // 延迟100毫秒以确保新聊天渲染完成
+
+            const isLastFromAI = isLastMessageFromAI();
+            const optionsContainer = document.getElementById('ti-options-container');
+
+            if (isLastFromAI && !optionsContainer && !OptionsGenerator.isGenerating) {
+                logger.log('条件满足，准备自动生成选项。');
+                OptionsGenerator.generateOptions();
+            } else {
+                logger.log('不满足自动生成条件:', { isLastFromAI, hasOptionsContainer: !!optionsContainer, isGenerating: OptionsGenerator.isGenerating });
+            }
+        }, 500); // 延迟500毫秒以确保新聊天渲染完成
     });
 })();
