@@ -4,7 +4,6 @@ import {
     event_types,
     isStreamingEnabled,
     saveSettingsDebounced,
-    getContext,
 } from '../../../../script.js';
 import { extension_settings } from '../../../extensions.js';
 import { selected_group } from '../../../group-chats.js';
@@ -12,24 +11,7 @@ import { selected_group } from '../../../group-chats.js';
 const MODULE = 'typing_indicator';
 const legacyIndicatorTemplate = document.getElementById('typing_indicator_template');
 
-// 日志记录器
-const logger = {
-    logBox: null,
-    log(message) {
-        console.log(`[AI-Director] ${message}`);
-        if (this.logBox) {
-            const timestamp = new Date().toLocaleTimeString();
-            const logEntry = document.createElement('div');
-            logEntry.textContent = `[${timestamp}] ${message}`;
-            this.logBox.appendChild(logEntry);
-            this.logBox.scrollTop = this.logBox.scrollHeight;
-        }
-    },
-    init(logBoxElement) {
-        this.logBox = logBoxElement;
-        this.log('日志系统已初始化。');
-    }
-};
+// 删除主题类型定义
 
 /**
  * @typedef {Object} TypingIndicatorSettings
@@ -139,32 +121,6 @@ function injectGlobalStyles() {
             0% { content: '.'; }
             33% { content: '..'; }
             66%, 100% { content: '...'; }
-        }
-
-        /* 日志区域样式 */
-        .ai-director-log-container {
-            margin-top: 15px;
-            border-top: 1px solid var(--border_color);
-            padding-top: 15px;
-        }
-        .ai-director-log-header {
-            cursor: pointer;
-            font-weight: bold;
-            user-select: none;
-        }
-        .ai-director-log-box {
-            display: none;
-            margin-top: 10px;
-            height: 150px;
-            background-color: var(--background_panel);
-            border: 1px solid var(--border_color);
-            border-radius: 5px;
-            padding: 8px;
-            overflow-y: scroll;
-            font-family: monospace;
-            font-size: 12px;
-            line-height: 1.5;
-            color: var(--text_color_secondary);
         }
     `;
     let styleTag = document.getElementById('typing-indicator-global-style');
@@ -412,29 +368,6 @@ function addExtensionSettings(settings) {
 
     optionsContainer.appendChild(optionsSettingsContainer);
     inlineDrawerContent.append(optionsContainer);
-    
-    // 日志区域
-    const logContainer = document.createElement('div');
-    logContainer.className = 'ai-director-log-container';
-    
-    const logHeader = document.createElement('div');
-    logHeader.className = 'ai-director-log-header';
-    logHeader.textContent = '调试日志 ▼';
-    logHeader.onclick = () => {
-        const logBox = document.querySelector('.ai-director-log-box');
-        const isHidden = logBox.style.display === 'none';
-        logBox.style.display = isHidden ? 'block' : 'none';
-        logHeader.textContent = isHidden ? '调试日志 ▲' : '调试日志 ▼';
-    };
-
-    const logBox = document.createElement('div');
-    logBox.className = 'ai-director-log-box';
-
-    logContainer.append(logHeader, logBox);
-    inlineDrawerContent.append(logContainer);
-
-    // 初始化日志系统
-    logger.init(logBox);
 }
 
 /**
@@ -521,65 +454,63 @@ function hideTypingIndicator() {
 const OptionsGenerator = {
     isGenerating: false,
 
-    // 获取上下文信息
-    async getContextData() {
-        logger.log('开始获取上下文数据...');
+    getCharacterCard() {
         try {
-            const context = await getContext();
-            if (!context || !context.characters) {
-                throw new Error('获取的上下文数据无效。');
+            if (window.characterId && getCharacters) {
+                const char = getCharacters().find(c => c.id === window.characterId);
+                return char ? `${char.name}:\n${char.description}` : '';
             }
-            logger.log(`成功获取上下文。包含 ${context.characters.length} 个角色。`);
-            return {
-                context: context.text,
-                char: context.characters[0], // 假设只有一个角色
-                lorebooks: context.lorebooks || [],
-            };
         } catch (error) {
-            logger.log(`获取上下文数据失败: ${error.message}`);
-            throw error;
+            console.error('获取角色卡信息失败:', error);
         }
+        return '';
     },
 
-    // 使用API生成回复选项
-    async generateOptions() {
-        logger.log('检查是否开始生成选项...');
-        if (this.isGenerating) {
-            logger.log('正在生成中，取消本次请求。');
-            return;
+    getWorldInfo() {
+        try {
+            if (getLorebooks) {
+                const activeLorebooks = getLorebooks().filter(book => book.enabled);
+                return activeLorebooks.map(book => `${book.name}:\n${book.content}`).join('\n\n');
+            }
+        } catch (error) {
+            console.error('获取世界设定信息失败:', error);
         }
+        return '';
+    },
+
+    getChatContext() {
+        try {
+            if (getContext) {
+                return getContext().text;
+            }
+        } catch (error) {
+            console.error('获取聊天上下文失败:', error);
+        }
+        return '';
+    },
+
+    async generateOptions() {
+        if (this.isGenerating) return;
 
         const settings = getSettings();
-        if (!settings.optionsGenEnabled) {
-            logger.log('选项生成功能未启用，跳过。');
+        if (!settings.optionsGenEnabled || !settings.optionsApiKey) {
+            console.log('选项生成功能未启用或API密钥未设置');
             return;
         }
-        if (!settings.optionsApiKey) {
-            logger.log('API密钥未设置，跳过。');
-            this.showGeneratingUI('API密钥未设置', 5000);
-            return;
-        }
-        
-        this.isGenerating = true;
+
         this.showGeneratingUI('正在生成回复选项...');
-        logger.log('开始生成选项...');
+        this.isGenerating = true;
 
         try {
-            // 准备API请求数据
-            const { context, char, lorebooks } = await this.getContextData();
-            const charCard = char ? `${char.name}:\n${char.description}` : '无角色信息';
-            const worldInfo = lorebooks.map(book => `${book.name}:\n${book.content}`).join('\n\n') || '无世界信息';
+            const characterCard = this.getCharacterCard();
+            const worldInfo = this.getWorldInfo();
+            const context = this.getChatContext();
 
-            // 处理模板
             let prompt = settings.optionsTemplate;
             prompt = prompt.replace('{{context}}', context);
-            prompt = prompt.replace('{{char_card}}', charCard);
+            prompt = prompt.replace('{{char_card}}', characterCard);
             prompt = prompt.replace('{{world_info}}', worldInfo);
-            
-            logger.log(`最终发送的Prompt: \n${prompt.substring(0, 300)}...`);
 
-            // 调用API
-            logger.log(`向 ${settings.optionsBaseUrl} 发起API请求...`);
             const response = await fetch(settings.optionsBaseUrl, {
                 method: 'POST',
                 headers: {
@@ -588,203 +519,157 @@ const OptionsGenerator = {
                 },
                 body: JSON.stringify({
                     model: settings.optionsApiModel,
-                    messages: [
-                        {
-                            role: 'user',
-                            content: prompt
-                        }
-                    ],
+                    messages: [{ role: 'user', content: prompt }],
                     temperature: 0.7,
                     max_tokens: 500,
                     stream: false,
                 })
             });
-            
-            logger.log(`收到API响应，状态码: ${response.status}`);
-            // 处理响应
+
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: { message: '无法解析错误响应' } }));
-                logger.log(`API错误: ${JSON.stringify(errorData)}`);
+                const errorData = await response.json();
                 throw new Error(`API请求失败: ${response.status} - ${errorData.error?.message || '未知错误'}`);
             }
 
             const data = await response.json();
-            logger.log('成功解析API响应JSON。');
-            const content = data.choices && data.choices[0] && data.choices[0].message
-                ? data.choices[0].message.content
-                : '';
-            
-            logger.log(`从API获取到的原始回复内容:\n${content}`);
-
-            // 解析选项
+            const content = data.choices[0]?.message?.content || '';
             const options = this.parseOptions(content);
-            logger.log(`解析出 ${options.length} 个选项: ${options.join('; ')}`);
-
-            // 显示选项
             this.displayOptions(options);
-
         } catch (error) {
-            logger.log(`生成选项失败: ${error.message}`);
+            console.error('生成选项失败:', error);
             this.showGeneratingUI(`生成失败: ${error.message}`, 5000);
         } finally {
-             this.isGenerating = false;
-             logger.log('生成流程结束。');
+            this.isGenerating = false;
         }
     },
 
-    // 解析选项内容
     parseOptions(content) {
-        const options = [];
-        const lines = content.split('\n');
-
-        for (const line of lines) {
-            const trimmedLine = line.trim();
-            // 匹配以"-"、"*"或数字加点开头的行
-            if (/^[-*]\s+|^\d+\.\s+/.test(trimmedLine)) {
-                const option = trimmedLine.replace(/^[-*]\s+|^\d+\.\s+/, '').trim();
-                if (option) {
-                    options.push(option);
-                }
-            }
-        }
-
-        return options;
+        return content.split('\n')
+            .map(line => line.trim())
+            .filter(line => /^[-*]\s*|^\d+\.\s*/.test(line))
+            .map(line => line.replace(/^[-*]\s*|^\d+\.\s*/, '').trim())
+            .filter(option => option);
     },
 
-    // 显示或更新提示UI
     showGeneratingUI(message, duration = null) {
         let container = document.getElementById('options-loading-container');
         if (!container) {
             container = document.createElement('div');
             container.id = 'options-loading-container';
-            container.style.position = 'fixed';
-            container.style.bottom = '10px';
-            container.style.left = '50%';
-            container.style.transform = 'translateX(-50%)';
-            container.style.padding = '10px 20px';
-            container.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
-            container.style.borderRadius = '8px';
-            container.style.color = 'white';
-            container.style.zIndex = '1000';
-            container.style.display = 'flex';
-            container.style.alignItems = 'center';
-            container.style.justifyContent = 'center';
-            container.style.gap = '10px';
+            Object.assign(container.style, {
+                position: 'fixed',
+                bottom: '10px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                padding: '10px 20px',
+                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                borderRadius: '8px',
+                color: 'white',
+                zIndex: '1000',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px'
+            });
             document.body.appendChild(container);
         }
-        
         container.textContent = message;
 
         if (duration) {
-            setTimeout(() => {
-                this.hideGeneratingUI();
-            }, duration);
-        } else {
-            // 如果没有设置持续时间，则不自动隐藏
+            setTimeout(() => this.hideGeneratingUI(), duration);
         }
     },
 
-    // 隐藏生成中提示
     hideGeneratingUI() {
         const loadingContainer = document.getElementById('options-loading-container');
-        if (loadingContainer) {
-            loadingContainer.remove();
-        }
+        if (loadingContainer) loadingContainer.remove();
     },
 
-    // 显示生成的选项
     displayOptions(options) {
-        // 移除提示和旧选项
         this.hideGeneratingUI();
         const oldContainer = document.getElementById('options-container');
-        if (oldContainer) {
-            oldContainer.remove();
-        }
+        if (oldContainer) oldContainer.remove();
 
         if (!options || options.length === 0) {
-            logger.log('没有生成有效选项，不显示UI。');
             this.showGeneratingUI('未能生成有效选项', 3000);
             return;
         }
 
-        logger.log('开始渲染选项UI。');
-        // 创建选项容器
         const container = document.createElement('div');
         container.id = 'options-container';
-        container.style.position = 'fixed';
-        container.style.bottom = '10px';
-        container.style.left = '50%';
-        container.style.transform = 'translateX(-50%)';
-        container.style.padding = '15px';
-        container.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        container.style.borderRadius = '8px';
-        container.style.display = 'flex';
-        container.style.flexDirection = 'column';
-        container.style.gap = '10px';
-        container.style.maxWidth = '80%';
-        container.style.zIndex = '1000';
+        Object.assign(container.style, {
+            position: 'fixed',
+            bottom: '10px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '15px',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            borderRadius: '8px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            maxWidth: '80%',
+            zIndex: '1000'
+        });
 
-        // 创建标题
         const title = document.createElement('div');
         title.textContent = '推荐回复选项:';
-        title.style.color = 'white';
-        title.style.fontSize = '14px';
-        title.style.marginBottom = '5px';
-        title.style.textAlign = 'center';
+        Object.assign(title.style, {
+            color: 'white',
+            fontSize: '14px',
+            marginBottom: '5px',
+            textAlign: 'center'
+        });
         container.appendChild(title);
 
-        // 添加关闭按钮
         const closeBtn = document.createElement('button');
         closeBtn.textContent = '×';
-        closeBtn.style.position = 'absolute';
-        closeBtn.style.top = '5px';
-        closeBtn.style.right = '5px';
-        closeBtn.style.background = 'none';
-        closeBtn.style.border = 'none';
-        closeBtn.style.color = 'white';
-        closeBtn.style.fontSize = '16px';
-        closeBtn.style.cursor = 'pointer';
+        Object.assign(closeBtn.style, {
+            position: 'absolute',
+            top: '5px',
+            right: '5px',
+            background: 'none',
+            border: 'none',
+            color: 'white',
+            fontSize: '16px',
+            cursor: 'pointer'
+        });
         closeBtn.onclick = () => container.remove();
         container.appendChild(closeBtn);
 
-        // 创建选项按钮
         const optionsContainer = document.createElement('div');
-        optionsContainer.style.display = 'flex';
-        optionsContainer.style.flexDirection = 'column';
-        optionsContainer.style.gap = '8px';
+        Object.assign(optionsContainer.style, {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px'
+        });
 
-        // 添加每个选项
-        options.forEach((option, index) => {
+        options.forEach(option => {
             const btn = document.createElement('button');
             btn.textContent = option;
-            btn.style.backgroundColor = 'rgba(60, 60, 60, 0.8)';
-            btn.style.color = 'white';
-            btn.style.border = 'none';
-            btn.style.borderRadius = '5px';
-            btn.style.padding = '8px 15px';
-            btn.style.cursor = 'pointer';
-            btn.style.textAlign = 'left';
-            btn.style.transition = 'background-color 0.2s';
+            Object.assign(btn.style, {
+                backgroundColor: 'rgba(60, 60, 60, 0.8)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                padding: '8px 15px',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'background-color 0.2s'
+            });
 
             btn.onmouseover = () => { btn.style.backgroundColor = 'rgba(90, 90, 90, 0.8)'; };
             btn.onmouseout = () => { btn.style.backgroundColor = 'rgba(60, 60, 60, 0.8)'; };
 
-            // 点击选项时执行操作
             btn.onclick = () => {
-                // 将选中的文本填入发送框
-                const textareaElement = document.querySelector('#send_textarea, .send_textarea');
-                if (textareaElement) {
-                    textareaElement.value = option;
-                    textareaElement.dispatchEvent(new Event('input', { bubbles: true }));
-
-                    // 聚焦输入框
-                    textareaElement.focus();
+                const textarea = document.querySelector('#send_textarea, .send_textarea');
+                if (textarea) {
+                    textarea.value = option;
+                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    textarea.focus();
                 }
-
-                // 移除选项容器
                 container.remove();
             };
-
             optionsContainer.appendChild(btn);
         });
 
@@ -794,35 +679,43 @@ const OptionsGenerator = {
 };
 
 (function () {
-    injectGlobalStyles();
+    // 确保从 script.js 正确导入
+    const requiredImports = {
+        name2,
+        eventSource,
+        event_types,
+        isStreamingEnabled,
+        saveSettingsDebounced,
+    };
 
+    // 检查核心函数是否都已加载
+    for (const [name, imported] of Object.entries(requiredImports)) {
+        if (typeof imported === 'undefined') {
+            console.error(`Typing Indicator Extension: Critical import "${name}" is missing.`);
+            return; // 提前退出，防止插件崩溃
+        }
+    }
+
+    injectGlobalStyles();
     const settings = getSettings();
     addExtensionSettings(settings);
-
     applyBasicStyle();
 
-    const showIndicatorEvents = [ event_types.GENERATION_AFTER_COMMANDS ];
-    const hideIndicatorEvents = [ event_types.GENERATION_STOPPED, event_types.GENERATION_ENDED, event_types.CHAT_CHANGED ];
+    const showIndicatorEvents = [event_types.GENERATION_AFTER_COMMANDS];
+    const hideIndicatorEvents = [event_types.GENERATION_STOPPED, event_types.GENERATION_ENDED, event_types.CHAT_CHANGED];
 
-    // 注册打字指示器事件
     showIndicatorEvents.forEach(e => eventSource.on(e, showTypingIndicator));
     hideIndicatorEvents.forEach(e => eventSource.on(e, hideTypingIndicator));
 
-    // 在AI回复结束时生成选项
-    eventSource.on(event_types.GENERATION_ENDED, async () => {
-        logger.log(`捕获到 ${event_types.GENERATION_ENDED} 事件。`);
+    eventSource.on(event_types.GENERATION_ENDED, () => {
         if (getSettings().optionsGenEnabled) {
-            await OptionsGenerator.generateOptions();
+            OptionsGenerator.generateOptions();
         }
     });
 
-    // 在聊天切换时清除选项
     eventSource.on(event_types.CHAT_CHANGED, () => {
-        logger.log(`捕获到 ${event_types.CHAT_CHANGED} 事件，清除UI。`);
         OptionsGenerator.hideGeneratingUI();
         const oldContainer = document.getElementById('options-container');
-        if (oldContainer) {
-            oldContainer.remove();
-        }
+        if (oldContainer) oldContainer.remove();
     });
 })();
