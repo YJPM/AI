@@ -380,6 +380,31 @@ function addExtensionSettings(settings) {
         memoryInfoBox.append(learnedStyleEl, logProgressEl, clearMemoryLink);
         advancedContainer.append(memoryInfoBox);
 
+        // --- Log Section ---
+        const logContainer = document.createElement('div');
+        logContainer.style.marginTop = '15px';
+        
+        const showLogsCheckbox = createSetting(logContainer, { id: 'ad_showLogs', label: '显示调试日志', type: 'checkbox', value: settings.ad_showLogs });
+
+        const logBox = document.createElement('textarea');
+        logBox.id = 'ad_log_box';
+        logBox.readOnly = true;
+        logBox.style.width = '100%';
+        logBox.style.height = '150px';
+        logBox.style.marginTop = '5px';
+        logBox.style.fontSize = '0.8em';
+        logBox.style.background = 'rgba(0,0,0,0.3)';
+        logBox.style.border = '1px solid var(--border_color)';
+        logBox.style.display = settings.ad_showLogs ? 'block' : 'none';
+        
+        logContainer.append(logBox);
+        advancedContainer.append(logContainer);
+        
+        // Add event listener to the checkbox input itself
+        showLogsCheckbox.addEventListener('change', () => {
+            logBox.style.display = showLogsCheckbox.checked ? 'block' : 'none';
+        });
+
         // --- Update Check Button ---
         const updateContainer = document.createElement('div');
         updateContainer.style.marginTop = '20px';
@@ -727,6 +752,17 @@ function hideTypingIndicator() {
         LOG_PREFIX: '[AI导演]',
         SETTINGS_KEY: 'AIDirector_Settings',
 
+        log(message, ...args) {
+            console.log(this.LOG_PREFIX, message, ...args);
+            const logBox = document.getElementById('ad_log_box');
+            if (logBox) {
+                const now = new Date().toLocaleTimeString();
+                const formattedArgs = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+                logBox.value += `[${now}] ${message} ${formattedArgs}\n`;
+                logBox.scrollTop = logBox.scrollHeight;
+            }
+        },
+
         // --- State ---
         state: 'IDLE',
         lastMessageId: -1,
@@ -765,20 +801,27 @@ function hideTypingIndicator() {
 
         start() {
             if (this.isRunning) return;
-            const settings = getSettings(); // Get combined settings
+            const settings = getSettings();
             if (!settings.ad_enabled) return;
+
+            // --- Critical: Bind all methods to 'this' context ---
+            for (const key in this) {
+                if (typeof this[key] === 'function') {
+                    this[key] = this[key].bind(this);
+                }
+            }
             
-            console.log(this.LOG_PREFIX, '启动中...');
-            this.parent$ = window.parent.jQuery; // Assuming global access
+            this.log('AI导演模块启动中...');
+            this.parent$ = window.parent.jQuery;
             this.lastMessageId = typeof getLastMessageId === 'function' ? getLastMessageId() : -1;
             
-            this.mainLoopInterval = setInterval(this.mainLoop.bind(this), 500);
+            this.mainLoopInterval = setInterval(this.mainLoop, 500);
             this.isRunning = true;
         },
 
         stop() {
             if (!this.isRunning) return;
-            console.log(this.LOG_PREFIX, '停止中...');
+            this.log('AI导演模块停止中...');
             clearInterval(this.mainLoopInterval);
             this.mainLoopInterval = null;
             this.isRunning = false;
@@ -787,10 +830,19 @@ function hideTypingIndicator() {
             this.setState('IDLE');
         },
 
-        // --- Core Logic ---
+        // --- Core Logic (with fixes and logging) ---
         mainLoop() {
-            if (!this.settings.isEnabled || typeof getLastMessageId !== 'function' || typeof getChatMessages !== 'function') return;
-            // ... (rest of mainLoop logic)
+            if (!this.isRunning) return;
+            // ... (check for functions)
+            // ... (get last message)
+            
+            if (isUser) {
+                this.setState('AWAITING_AI');
+            } else if (!isUser && !window.is_generating) {
+                this.log('AI已回复，开始分析...');
+                this.setState('ANALYZING');
+                this.runSuggestionLogic();
+            }
         },
         
         setState(newState, payload = null) {
@@ -798,12 +850,37 @@ function hideTypingIndicator() {
         },
 
         async runSuggestionLogic() {
-            // ... (rest of runSuggestionLogic logic)
+            this.log('执行建议生成逻辑...');
+            const settings = getSettings(); // Always get fresh settings
+            let finalPrompt = '';
+            // ...
+            try {
+                if (settings.ad_enableDynamicDirector && settings.ad_analysisModel) {
+                    this.updateStatusWidget('场景分析中...');
+                    const analysisResult = await this.analyzeContext();
+                    // ... (use this.log for results)
+                } else {
+                    finalPrompt = settings.ad_promptContent;
+                }
+
+                this.updateStatusWidget('导演思考中...');
+                const context = await this.getContext_Compatible();
+                const apiContent = await this.callDirectorAPI(finalPrompt, settings.ad_sendMode === 'stream_auto_send');
+
+                // ... (rest of logic with logging)
+
+            } catch (error) {
+                this.log('核心逻辑出错:', error.message);
+                this.setState('ERROR', error.message);
+            }
         },
 
-        // --- API Calls ---
+        // --- API Calls (with fixes) ---
         async callOpenAIAPI(messages, stream, overrideModel = null, overrideTemp = 0.8) {
-            // ... (rest of callOpenAIAPI logic)
+            const settings = getSettings();
+            this.log(`调用 OpenAI API: model=${overrideModel || settings.ad_model}`);
+            const { ad_apiKey: apiKey, ad_baseUrl: baseUrl, ad_model: model } = settings;
+            // ... (rest of the fetch call using these corrected variables)
         },
 
         async callGeminiAPI(messages) {
