@@ -536,36 +536,53 @@ function hideTypingIndicator() {
     }
 }
 
-// 检查最后一条消息是否来自AI
+// 检查最后一条消息是否来自AI (更可靠的版本)
 function isLastMessageFromAI() {
-    logger.log('检查最后一条消息...');
-    const messages = document.querySelectorAll('#chat .mes');
-    if (messages.length === 0) {
-        logger.log('聊天记录为空，判定为非AI。');
+    logger.log('检查最后一条消息 (数据对象模式)...');
+    if (typeof window.getChatMessages !== 'function' || typeof window.getLastMessageId !== 'function') {
+        logger.error('核心函数 getChatMessages 或 getLastMessageId 未找到，无法判断消息来源。');
         return false;
     }
 
-    const lastMessage = messages[messages.length - 1];
-    const isBot = lastMessage.classList.contains('bot_mes');
-    logger.log(`找到 ${messages.length} 条消息。最后一条消息 ${isBot ? '是' : '不是'} AI消息。`);
-    return isBot;
+    try {
+        const lastMessageId = window.getLastMessageId();
+        if (lastMessageId < 0) {
+            logger.log('聊天记录为空，判定为非AI。');
+            return false;
+        }
+
+        const lastMessageArr = window.getChatMessages(`${lastMessageId}`);
+        if (!lastMessageArr || lastMessageArr.length === 0) {
+            logger.log('无法获取到最后一条消息对象。');
+            return false;
+        }
+
+        const lastMessage = lastMessageArr[0];
+        const isBot = !lastMessage.is_user;
+        logger.log(`最后一条消息ID: ${lastMessageId}。判定... is_user: ${lastMessage.is_user}。结论: ${isBot ? '是' : '不是'} AI消息。`);
+        return isBot;
+    } catch (error) {
+        logger.error('检查最后一条消息时出错:', error);
+        return false;
+    }
 }
+
 
 // 选项生成器对象
 const OptionsGenerator = {
     isGenerating: false,
 
     getContextForAPI(limit = 20) {
-        if (typeof getChatMessages !== 'function' || typeof getLastMessageId !== 'function') {
+        if (typeof window.getChatMessages !== 'function' || typeof window.getLastMessageId !== 'function') {
             logger.error('核心函数 getChatMessages 或 getLastMessageId 未找到。');
             return [];
         }
         try {
-            const lastMessageId = getLastMessageId();
+            const lastMessageId = window.getLastMessageId();
             if (lastMessageId < 0) return [];
 
             const startId = Math.max(0, lastMessageId - limit);
-            const messageObjects = getChatMessages(`${startId}-${lastMessageId}`);
+            const messageObjects = window.getChatMessages(`${startId}-${lastMessageId}`);
 
             const extractText = (msgHtml) => {
                 const tempDiv = document.createElement('div');
