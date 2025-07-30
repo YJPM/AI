@@ -781,20 +781,6 @@ function hideTypingIndicator() {
     }
 }
 
-(function () {
-    injectGlobalStyles();
-    
-    const settings = getSettings();
-    addExtensionSettings(settings);
-
-        applyTheme(settings.ti_activeTheme);
-
-    const showIndicatorEvents = [ event_types.GENERATION_AFTER_COMMANDS ];
-    const hideIndicatorEvents = [ event_types.GENERATION_STOPPED, event_types.GENERATION_ENDED, event_types.CHAT_CHANGED ];
-
-    showIndicatorEvents.forEach(e => eventSource.on(e, showTypingIndicator));
-    hideIndicatorEvents.forEach(e => eventSource.on(e, hideTypingIndicator));
-    })();
 })();
 
 // ===============================================
