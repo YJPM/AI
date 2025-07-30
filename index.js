@@ -488,8 +488,8 @@ const OptionsGenerator = {
 
     getCharacterCard() {
         try {
-            if (window.characterId && getCharacters) {
-                const char = getCharacters().find(c => c.id === window.characterId);
+            if (typeof getCharacters === 'function' && typeof characterId !== 'undefined') {
+                const char = getCharacters().find(c => c.id === characterId);
                 return char ? `${char.name}:\n${char.description}` : '';
             }
         } catch (error) {
@@ -500,7 +500,7 @@ const OptionsGenerator = {
 
     getWorldInfo() {
         try {
-            if (getLorebooks) {
+            if (typeof getLorebooks === 'function') {
                 const activeLorebooks = getLorebooks().filter(book => book.enabled);
                 return activeLorebooks.map(book => `${book.name}:\n${book.content}`).join('\n\n');
             }
@@ -512,7 +512,7 @@ const OptionsGenerator = {
 
     getChatContext() {
         try {
-            if (getContext) {
+            if (typeof getContext === 'function') {
                 return getContext().text;
             }
         } catch (error) {
@@ -558,7 +558,12 @@ const OptionsGenerator = {
 
             logger.log('生成选项的最终提示:', prompt);
 
-            const response = await fetch(settings.optionsBaseUrl, {
+            const baseUrl = settings.optionsBaseUrl.endsWith('/') ? settings.optionsBaseUrl.slice(0, -1) : settings.optionsBaseUrl;
+            const apiUrl = `${baseUrl}/chat/completions`;
+
+            logger.log('Requesting options from:', apiUrl);
+
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
