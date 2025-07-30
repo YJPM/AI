@@ -5,10 +5,6 @@
 ### 打字指示器
 在消息生成过程中显示消息。{{char}} is typing...
 
-原拓展链接为https://github.com/SillyTavern/Extension-TypingIndicator
-原版作者为SillyTavern社区的cohee guy/dude
-此版本为基于原版的二改版本
-
 ### AI导演
 AI导演是一个强大的辅助创作工具，能够根据聊天上下文，为用户提供多个高质量的叙事选项。
 
