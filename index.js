@@ -710,24 +710,60 @@ function addExtensionSettings(settings) {
     }
 
 function showTypingIndicator(type, _args, dryRun) {
+    // 获取日志元素
+    const logBox = document.getElementById('ad_log_box');
+    const logEvent = (message) => {
+        console.log(`[打字指示器] ${message}`);
+        if (logBox) {
+            const now = new Date().toLocaleTimeString();
+            logBox.value += `[${now}] [打字指示器] ${message}\n`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+    };
+
+    // 记录函数被调用
+    logEvent(`函数被调用，参数: type=${type}, dryRun=${dryRun}`);
+    
     const settings = getSettings();
+    logEvent(`读取设置：ti_enabled=${settings.ti_enabled}, ti_streaming=${settings.ti_streaming}`);
+    
     const noIndicatorTypes = ['quiet', 'impersonate'];
 
+    // 检查第一个条件
     if (type !== 'refresh' && (noIndicatorTypes.includes(type) || dryRun)) {
+        logEvent(`退出原因：type=${type}, dryRun=${dryRun}`);
         return;
     }
 
-        if (!settings.ti_enabled || (!settings.ti_streaming && isStreamingEnabled())) {
+    // 检查流式输出设置
+    const isStreaming = typeof isStreamingEnabled === 'function' ? isStreamingEnabled() : false;
+    logEvent(`isStreamingEnabled()=${isStreaming}`);
+    
+    if (!settings.ti_enabled || (!settings.ti_streaming && isStreaming)) {
+        logEvent(`退出原因：ti_enabled=${settings.ti_enabled}, ti_streaming=${settings.ti_streaming}, isStreaming=${isStreaming}`);
         return;
     }
     
-        if (settings.ti_showCharName && !name2 && type !== 'refresh') {
+    // 检查角色名称设置
+    const characterName = typeof name2 !== 'undefined' ? name2 : '未知';
+    logEvent(`角色名称: ${characterName}`);
+    
+    if (settings.ti_showCharName && !name2 && type !== 'refresh') {
+        logEvent(`退出原因：需要角色名称但未找到`);
         return;
     }
 
-    if (legacyIndicatorTemplate && selected_group && !isStreamingEnabled()) {
+    // 检查传统模板设置
+    const hasLegacyTemplate = typeof legacyIndicatorTemplate !== 'undefined' ? legacyIndicatorTemplate : false;
+    const hasSelectedGroup = typeof selected_group !== 'undefined' ? selected_group : false;
+    logEvent(`传统模板: ${hasLegacyTemplate}, 已选择群组: ${hasSelectedGroup}`);
+    
+    if (hasLegacyTemplate && hasSelectedGroup && !isStreaming) {
+        logEvent(`退出原因：使用传统模板且已选择群组`);
         return;
     }
+    
+    logEvent(`通过所有检查，将显示指示器`);
 
     const placeholder = '{char}';
         let finalText = settings.ti_customText || defaultSettings.ti_customText;
@@ -919,7 +955,7 @@ function hideTypingIndicator() {
 
         // --- API Calls (with fixes) ---
         async callOpenAIAPI(messages, stream, overrideModel = null, overrideTemp = 0.8) {
-            const settings = getSettings();
+    const settings = getSettings();
             this.log(`调用 OpenAI API: model=${overrideModel || settings.ad_model}`);
             const { ad_apiKey: apiKey, ad_baseUrl: baseUrl, ad_model: model } = settings;
             // ... (rest of the fetch call using these corrected variables)
@@ -968,26 +1004,117 @@ function hideTypingIndicator() {
 
     // --- SillyTavern Plugin Initializer ---
     (function () {
-        // This function is called when the UI is fully loaded and ready
-        function onUiLoaded() {
-            const settings = getSettings();
-            
-            // Start the AI Director if it's enabled in settings
-            if (settings.ad_enabled) {
-                AIDirector.start();
-            }
-
-            // Apply the initial theme for the typing indicator
-            if (settings.ti_enabled) {
-                applyTheme(settings.ti_activeTheme);
+        // 获取日志元素
+        function debugLog(message) {
+            console.log(`[插件初始化] ${message}`);
+            const logBox = document.getElementById('ad_log_box');
+            if (logBox) {
+                const now = new Date().toLocaleTimeString();
+                logBox.value += `[${now}] [插件初始化] ${message}\n`;
+                logBox.scrollTop = logBox.scrollHeight;
             }
         }
 
-        // This is the main entry point. SillyTavern looks for this event.
-        document.addEventListener('tavern:ui:ready', onUiLoaded, { once: true });
+        // 使用SillyTavern的事件系统注册事件处理器
+        function registerTavernEvents() {
+            debugLog('正在注册SillyTavern事件处理器...');
+            
+            // 确保全局对象存在
+            if (!window.eventSource) {
+                debugLog('错误：未找到eventSource对象');
+                return false;
+            }
+            
+            debugLog('找到eventSource对象，注册事件...');
+            
+            // SillyTavern的事件类型
+            const event_types = {
+                GENERATION_STARTED: 'generation_started',
+                GENERATION_AFTER_COMMANDS: 'generation_after_commands', 
+                GENERATION_STOPPED: 'generation_stopped',
+                GENERATION_ENDED: 'generation_ended',
+                CHAT_CHANGED: 'chat_changed'
+            };
+            
+            // 注册显示和隐藏指示器的事件
+            const showIndicatorEvents = [event_types.GENERATION_STARTED, event_types.GENERATION_AFTER_COMMANDS];
+            const hideIndicatorEvents = [event_types.GENERATION_STOPPED, event_types.GENERATION_ENDED, event_types.CHAT_CHANGED];
+            
+            // 注册事件处理器
+            showIndicatorEvents.forEach(e => {
+                debugLog(`注册事件：${e} -> showTypingIndicator`);
+                window.eventSource.on(e, (type, args, dryRun) => {
+                    debugLog(`事件触发：${e}, 调用showTypingIndicator`);
+                    showTypingIndicator('normal', args, dryRun);
+                });
+            });
+            
+            hideIndicatorEvents.forEach(e => {
+                debugLog(`注册事件：${e} -> hideTypingIndicator`);
+                window.eventSource.on(e, () => {
+                    debugLog(`事件触发：${e}, 调用hideTypingIndicator`);
+                    hideTypingIndicator();
+                });
+            });
+            
+            return true;
+        }
 
-        // Bind the typing indicator functions to the global 'character-is-typing' event
+        // 监听所有事件的辅助函数 (调试用)
+        function listenToAllEvents() {
+            if (!window.eventSource) return;
+            
+            const allEvents = [
+                'generation_started', 'generation_after_commands', 
+                'generation_stopped', 'generation_ended', 
+                'chat_changed', 'character_is_typing'
+            ];
+            
+            allEvents.forEach(event => {
+                window.eventSource.on(event, (...args) => {
+                    debugLog(`捕获事件: ${event}, 参数: ${JSON.stringify(args)}`);
+                });
+            });
+        }
+
+        // 这个函数在UI完全加载和准备好后调用
+        function onUiLoaded() {
+            debugLog('UI准备就绪，初始化插件...');
+            const settings = getSettings();
+            
+            // 开始注册事件
+            const eventsRegistered = registerTavernEvents();
+            debugLog(`事件注册${eventsRegistered ? '成功' : '失败'}`);
+            
+            // 调试模式：监听所有事件
+            listenToAllEvents();
+            
+            // 启动AI导演（如果已启用）
+            if (settings.ad_enabled) {
+                debugLog('启动AI导演模块');
+                AIDirector.start();
+            }
+
+            // 应用打字指示器的初始主题
+            if (settings.ti_enabled) {
+                debugLog('应用打字指示器主题');
+                applyTheme(settings.ti_activeTheme);
+            }
+            
+            // 立即执行一次刷新（测试用）
+            setTimeout(() => {
+                debugLog('测试打字指示器显示...');
+                showTypingIndicator('refresh');
+            }, 2000);
+        }
+
+        // 这是主入口点。SillyTavern寻找这个事件。
+        document.addEventListener('tavern:ui:ready', onUiLoaded, { once: true });
+        debugLog('已注册tavern:ui:ready事件监听器');
+
+        // 兼容性：同时监听SillyTavern较新版本使用的事件
         document.addEventListener('character-is-typing', (event) => {
+            debugLog(`收到character-is-typing事件: ${JSON.stringify(event.detail)}`);
             const { isTyping, type, args, dryRun } = event.detail;
             if (isTyping) {
                 showTypingIndicator(type, args, dryRun);
@@ -996,8 +1123,9 @@ function hideTypingIndicator() {
             }
         });
 
-        // Inject all necessary CSS styles into the document head on script load
+        // 将所有必要的CSS样式注入文档头
         injectGlobalStyles();
+        debugLog('全局样式已注入');
     })();
 
 })();
