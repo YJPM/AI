@@ -536,33 +536,21 @@ function hideTypingIndicator() {
     }
 }
 
-// 检查最后一条消息是否来自AI (更可靠的版本)
+// (DOM-based) 检查最后一条消息是否来自AI
 function isLastMessageFromAI() {
-    logger.log('检查最后一条消息 (数据对象模式)...');
-    if (typeof window.getChatMessages !== 'function' || typeof window.getLastMessageId !== 'function') {
-        logger.error('核心函数 getChatMessages 或 getLastMessageId 未找到，无法判断消息来源。');
-        return false;
-    }
-
+    logger.log('检查最后一条消息 (DOM模式)...');
     try {
-        const lastMessageId = window.getLastMessageId();
-        if (lastMessageId < 0) {
+        const allMessages = document.querySelectorAll('#chat .mes');
+        if (allMessages.length === 0) {
             logger.log('聊天记录为空，判定为非AI。');
             return false;
         }
-
-        const lastMessageArr = window.getChatMessages(`${lastMessageId}`);
-        if (!lastMessageArr || lastMessageArr.length === 0) {
-            logger.log('无法获取到最后一条消息对象。');
-            return false;
-        }
-
-        const lastMessage = lastMessageArr[0];
-        const isBot = !lastMessage.is_user;
-        logger.log(`最后一条消息ID: ${lastMessageId}。判定... is_user: ${lastMessage.is_user}。结论: ${isBot ? '是' : '不是'} AI消息。`);
+        const lastMessage = allMessages[allMessages.length - 1];
+        const isBot = lastMessage.classList.contains('bot_mes');
+        logger.log(`找到最后一条消息元素。ClassList: ${Array.from(lastMessage.classList)}. 结论: ${isBot ? '是' : '不是'} AI消息。`);
         return isBot;
     } catch (error) {
-        logger.error('检查最后一条消息时出错:', error);
+        logger.error('通过DOM检查最后一条消息时出错:', error);
         return false;
     }
 }
@@ -572,30 +560,33 @@ function isLastMessageFromAI() {
 const OptionsGenerator = {
     isGenerating: false,
 
-    getContextForAPI(limit = 20) {
-        if (typeof window.getChatMessages !== 'function' || typeof window.getLastMessageId !== 'function') {
-            logger.error('核心函数 getChatMessages 或 getLastMessageId 未找到。');
-            return [];
-        }
+    // (DOM-based) 获取API上下文
+    getContextForAPI() {
+        logger.log('从DOM获取API上下文...');
         try {
-            const lastMessageId = window.getLastMessageId();
-            if (lastMessageId < 0) return [];
+            const messageElements = document.querySelectorAll('#chat .mes');
+            const messages = [];
 
-            const startId = Math.max(0, lastMessageId - limit);
-            const messageObjects = window.getChatMessages(`${startId}-${lastMessageId}`);
+            messageElements.forEach(el => {
+                const contentEl = el.querySelector('.mes_text');
+                if (contentEl) {
+                    const role = el.classList.contains('user_mes') ? 'user' : 'assistant';
+                    
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = contentEl.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+                    const content = (tempDiv.textContent || tempDiv.innerText || '').trim();
 
-            const extractText = (msgHtml) => {
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = msgHtml.replace(/<br\s*\/?>/gi, '\n');
-                return tempDiv.textContent || tempDiv.innerText || '';
-            };
-
-            return messageObjects.map(msg => ({
-                role: msg.is_user ? 'user' : 'assistant',
-                content: extractText(msg.message),
-            }));
+                    if (content) {
+                        messages.push({ role, content });
+                    }
+                }
+            });
+            
+            logger.log(`从DOM中提取了 ${messages.length} 条消息。`);
+            // Limit context to last 20 messages for performance and token limits
+            return messages.slice(-20);
         } catch (error) {
-            logger.error('获取API上下文失败:', error);
+            logger.error('从DOM获取API上下文失败:', error);
             return [];
         }
     },
@@ -606,13 +597,19 @@ const OptionsGenerator = {
         let lastRole = '';
         messages.forEach(msg => {
             const currentRole = msg.role === 'assistant' ? 'model' : 'user';
-            if (currentRole === 'user' && lastRole === 'user') {
+            // Gemini API requires alternating user/model roles.
+            // If the last role was also 'user', we merge the content.
+            if (currentRole === 'user' && lastRole === 'user' && contents.length > 0) {
                 contents[contents.length - 1].parts[0].text += `\n\n${msg.content}`;
             } else {
                 contents.push({ role: currentRole, parts: [{ text: msg.content }] });
             }
             lastRole = currentRole;
         });
+        // The last message must be from the user.
+        if (contents.length > 0 && contents[contents.length - 1].role !== 'user') {
+            contents.push({ role: 'user', parts: [{text: '(继续)'}]});
+        }
         return contents;
     },
 
@@ -679,7 +676,7 @@ const OptionsGenerator = {
                         model: settings.optionsApiModel,
                         messages: finalMessages,
                         temperature: 0.8,
-                        max_tokens: 1024, // Keep it reasonable
+                        max_tokens: 1024,
                         stream: false,
                     }),
                 });
@@ -786,24 +783,7 @@ const OptionsGenerator = {
     }
 };
 
-(function () {
-    // 确保从 script.js 正确导入
-    const requiredImports = {
-        name2,
-        eventSource,
-        event_types,
-        isStreamingEnabled,
-        saveSettingsDebounced,
-    };
-
-    // 检查核心函数是否都已加载
-    for (const [name, imported] of Object.entries(requiredImports)) {
-        if (typeof imported === 'undefined') {
-            logger.error(`Typing Indicator Extension: Critical import "${name}" is missing.`);
-            return; // 提前退出，防止插件崩溃
-        }
-    }
-
+function initializeTypingIndicator() {
     injectGlobalStyles();
     const settings = getSettings();
     addExtensionSettings(settings);
@@ -813,7 +793,7 @@ const OptionsGenerator = {
     const hideIndicatorEvents = [event_types.GENERATION_STOPPED, event_types.GENERATION_ENDED, event_types.CHAT_CHANGED];
 
     showIndicatorEvents.forEach(e => eventSource.on(e, showTypingIndicator));
-    hideIndicatorEvents.forEach(e => eventSource.on(e, hideIndicatorEvents));
+    hideIndicatorEvents.forEach(e => eventSource.on(e, hideTypingIndicator));
 
     eventSource.on(event_types.GENERATION_ENDED, () => {
         if (getSettings().optionsGenEnabled) {
@@ -824,6 +804,7 @@ const OptionsGenerator = {
     eventSource.on(event_types.CHAT_CHANGED, () => {
         logger.log('CHAT_CHANGED event triggered.');
         // 首先，像往常一样隐藏所有UI
+        hideTypingIndicator();
         OptionsGenerator.hideGeneratingUI();
         const oldContainer = document.getElementById('ti-options-container');
         if (oldContainer) {
@@ -832,7 +813,6 @@ const OptionsGenerator = {
         }
 
         // 然后，在新聊天加载后，检查是否需要自动生成选项
-        // 使用setTimeout确保DOM更新完毕
         setTimeout(() => {
             logger.log('开始延时检查...');
             const settings = getSettings();
@@ -852,4 +832,17 @@ const OptionsGenerator = {
             }
         }, 500); // 延迟500毫秒以确保新聊天渲染完成
     });
-})();
+}
+
+function waitForCoreSystem() {
+    if (typeof eventSource !== 'undefined' && eventSource.on) {
+        logger.log('核心事件系统已就绪，初始化插件。');
+        initializeTypingIndicator();
+    } else {
+        logger.log('等待核心事件系统加载...');
+        setTimeout(waitForCoreSystem, 200);
+    }
+}
+
+// 启动就绪检查
+waitForCoreSystem();
