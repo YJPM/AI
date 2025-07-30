@@ -4,7 +4,10 @@
     "requires": [],
     "optional": [],
     "js": "index.js",
-    "css": "style.css",
+    "css": [
+        "style.css",
+        "css/ai-director/styles.css"
+    ],
     "author": "Cohee1207",
     "version": "1.0.0",
     "homePage": "https://github.com/SillyTavern/Extension-TypingIndicator",

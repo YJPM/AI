@@ -9,6 +9,9 @@ import { extension_settings } from '../../../extensions.js';
 import { selected_group } from '../../../group-chats.js';
 import { t } from '../../../i18n.js';
 
+// 导入AI导演模块
+import './js/ai-director/index.js';
+
 const MODULE = 'typing_indicator';
 const legacyIndicatorTemplate = document.getElementById('typing_indicator_template');
 
