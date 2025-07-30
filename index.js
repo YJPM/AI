@@ -20,6 +20,12 @@ const legacyIndicatorTemplate = document.getElementById('typing_indicator_templa
  * @property {boolean} animationEnabled - 是否启用末尾的...动画。
  * @property {string} fontColor
  * @property {string} customText
+ * @property {boolean} optionsGenEnabled - 是否启用选项生成功能
+ * @property {string} optionsApiKey - API密钥
+ * @property {string} optionsApiModel - 使用的模型
+ * @property {string} optionsBaseUrl - API基础URL
+ * @property {number} optionsCount - 生成选项数量
+ * @property {string} optionsTemplate - 选项生成提示模板
  */
 
 /**
@@ -30,7 +36,28 @@ const defaultSettings = {
     showCharName: false,
     animationEnabled: true,
     fontColor: '',
-    customText: '正在输入'
+    customText: '正在输入',
+    // 选项生成相关设置
+    optionsGenEnabled: false,
+    optionsApiKey: '',
+    optionsApiModel: 'gemini-2.5-pro-free',
+    optionsBaseUrl: 'https://newapi.sisuo.de/v1',
+    optionsCount: 3,
+    optionsTemplate: `你是用户的AI助手。分析以下对话，生成3-5个用户可能想问的后续问题或回应选项，每个选项应简洁、多样化，并根据上下文高度相关。不要解释你的选择，只需提供选项列表，每个选项用"-"开头，格式如下：
+- 第一个选项
+- 第二个选项
+- 第三个选项
+
+对话历史：
+{{context}}
+
+角色卡：
+{{char_card}}
+
+世界设定：
+{{world_info}}
+
+注意：生成的选项应考虑角色、世界观和上下文。不要表现得像一个AI，应该扮演用户的角色。`
 };
 
 /**
@@ -59,12 +86,11 @@ function applyBasicStyle() {
         document.head.appendChild(styleTag);
     }
     
-    // 使用简单的默认样式
+    // 使用透明背景样式
     styleTag.textContent = `
         .typing_indicator {
-            background-color: rgba(0, 0, 0, 0.4);
+            background-color: transparent;
             padding: 8px 16px;
-            border-radius: 8px;
             margin: 8px auto;
             width: fit-content;
             max-width: 90%;
@@ -302,14 +328,135 @@ function addExtensionSettings(settings) {
     customContentContainer.append(customTextLabel, customTextInput, placeholderHint);
     inlineDrawerContent.append(customContentContainer);
 
-    // 已移除主题管理分隔线
+    // 选项生成设置
+    const optionsContainer = document.createElement('div');
+    optionsContainer.style.marginTop = '20px';
+    optionsContainer.style.borderTop = '1px solid var(--border_color)';
+    optionsContainer.style.paddingTop = '15px';
 
-    // 已移除主题选择器
-    // 已移除主题填充逻辑
+    const optionsHeader = document.createElement('h4');
+    optionsHeader.textContent = '回复选项生成';
+    optionsHeader.style.margin = '0 0 10px 0';
+    optionsContainer.appendChild(optionsHeader);
 
-    // 已移除CSS编辑器和主题按钮
+    // 启用选项生成
+    const optionsEnabledLabel = document.createElement('label');
+    optionsEnabledLabel.classList.add('checkbox_label');
+    const optionsEnabledCheckbox = document.createElement('input');
+    optionsEnabledCheckbox.type = 'checkbox';
+    optionsEnabledCheckbox.checked = settings.optionsGenEnabled;
+    optionsEnabledCheckbox.addEventListener('change', () => {
+        settings.optionsGenEnabled = optionsEnabledCheckbox.checked;
+        optionsSettingsContainer.style.display = settings.optionsGenEnabled ? 'block' : 'none';
+        saveSettingsDebounced();
+    });
+    const optionsEnabledText = document.createElement('span');
+    optionsEnabledText.textContent = '启用回复选项生成';
+    optionsEnabledLabel.append(optionsEnabledCheckbox, optionsEnabledText);
+    optionsContainer.appendChild(optionsEnabledLabel);
 
-    // 已移除所有主题相关事件处理和函数
+    // 选项设置容器
+    const optionsSettingsContainer = document.createElement('div');
+    optionsSettingsContainer.style.marginTop = '10px';
+    optionsSettingsContainer.style.display = settings.optionsGenEnabled ? 'block' : 'none';
+
+    // API Key
+    const apiKeyLabel = document.createElement('label');
+    apiKeyLabel.textContent = 'API密钥:';
+    apiKeyLabel.style.display = 'block';
+    apiKeyLabel.style.marginTop = '10px';
+    const apiKeyInput = document.createElement('input');
+    apiKeyInput.type = 'password';
+    apiKeyInput.value = settings.optionsApiKey;
+    apiKeyInput.placeholder = '输入API密钥';
+    apiKeyInput.style.width = '100%';
+    apiKeyInput.addEventListener('input', () => {
+        settings.optionsApiKey = apiKeyInput.value;
+        saveSettingsDebounced();
+    });
+    optionsSettingsContainer.appendChild(apiKeyLabel);
+    optionsSettingsContainer.appendChild(apiKeyInput);
+
+    // 模型选择
+    const modelLabel = document.createElement('label');
+    modelLabel.textContent = '模型:';
+    modelLabel.style.display = 'block';
+    modelLabel.style.marginTop = '10px';
+    const modelInput = document.createElement('input');
+    modelInput.type = 'text';
+    modelInput.value = settings.optionsApiModel;
+    modelInput.placeholder = '输入模型名称';
+    modelInput.style.width = '100%';
+    modelInput.addEventListener('input', () => {
+        settings.optionsApiModel = modelInput.value;
+        saveSettingsDebounced();
+    });
+    optionsSettingsContainer.appendChild(modelLabel);
+    optionsSettingsContainer.appendChild(modelInput);
+
+    // 基础URL
+    const baseUrlLabel = document.createElement('label');
+    baseUrlLabel.textContent = '基础URL:';
+    baseUrlLabel.style.display = 'block';
+    baseUrlLabel.style.marginTop = '10px';
+    const baseUrlInput = document.createElement('input');
+    baseUrlInput.type = 'text';
+    baseUrlInput.value = settings.optionsBaseUrl;
+    baseUrlInput.placeholder = '输入API基础URL';
+    baseUrlInput.style.width = '100%';
+    baseUrlInput.addEventListener('input', () => {
+        settings.optionsBaseUrl = baseUrlInput.value;
+        saveSettingsDebounced();
+    });
+    optionsSettingsContainer.appendChild(baseUrlLabel);
+    optionsSettingsContainer.appendChild(baseUrlInput);
+
+    // 选项数量
+    const countLabel = document.createElement('label');
+    countLabel.textContent = '选项数量:';
+    countLabel.style.display = 'block';
+    countLabel.style.marginTop = '10px';
+    const countInput = document.createElement('input');
+    countInput.type = 'number';
+    countInput.min = 1;
+    countInput.max = 10;
+    countInput.value = settings.optionsCount;
+    countInput.style.width = '100%';
+    countInput.addEventListener('input', () => {
+        settings.optionsCount = parseInt(countInput.value) || 3;
+        saveSettingsDebounced();
+    });
+    optionsSettingsContainer.appendChild(countLabel);
+    optionsSettingsContainer.appendChild(countInput);
+
+    // 提示模板
+    const templateLabel = document.createElement('label');
+    templateLabel.textContent = '提示模板:';
+    templateLabel.style.display = 'block';
+    templateLabel.style.marginTop = '10px';
+    const templateInput = document.createElement('textarea');
+    templateInput.value = settings.optionsTemplate;
+    templateInput.placeholder = '输入提示模板';
+    templateInput.style.width = '100%';
+    templateInput.style.height = '150px';
+    templateInput.style.fontFamily = 'monospace';
+    templateInput.addEventListener('input', () => {
+        settings.optionsTemplate = templateInput.value;
+        saveSettingsDebounced();
+    });
+    
+    const templateHint = document.createElement('small');
+    templateHint.textContent = '使用 {{context}} 表示对话历史, {{char_card}} 表示角色卡, {{world_info}} 表示世界设定。';
+    templateHint.style.display = 'block';
+    templateHint.style.marginTop = '4px';
+    templateHint.style.color = 'var(--text_color_secondary)';
+
+    optionsSettingsContainer.appendChild(templateLabel);
+    optionsSettingsContainer.appendChild(templateInput);
+    optionsSettingsContainer.appendChild(templateHint);
+
+    optionsContainer.appendChild(optionsSettingsContainer);
+    inlineDrawerContent.append(optionsContainer);
 }
 
 /**
@@ -393,6 +540,289 @@ function hideTypingIndicator() {
     }
 }
 
+// 选项生成器对象
+const OptionsGenerator = {
+    isGenerating: false,
+
+    // 获取角色卡信息
+    getCharacterCard() {
+        try {
+            // 尝试获取当前角色信息
+            if (window.characterInfo && window.characterInfo.description) {
+                return window.characterInfo.description || '';
+            }
+            if (window.characters && window.characters[window.this_chid]) {
+                return window.characters[window.this_chid].description || '';
+            }
+        } catch (error) {
+            console.error('获取角色卡信息失败:', error);
+        }
+        return '';
+    },
+
+    // 获取世界设定信息
+    getWorldInfo() {
+        try {
+            // 尝试获取世界设定
+            if (window.world_info && window.world_names) {
+                const worldEntries = [];
+                for (const key in window.world_info) {
+                    if (window.world_info[key].active && window.world_info[key].content) {
+                        worldEntries.push(window.world_info[key].content);
+                    }
+                }
+                return worldEntries.join('\n\n');
+            }
+        } catch (error) {
+            console.error('获取世界设定信息失败:', error);
+        }
+        return '';
+    },
+
+    // 获取聊天上下文
+    getChatContext(messageCount = 10) {
+        try {
+            // 尝试获取最近的消息
+            const messages = [];
+            if (window.chat && window.chat.length) {
+                const recentMessages = window.chat.slice(-messageCount);
+                for (const msg of recentMessages) {
+                    const name = msg.is_user ? '用户' : (msg.name || '角色');
+                    messages.push(`${name}: ${msg.mes}`);
+                }
+            }
+            return messages.join('\n\n');
+        } catch (error) {
+            console.error('获取聊天上下文失败:', error);
+        }
+        return '';
+    },
+
+    // 使用API生成回复选项
+    async generateOptions() {
+        if (this.isGenerating) return;
+        
+        const settings = getSettings();
+        if (!settings.optionsGenEnabled || !settings.optionsApiKey) {
+            console.log('选项生成功能未启用或API密钥未设置');
+            return;
+        }
+
+        // 显示正在生成提示
+        this.showGeneratingUI();
+        this.isGenerating = true;
+
+        try {
+            // 准备API请求数据
+            const characterCard = this.getCharacterCard();
+            const worldInfo = this.getWorldInfo();
+            const context = this.getChatContext();
+
+            // 处理模板
+            let prompt = settings.optionsTemplate;
+            prompt = prompt.replace('{{context}}', context);
+            prompt = prompt.replace('{{char_card}}', characterCard);
+            prompt = prompt.replace('{{world_info}}', worldInfo);
+
+            // 调用API
+            const response = await fetch(settings.optionsBaseUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${settings.optionsApiKey}`
+                },
+                body: JSON.stringify({
+                    model: settings.optionsApiModel,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: '你是一位AI助手，你的任务是帮助用户生成回复的选项。'
+                        },
+                        {
+                            role: 'user', 
+                            content: prompt
+                        }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 500
+                })
+            });
+
+            // 处理响应
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const content = data.choices && data.choices[0] && data.choices[0].message 
+                ? data.choices[0].message.content 
+                : '';
+            
+            // 解析选项
+            const options = this.parseOptions(content);
+            
+            // 显示选项
+            this.displayOptions(options);
+            
+        } catch (error) {
+            console.error('生成选项失败:', error);
+            this.hideGeneratingUI();
+        }
+
+        this.isGenerating = false;
+    },
+
+    // 解析选项内容
+    parseOptions(content) {
+        const options = [];
+        const lines = content.split('\n');
+        
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            // 匹配以"-"、"*"或数字加点开头的行
+            if (/^[-*]\s+|^\d+\.\s+/.test(trimmedLine)) {
+                const option = trimmedLine.replace(/^[-*]\s+|^\d+\.\s+/, '').trim();
+                if (option) {
+                    options.push(option);
+                }
+            }
+        }
+        
+        return options;
+    },
+
+    // 显示生成中提示
+    showGeneratingUI() {
+        // 移除可能存在的旧元素
+        this.hideGeneratingUI();
+
+        const container = document.createElement('div');
+        container.id = 'options-loading-container';
+        container.style.position = 'fixed';
+        container.style.bottom = '10px';
+        container.style.left = '50%';
+        container.style.transform = 'translateX(-50%)';
+        container.style.padding = '10px 20px';
+        container.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+        container.style.borderRadius = '8px';
+        container.style.color = 'white';
+        container.style.zIndex = '1000';
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
+        container.style.gap = '10px';
+        container.textContent = '正在生成回复选项...';
+        
+        document.body.appendChild(container);
+    },
+
+    // 隐藏生成中提示
+    hideGeneratingUI() {
+        const loadingContainer = document.getElementById('options-loading-container');
+        if (loadingContainer) {
+            loadingContainer.remove();
+        }
+    },
+
+    // 显示生成的选项
+    displayOptions(options) {
+        // 移除可能存在的旧元素
+        this.hideGeneratingUI();
+        const oldContainer = document.getElementById('options-container');
+        if (oldContainer) {
+            oldContainer.remove();
+        }
+
+        if (!options || options.length === 0) {
+            console.log('没有生成有效选项');
+            return;
+        }
+
+        // 创建选项容器
+        const container = document.createElement('div');
+        container.id = 'options-container';
+        container.style.position = 'fixed';
+        container.style.bottom = '10px';
+        container.style.left = '50%';
+        container.style.transform = 'translateX(-50%)';
+        container.style.padding = '15px';
+        container.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        container.style.borderRadius = '8px';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.gap = '10px';
+        container.style.maxWidth = '80%';
+        container.style.zIndex = '1000';
+
+        // 创建标题
+        const title = document.createElement('div');
+        title.textContent = '推荐回复选项:';
+        title.style.color = 'white';
+        title.style.fontSize = '14px';
+        title.style.marginBottom = '5px';
+        title.style.textAlign = 'center';
+        container.appendChild(title);
+
+        // 添加关闭按钮
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '×';
+        closeBtn.style.position = 'absolute';
+        closeBtn.style.top = '5px';
+        closeBtn.style.right = '5px';
+        closeBtn.style.background = 'none';
+        closeBtn.style.border = 'none';
+        closeBtn.style.color = 'white';
+        closeBtn.style.fontSize = '16px';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.onclick = () => container.remove();
+        container.appendChild(closeBtn);
+
+        // 创建选项按钮
+        const optionsContainer = document.createElement('div');
+        optionsContainer.style.display = 'flex';
+        optionsContainer.style.flexDirection = 'column';
+        optionsContainer.style.gap = '8px';
+        
+        // 添加每个选项
+        options.forEach((option, index) => {
+            const btn = document.createElement('button');
+            btn.textContent = option;
+            btn.style.backgroundColor = 'rgba(60, 60, 60, 0.8)';
+            btn.style.color = 'white';
+            btn.style.border = 'none';
+            btn.style.borderRadius = '5px';
+            btn.style.padding = '8px 15px';
+            btn.style.cursor = 'pointer';
+            btn.style.textAlign = 'left';
+            btn.style.transition = 'background-color 0.2s';
+            
+            btn.onmouseover = () => { btn.style.backgroundColor = 'rgba(90, 90, 90, 0.8)'; };
+            btn.onmouseout = () => { btn.style.backgroundColor = 'rgba(60, 60, 60, 0.8)'; };
+            
+            // 点击选项时执行操作
+            btn.onclick = () => {
+                // 将选中的文本填入发送框
+                const textareaElement = document.querySelector('#send_textarea, .send_textarea');
+                if (textareaElement) {
+                    textareaElement.value = option;
+                    textareaElement.dispatchEvent(new Event('input', { bubbles: true }));
+                    
+                    // 聚焦输入框
+                    textareaElement.focus();
+                }
+                
+                // 移除选项容器
+                container.remove();
+            };
+            
+            optionsContainer.appendChild(btn);
+        });
+        
+        container.appendChild(optionsContainer);
+        document.body.appendChild(container);
+    }
+};
+
 (function () {
     injectGlobalStyles();
     
@@ -404,6 +834,22 @@ function hideTypingIndicator() {
     const showIndicatorEvents = [ event_types.GENERATION_AFTER_COMMANDS ];
     const hideIndicatorEvents = [ event_types.GENERATION_STOPPED, event_types.GENERATION_ENDED, event_types.CHAT_CHANGED ];
 
+    // 注册打字指示器事件
     showIndicatorEvents.forEach(e => eventSource.on(e, showTypingIndicator));
     hideIndicatorEvents.forEach(e => eventSource.on(e, hideTypingIndicator));
+    
+    // 在AI回复结束时生成选项
+    eventSource.on(event_types.GENERATION_STOPPED, async () => {
+        if (getSettings().optionsGenEnabled) {
+            await new Promise(resolve => setTimeout(resolve, 500)); // 短暂延迟确保界面已更新
+            OptionsGenerator.generateOptions();
+        }
+    });
+    
+    eventSource.on(event_types.GENERATION_ENDED, async () => {
+        if (getSettings().optionsGenEnabled) {
+            await new Promise(resolve => setTimeout(resolve, 500)); // 短暂延迟确保界面已更新
+            OptionsGenerator.generateOptions();
+        }
+    });
 })();
