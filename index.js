@@ -50,7 +50,7 @@ const defaultSettings = {
     // 选项生成相关设置
     optionsGenEnabled: false,
     optionsApiKey: '',
-    optionsApiModel: 'gemini-2.5-pro-free',
+    optionsApiModel: 'gemini-2.5-falsh-free',
     optionsBaseUrl: 'https://newapi.sisuo.de/v1',
     optionsCount: 3,
     optionsTemplate: `你是用户的AI助手。分析以下对话和用户当前输入，生成3-5个用户可能想问的后续问题或回应选项，每个选项应简洁、多样化，并根据上下文高度相关。不要解释你的选择，只需提供选项列表，每个选项用"-"开头，格式如下：
@@ -573,7 +573,7 @@ const OptionsGenerator = {
                     model: settings.optionsApiModel,
                     messages: [{ role: 'user', content: prompt }],
                     temperature: 0.7,
-                    max_tokens: 500,
+                    max_tokens: 1024,
                     stream: false,
                 })
             });
