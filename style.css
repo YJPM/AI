@@ -1,1 +1,14 @@
-/* 移除旧的、冲突的样式。新的样式由JavaScript动态注入，以确保一致性。 */
+.typing_indicator {
+    position: sticky;
+    bottom: 10px;
+    margin: 10px;
+    opacity: 0.85;
+    text-shadow: 0px 0px calc(var(--shadowWidth) * 1px) var(--SmartThemeShadowColor);
+    order: 9999;
+}
+
+.typing_indicator .svg_dots {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 4px;
+}
