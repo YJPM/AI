@@ -43,8 +43,8 @@ const logger = {
  * @type {TypingIndicatorSettings}
  */
 const defaultSettings = {
-    enabled: false,
-    showCharName: false,
+    enabled: true,
+    showCharName: true,
     animationEnabled: true,
     customText: '正在输入',
     debug: false,
@@ -187,7 +187,7 @@ function addExtensionSettings(settings) {
     const inlineDrawerToggle = document.createElement('div');
     inlineDrawerToggle.classList.add('inline-drawer-toggle', 'inline-drawer-header');
     const extensionName = document.createElement('b');
-    extensionName.textContent = '正在输入中…';
+    extensionName.textContent = 'AI助手';
     const inlineDrawerIcon = document.createElement('div');
     inlineDrawerIcon.classList.add('inline-drawer-icon', 'fa-solid', 'fa-circle-chevron-down', 'down');
     inlineDrawerToggle.append(extensionName, inlineDrawerIcon);
@@ -195,89 +195,6 @@ function addExtensionSettings(settings) {
     const inlineDrawerContent = document.createElement('div');
     inlineDrawerContent.classList.add('inline-drawer-content');
     inlineDrawer.append(inlineDrawerToggle, inlineDrawerContent);
-
-    // 刷新指示器（如果可见）的辅助函数
-    const refreshIndicator = () => {
-        const indicator = document.getElementById('typing_indicator');
-        if (indicator) {
-            showTypingIndicator('refresh', null, false);
-        }
-    };
-
-    // 启用
-    const enabledCheckboxLabel = document.createElement('label');
-    enabledCheckboxLabel.classList.add('checkbox_label');
-    const enabledCheckbox = document.createElement('input');
-    enabledCheckbox.type = 'checkbox';
-    enabledCheckbox.checked = settings.enabled;
-    enabledCheckbox.addEventListener('change', () => {
-        settings.enabled = enabledCheckbox.checked;
-        saveSettingsDebounced();
-    });
-    const enabledCheckboxText = document.createElement('span');
-    enabledCheckboxText.textContent = '启用';
-    enabledCheckboxLabel.append(enabledCheckbox, enabledCheckboxText);
-    inlineDrawerContent.append(enabledCheckboxLabel);
-
-    // 启用动画
-    const animationEnabledCheckboxLabel = document.createElement('label');
-    animationEnabledCheckboxLabel.classList.add('checkbox_label');
-    const animationEnabledCheckbox = document.createElement('input');
-    animationEnabledCheckbox.type = 'checkbox';
-    animationEnabledCheckbox.checked = settings.animationEnabled;
-    animationEnabledCheckbox.addEventListener('change', () => {
-        settings.animationEnabled = animationEnabledCheckbox.checked;
-        saveSettingsDebounced();
-        refreshIndicator();
-    });
-    const animationEnabledCheckboxText = document.createElement('span');
-    animationEnabledCheckboxText.textContent = '启用动画';
-    animationEnabledCheckboxLabel.append(animationEnabledCheckbox, animationEnabledCheckboxText);
-    inlineDrawerContent.append(animationEnabledCheckboxLabel);
-
-    // 自定义内容区域
-    const customContentContainer = document.createElement('div');
-    customContentContainer.style.marginTop = '10px';
-
-    // 显示角色名称复选框
-    const showNameCheckboxLabel = document.createElement('label');
-    showNameCheckboxLabel.classList.add('checkbox_label');
-    const showNameCheckbox = document.createElement('input');
-    showNameCheckbox.type = 'checkbox';
-    showNameCheckbox.checked = settings.showCharName;
-    showNameCheckbox.addEventListener('change', () => {
-        settings.showCharName = showNameCheckbox.checked;
-        saveSettingsDebounced();
-        refreshIndicator();
-    });
-    const showNameCheckboxText = document.createElement('span');
-    showNameCheckboxText.textContent = '显示角色名称';
-    showNameCheckboxLabel.append(showNameCheckbox, showNameCheckboxText);
-    customContentContainer.append(showNameCheckboxLabel);
-
-    // 文字内容
-    const customTextLabel = document.createElement('label');
-    customTextLabel.textContent = '自定义内容：';
-    customTextLabel.style.display = 'block';
-    const customTextInput = document.createElement('input');
-    customTextInput.type = 'text';
-    customTextInput.value = settings.customText;
-    customTextInput.placeholder = '输入显示的文字';
-    customTextInput.style.width = '80%';
-    customTextInput.addEventListener('input', () => {
-        settings.customText = customTextInput.value;
-        saveSettingsDebounced();
-        refreshIndicator();
-    });
-
-    const placeholderHint = document.createElement('small');
-    placeholderHint.textContent = '使用 {char} 作为角色名称的占位符。';
-    placeholderHint.style.display = 'block';
-    placeholderHint.style.marginTop = '4px';
-    placeholderHint.style.color = 'var(--text_color_secondary)';
-
-    customContentContainer.append(customTextLabel, customTextInput, placeholderHint);
-    inlineDrawerContent.append(customContentContainer);
 
     // 选项生成设置
     const optionsContainer = document.createElement('div');
@@ -536,18 +453,19 @@ function hideTypingIndicator() {
     }
 }
 
-// (DOM-based) 检查最后一条消息是否来自AI
+// (DOM-based, v2) 检查最后一条消息是否来自AI
 function isLastMessageFromAI() {
-    logger.log('检查最后一条消息 (DOM模式)...');
+    logger.log('检查最后一条消息 (DOM模式, v2)...');
     try {
-        const allMessages = document.querySelectorAll('#chat .mes');
+        // 只选择明确来自用户或机器人的消息
+        const allMessages = document.querySelectorAll('#chat .mes.bot_mes, #chat .mes.user_mes');
         if (allMessages.length === 0) {
-            logger.log('聊天记录为空，判定为非AI。');
+            logger.log('聊天记录中未找到用户或机器人消息，判定为非AI。');
             return false;
         }
         const lastMessage = allMessages[allMessages.length - 1];
         const isBot = lastMessage.classList.contains('bot_mes');
-        logger.log(`找到最后一条消息元素。ClassList: ${Array.from(lastMessage.classList)}. 结论: ${isBot ? '是' : '不是'} AI消息。`);
+        logger.log(`找到最后一条有效消息元素。ClassList: ${Array.from(lastMessage.classList)}. 结论: ${isBot ? '是' : '不是'} AI消息。`);
         return isBot;
     } catch (error) {
         logger.error('通过DOM检查最后一条消息时出错:', error);
@@ -687,8 +605,10 @@ const OptionsGenerator = {
                     throw new Error(`API请求失败: ${response.status} - ${errorData.error?.message || '未知错误'}`);
                 }
                 const data = await response.json();
-                logger.log('API 响应数据:', data);
-                content = data.choices[0]?.message?.content || '';
+                logger.log('API 响应数据 (OpenAI-兼容模式):', data);
+                // Per user request, parse this response as if it's from Gemini,
+                // because they use a Gemini proxy. Fallback to OpenAI format.
+                content = data.candidates?.[0]?.content?.parts?.[0]?.text || data.choices?.[0]?.message?.content || '';
             }
 
 
@@ -704,7 +624,28 @@ const OptionsGenerator = {
     },
 
     parseOptions(content) {
-        return (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+        // 1. 优先尝试解析【...】格式
+        let options = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim());
+        if (options.length > 0) {
+            logger.log('使用【】格式解析器成功。');
+            return options.filter(Boolean);
+        }
+
+        // 2. 如果失败，尝试解析列表格式 (e.g., "- ...", "1. ...")
+        const lines = content.split('\n').filter(line => line.trim() !== '');
+        const listRegex = /^(?:\*|-\s|\d+\.\s)\s*(.*)/;
+        options = lines.map(line => {
+            const match = line.trim().match(listRegex);
+            return match ? match[1].trim() : null;
+        }).filter(Boolean);
+
+        if (options.length > 0) {
+            logger.log('使用列表格式解析器成功。');
+            return options;
+        }
+
+        logger.log('所有解析器都未能找到选项。');
+        return [];
     },
 
 
