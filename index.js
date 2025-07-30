@@ -482,6 +482,15 @@ function hideTypingIndicator() {
     }
 }
 
+// 检查最后一条消息是否来自AI
+function isLastMessageFromAI() {
+    const messages = document.querySelectorAll('#chat .mes');
+    if (messages.length === 0) return false;
+
+    const lastMessage = messages[messages.length - 1];
+    return lastMessage.classList.contains('bot_mes');
+}
+
 // 选项生成器对象
 const OptionsGenerator = {
     isGenerating: false,
@@ -769,8 +778,21 @@ const OptionsGenerator = {
     });
 
     eventSource.on(event_types.CHAT_CHANGED, () => {
+        // 首先，像往常一样隐藏所有UI
         OptionsGenerator.hideGeneratingUI();
         const oldContainer = document.getElementById('options-container');
         if (oldContainer) oldContainer.remove();
+
+        // 然后，在新聊天加载后，检查是否需要自动生成选项
+        // 使用setTimeout确保DOM更新完毕
+        setTimeout(() => {
+            if (getSettings().optionsGenEnabled && isLastMessageFromAI()) {
+                const optionsContainer = document.getElementById('options-container');
+                if (!optionsContainer && !OptionsGenerator.isGenerating) {
+                    logger.log('检测到最后一条消息来自AI，且无选项，自动生成。');
+                    OptionsGenerator.generateOptions();
+                }
+            }
+        }, 100); // 延迟100毫秒以确保新聊天渲染完成
     });
 })();
