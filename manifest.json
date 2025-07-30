@@ -1,12 +1,12 @@
 {
-    "display_name": "Typing Indicator",
+    "display_name": "AI导演",
     "loading_order": 777,
     "requires": [],
     "optional": [],
     "js": "index.js",
     "css": "style.css",
-    "author": "Cohee1207",
-    "version": "1.0.0",
+    "author": "Cohee1207 & YJPM",
+    "version": "2.0.0",
     "homePage": "https://github.com/YJPM/AI",
     "auto_update": true
 }

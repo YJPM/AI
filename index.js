@@ -8,20 +8,21 @@ import {
 import { extension_settings } from '../../../extensions.js';
 import { selected_group } from '../../../group-chats.js';
 
-// Typing Indicator Main Logic
+// Unified Module Logic
 (function () {
-    const MODULE = 'typing_indicator';
-    const legacyIndicatorTemplate = document.getElementById('typing_indicator_template');
-
+    const MODULE = 'ai_director'; // Changed module name
+    
+    // --- Default Settings ---
     const defaultSettings = {
-        enabled: false,
-        streaming: false,
-        showCharName: false,
-        animationEnabled: true,
-        fontColor: '',
-        customText: '正在输入',
-        activeTheme: '默认',
-        themes: {
+        // Typing Indicator settings
+        ti_enabled: false,
+        ti_streaming: false,
+        ti_showCharName: false,
+        ti_animationEnabled: true,
+        ti_fontColor: '',
+        ti_customText: '正在输入',
+        ti_activeTheme: '默认',
+        ti_themes: {
             '默认': { css: '/* 默认主题：不应用额外样式。 */' },
             '渐变脉冲': { css: `
 #typing_indicator .typing-ellipsis { display: none; }
@@ -41,6 +42,31 @@ import { selected_group } from '../../../group-chats.js';
 }
             ` },
         },
+        
+        // AI Director settings
+        ad_enabled: true, // Enabled by default now as it's the main feature
+        ad_apiType: 'openai',
+        ad_apiKey: '',
+        ad_baseUrl: 'https://api.openai.com/v1',
+        ad_model: 'gpt-4o-mini',
+        ad_sendMode: 'auto',
+        ad_enableDynamicDirector: false,
+        ad_analysisModel: 'gpt-3.5-turbo',
+        ad_choiceLog: [],
+        ad_learnedStyle: '',
+        ad_logTriggerCount: 20,
+        ad_promptContent: `
+# 角色
+你是一位拥有顶级创作能力的AI叙事导演。
+# 核心目标
+基于完整的聊天上下文，通过一个严谨的内部思考过程，为"我"（用户角色）生成3-5个接下来可能发生的、最具戏剧性的行动或事件选项。
+# ... (rest of the simple prompt)
+`.trim(),
+        ad_dynamicPromptTemplate: `
+# 角色
+你是一位拥有顶级创作能力的AI叙事导演，你必须根据我提供的实时情境分析来调整你的导演风格。
+# ... (rest of the dynamic prompt)
+`.trim(),
     };
 
     function getSettings() {
@@ -57,7 +83,7 @@ import { selected_group } from '../../../group-chats.js';
 
     function applyTheme(themeName) {
         const settings = getSettings();
-        const theme = settings.themes[themeName];
+        const theme = settings.ti_themes[themeName];
         if (!theme) {
             console.warn(`正在输入中…：未找到主题 "${themeName}"。`);
             return;
@@ -153,6 +179,7 @@ import { selected_group } from '../../../group-chats.js';
         }
     }
 
+    // --- Main Settings UI Function ---
     function addExtensionSettings(settings) {
         const settingsContainer = document.getElementById('typing_indicator_container') ?? document.getElementById('extensions_settings');
         if (!settingsContainer) return;
@@ -164,7 +191,7 @@ import { selected_group } from '../../../group-chats.js';
         const inlineDrawerToggle = document.createElement('div');
         inlineDrawerToggle.classList.add('inline-drawer-toggle', 'inline-drawer-header');
         const extensionName = document.createElement('b');
-        extensionName.textContent = '正在输入中…';
+        extensionName.textContent = 'AI导演';
         const inlineDrawerIcon = document.createElement('div');
         inlineDrawerIcon.classList.add('inline-drawer-icon', 'fa-solid', 'fa-circle-chevron-down', 'down');
         inlineDrawerToggle.append(extensionName, inlineDrawerIcon);
@@ -180,48 +207,110 @@ import { selected_group } from '../../../group-chats.js';
             }
         };
 
+        // --- Tab Container ---
+        const tabsContainer = document.createElement('div');
+        tabsContainer.className = 'ai-director-tabs';
+        
+        const directorTab = document.createElement('button');
+        directorTab.className = 'ai-director-tab-button active';
+        directorTab.textContent = 'AI导演';
+        
+        const indicatorTab = document.createElement('button');
+        indicatorTab.className = 'ai-director-tab-button';
+        indicatorTab.textContent = '打字指示器';
+
+        tabsContainer.append(directorTab, indicatorTab);
+        inlineDrawerContent.append(tabsContainer);
+
+        // --- Content Panes ---
+        const directorContent = document.createElement('div');
+        directorContent.className = 'ai-director-tab-content active';
+        
+        const indicatorContent = document.createElement('div');
+        indicatorContent.className = 'ai-director-tab-content';
+        
+        inlineDrawerContent.append(directorContent, indicatorContent);
+
+        // --- Tab Switching Logic ---
+        directorTab.addEventListener('click', () => {
+            directorTab.classList.add('active');
+            indicatorTab.classList.remove('active');
+            directorContent.classList.add('active');
+            indicatorContent.classList.remove('active');
+        });
+        indicatorTab.addEventListener('click', () => {
+            directorTab.classList.remove('active');
+            indicatorTab.classList.add('active');
+            directorContent.classList.remove('active');
+            indicatorContent.classList.add('active');
+        });
+
+        // --- Populate AI Director Tab ---
+        // (This is where all the UI for the director will be created and appended to directorContent)
+        // Corrected API Type dropdown
+        const apiTypeLabel = document.createElement('label');
+        apiTypeLabel.textContent = 'API 类型:';
+        const apiTypeSelect = document.createElement('select');
+        const openaiOption = document.createElement('option');
+        openaiOption.value = 'openai';
+        openaiOption.textContent = 'OpenAI 兼容';
+        const geminiOption = document.createElement('option');
+        geminiOption.value = 'gemini';
+        geminiOption.textContent = 'Google Gemini';
+        apiTypeSelect.append(openaiOption, geminiOption);
+        apiTypeSelect.value = settings.ad_apiType;
+        apiTypeSelect.addEventListener('change', () => {
+            settings.ad_apiType = apiTypeSelect.value;
+            saveSettingsDebounced();
+        });
+        directorContent.append(apiTypeLabel, apiTypeSelect);
+        
+        // ... (Create and append all other AI Director settings UI elements like API Key, Model, etc.)
+
+        // --- Populate Typing Indicator Tab ---
+        // (This is where all the UI for the typing indicator will be created and appended to indicatorContent)
         const enabledCheckboxLabel = document.createElement('label');
         enabledCheckboxLabel.classList.add('checkbox_label');
         const enabledCheckbox = document.createElement('input');
         enabledCheckbox.type = 'checkbox';
-        enabledCheckbox.checked = settings.enabled;
+        enabledCheckbox.checked = settings.ti_enabled;
         enabledCheckbox.addEventListener('change', () => {
-            settings.enabled = enabledCheckbox.checked;
+            settings.ti_enabled = enabledCheckbox.checked;
             saveSettingsDebounced();
         });
         const enabledCheckboxText = document.createElement('span');
         enabledCheckboxText.textContent = '启用';
         enabledCheckboxLabel.append(enabledCheckbox, enabledCheckboxText);
-        inlineDrawerContent.append(enabledCheckboxLabel);
+        indicatorContent.append(enabledCheckboxLabel);
 
         const showIfStreamingCheckboxLabel = document.createElement('label');
         showIfStreamingCheckboxLabel.classList.add('checkbox_label');
         const showIfStreamingCheckbox = document.createElement('input');
         showIfStreamingCheckbox.type = 'checkbox';
-        showIfStreamingCheckbox.checked = settings.streaming;
+        showIfStreamingCheckbox.checked = settings.ti_streaming;
         showIfStreamingCheckbox.addEventListener('change', () => {
-            settings.streaming = showIfStreamingCheckbox.checked;
+            settings.ti_streaming = showIfStreamingCheckbox.checked;
             saveSettingsDebounced();
         });
         const showIfStreamingCheckboxText = document.createElement('span');
         showIfStreamingCheckboxText.textContent = '流式传输时显示';
         showIfStreamingCheckboxLabel.append(showIfStreamingCheckbox, showIfStreamingCheckboxText);
-        inlineDrawerContent.append(showIfStreamingCheckboxLabel);
+        indicatorContent.append(showIfStreamingCheckboxLabel);
 
         const animationEnabledCheckboxLabel = document.createElement('label');
         animationEnabledCheckboxLabel.classList.add('checkbox_label');
         const animationEnabledCheckbox = document.createElement('input');
         animationEnabledCheckbox.type = 'checkbox';
-        animationEnabledCheckbox.checked = settings.animationEnabled;
+        animationEnabledCheckbox.checked = settings.ti_animationEnabled;
         animationEnabledCheckbox.addEventListener('change', () => {
-            settings.animationEnabled = animationEnabledCheckbox.checked;
+            settings.ti_animationEnabled = animationEnabledCheckbox.checked;
             saveSettingsDebounced();
             refreshIndicator();
         });
         const animationEnabledCheckboxText = document.createElement('span');
         animationEnabledCheckboxText.textContent = '启用动画';
         animationEnabledCheckboxLabel.append(animationEnabledCheckbox, animationEnabledCheckboxText);
-        inlineDrawerContent.append(animationEnabledCheckboxLabel);
+        indicatorContent.append(animationEnabledCheckboxLabel);
 
         const colorPickerWrapper = document.createElement('div');
         colorPickerWrapper.className = 'ti_color_picker_wrapper';
@@ -231,9 +320,9 @@ import { selected_group } from '../../../group-chats.js';
         colorInputContainer.className = 'ti_color_input_container';
         const colorPicker = document.createElement('input');
         colorPicker.type = 'color';
-        colorPicker.value = settings.fontColor || '#ffffff';
+        colorPicker.value = settings.ti_fontColor || '#ffffff';
         colorPicker.addEventListener('change', () => {
-            settings.fontColor = colorPicker.value;
+            settings.ti_fontColor = colorPicker.value;
             saveSettingsDebounced();
             refreshIndicator();
         });
@@ -242,14 +331,14 @@ import { selected_group } from '../../../group-chats.js';
         resetButton.title = '重置';
         resetButton.innerHTML = '<i class="fa-solid fa-arrow-rotate-left"></i>';
         resetButton.addEventListener('click', () => {
-            settings.fontColor = '';
+            settings.ti_fontColor = '';
             colorPicker.value = '#ffffff';
             saveSettingsDebounced();
             refreshIndicator();
         });
         colorInputContainer.append(colorPicker, resetButton);
         colorPickerWrapper.append(colorPickerTextLabel, colorInputContainer);
-        inlineDrawerContent.append(colorPickerWrapper);
+        indicatorContent.append(colorPickerWrapper);
 
         const customContentContainer = document.createElement('div');
         customContentContainer.style.marginTop = '10px';
@@ -258,9 +347,9 @@ import { selected_group } from '../../../group-chats.js';
         showNameCheckboxLabel.classList.add('checkbox_label');
         const showNameCheckbox = document.createElement('input');
         showNameCheckbox.type = 'checkbox';
-        showNameCheckbox.checked = settings.showCharName;
+        showNameCheckbox.checked = settings.ti_showCharName;
         showNameCheckbox.addEventListener('change', () => {
-            settings.showCharName = showNameCheckbox.checked;
+            settings.ti_showCharName = showNameCheckbox.checked;
             saveSettingsDebounced();
             refreshIndicator();
         });
@@ -274,11 +363,11 @@ import { selected_group } from '../../../group-chats.js';
         customTextLabel.style.display = 'block';
         const customTextInput = document.createElement('input');
         customTextInput.type = 'text';
-        customTextInput.value = settings.customText;
+        customTextInput.value = settings.ti_customText;
         customTextInput.placeholder = '输入显示的文字';
         customTextInput.style.width = '80%';
         customTextInput.addEventListener('input', () => {
-            settings.customText = customTextInput.value;
+            settings.ti_customText = customTextInput.value;
             saveSettingsDebounced();
             refreshIndicator();
         });
@@ -290,26 +379,32 @@ import { selected_group } from '../../../group-chats.js';
         placeholderHint.style.color = 'var(--text_color_secondary)';
 
         customContentContainer.append(customTextLabel, customTextInput, placeholderHint);
-        inlineDrawerContent.append(customContentContainer);
+        indicatorContent.append(customContentContainer);
 
         const divider = document.createElement('hr');
-        inlineDrawerContent.append(divider);
+        indicatorContent.append(divider);
 
         const themeSelectorLabel = document.createElement('label');
         themeSelectorLabel.textContent = '外观主题：';
         const themeSelector = document.createElement('select');
         const populateThemes = () => {
             themeSelector.innerHTML = '';
-            Object.keys(settings.themes).forEach(themeName => {
+            Object.keys(settings.ti_themes).forEach(themeName => {
                 const option = document.createElement('option');
                 option.value = themeName;
                 option.textContent = themeName;
                 themeSelector.appendChild(option);
             });
-            themeSelector.value = settings.activeTheme;
+            themeSelector.value = settings.ti_activeTheme;
         };
         populateThemes();
-        inlineDrawerContent.append(themeSelectorLabel, themeSelector);
+        themeSelector.addEventListener('change', () => {
+            const selectedTheme = themeSelector.value;
+            settings.ti_activeTheme = selectedTheme;
+            applyTheme(selectedTheme);
+            saveSettingsDebounced();
+        });
+        indicatorContent.append(themeSelectorLabel, themeSelector);
 
         const cssEditorLabel = document.createElement('label');
         cssEditorLabel.textContent = '主题 CSS (高级)：';
@@ -319,7 +414,7 @@ import { selected_group } from '../../../group-chats.js';
         cssEditor.rows = 8;
         cssEditor.placeholder = '在此处输入 CSS 代码。';
         cssEditor.style.width = '100%';
-        inlineDrawerContent.append(cssEditorLabel, cssEditor);
+        indicatorContent.append(cssEditorLabel, cssEditor);
         
         const buttonContainer = document.createElement('div');
         buttonContainer.style.display = 'flex';
@@ -335,34 +430,34 @@ import { selected_group } from '../../../group-chats.js';
         deleteButton.textContent = '删除主题';
         deleteButton.classList.add('danger-button'); 
         buttonContainer.append(saveButton, newButton, deleteButton);
-        inlineDrawerContent.append(buttonContainer);
+        indicatorContent.append(buttonContainer);
 
         const loadThemeIntoEditor = (themeName) => {
-            cssEditor.value = settings.themes[themeName]?.css || '';
+            cssEditor.value = settings.ti_themes[themeName]?.css || '';
         };
         themeSelector.addEventListener('change', () => {
             const selectedTheme = themeSelector.value;
-            settings.activeTheme = selectedTheme;
+            settings.ti_activeTheme = selectedTheme;
             applyTheme(selectedTheme);
             loadThemeIntoEditor(selectedTheme);
             saveSettingsDebounced();
         });
         saveButton.addEventListener('click', () => {
             const currentThemeName = themeSelector.value;
-            settings.themes[currentThemeName].css = cssEditor.value;
+            settings.ti_themes[currentThemeName].css = cssEditor.value;
             applyTheme(currentThemeName);
             saveSettingsDebounced();
             alert(`主题 '${currentThemeName}' 已保存！`);
         });
         newButton.addEventListener('click', () => {
             const newThemeName = prompt('请输入新主题的名称：');
-            if (newThemeName && !settings.themes[newThemeName]) {
-                settings.themes[newThemeName] = { css: `/* ${newThemeName} 的 CSS */` };
-                settings.activeTheme = newThemeName;
+            if (newThemeName && !settings.ti_themes[newThemeName]) {
+                settings.ti_themes[newThemeName] = { css: `/* ${newThemeName} 的 CSS */` };
+                settings.ti_activeTheme = newThemeName;
                 populateThemes();
                 loadThemeIntoEditor(newThemeName);
                 saveSettingsDebounced();
-            } else if (settings.themes[newThemeName]) {
+            } else if (settings.ti_themes[newThemeName]) {
                 alert('该名称的主题已存在！');
             }
         });
@@ -373,72 +468,15 @@ import { selected_group } from '../../../group-chats.js';
                 return;
             }
             if (confirm(`您确定要删除主题 '${themeToDelete}' 吗？`)) {
-                delete settings.themes[themeToDelete];
-                settings.activeTheme = '默认';
+                delete settings.ti_themes[themeToDelete];
+                settings.ti_activeTheme = '默认';
                 populateThemes();
-                applyTheme(settings.activeTheme);
-                loadThemeIntoEditor(settings.activeTheme);
+                applyTheme(settings.ti_activeTheme);
+                loadThemeIntoEditor(settings.ti_activeTheme);
                 saveSettingsDebounced();
             }
         });
-        loadThemeIntoEditor(settings.activeTheme);
-
-        // --- Typing Indicator Settings ---
-        // ... (All existing checkboxes and color pickers for Typing Indicator)
-
-        // --- Divider for AI Director ---
-        const directorDivider = document.createElement('hr');
-        directorDivider.style.margin = '20px 0';
-        inlineDrawerContent.append(directorDivider);
-
-        const directorHeader = document.createElement('b');
-        directorHeader.textContent = 'AI导演功能';
-        directorHeader.style.fontSize = '1.1em';
-        inlineDrawerContent.append(directorHeader);
-
-        // --- AI Director Enable Checkbox ---
-        const directorEnabledCheckboxLabel = document.createElement('label');
-        directorEnabledCheckboxLabel.classList.add('checkbox_label');
-        const directorEnabledCheckbox = document.createElement('input');
-        directorEnabledCheckbox.type = 'checkbox';
-        directorEnabledCheckbox.checked = settings.aiDirectorEnabled ?? false; // New setting
-        directorEnabledCheckboxLabel.append(directorEnabledCheckbox, '启用AI导演');
-        inlineDrawerContent.append(directorEnabledCheckboxLabel);
-        
-        // --- AI Director Settings Container ---
-        const directorSettingsContainer = document.createElement('div');
-        directorSettingsContainer.style.display = directorEnabledCheckbox.checked ? 'block' : 'none';
-        directorSettingsContainer.style.paddingLeft = '15px';
-        directorSettingsContainer.style.borderLeft = '2px solid var(--border_color)';
-        directorSettingsContainer.style.marginTop = '10px';
-        inlineDrawerContent.append(directorSettingsContainer);
-        
-        directorEnabledCheckbox.addEventListener('change', () => {
-            settings.aiDirectorEnabled = directorEnabledCheckbox.checked;
-            directorSettingsContainer.style.display = settings.aiDirectorEnabled ? 'block' : 'none';
-            saveSettingsDebounced();
-            // Maybe trigger a restart or re-check of the AI Director loop
-            if (settings.aiDirectorEnabled) {
-                AIDirector.start(); // New function to start the director logic
-            } else {
-                AIDirector.stop(); // New function to stop it
-            }
-        });
-
-        // --- Move all AI Director settings UI creation here ---
-        // Example: API Type
-        const apiTypeLabel = document.createElement('label');
-        apiTypeLabel.textContent = 'API 类型:';
-        const apiTypeSelect = document.createElement('select');
-        // ... add options ...
-        apiTypeSelect.value = settings.aiDirectorApiType ?? 'openai';
-        apiTypeSelect.addEventListener('change', () => {
-            settings.aiDirectorApiType = apiTypeSelect.value;
-            saveSettingsDebounced();
-        });
-        directorSettingsContainer.append(apiTypeLabel, apiTypeSelect);
-        
-        // ... (Create and append all other AI Director settings UI elements like API Key, Model, etc.)
+        loadThemeIntoEditor(settings.ti_activeTheme);
 
     }
 
@@ -450,11 +488,11 @@ import { selected_group } from '../../../group-chats.js';
             return;
         }
 
-        if (!settings.enabled || (!settings.streaming && isStreamingEnabled())) {
+        if (!settings.ti_enabled || (!settings.ti_streaming && isStreamingEnabled())) {
             return;
         }
         
-        if (settings.showCharName && !name2 && type !== 'refresh') {
+        if (settings.ti_showCharName && !name2 && type !== 'refresh') {
             return;
         }
 
@@ -463,9 +501,9 @@ import { selected_group } from '../../../group-chats.js';
         }
 
         const placeholder = '{char}';
-        let finalText = settings.customText || defaultSettings.customText;
+        let finalText = settings.ti_customText || defaultSettings.ti_customText;
 
-        if (settings.showCharName && name2) {
+        if (settings.ti_showCharName && name2) {
             if (finalText.includes(placeholder)) {
                 finalText = finalText.replace(placeholder, name2);
             } else {
@@ -475,8 +513,8 @@ import { selected_group } from '../../../group-chats.js';
             finalText = finalText.replace(placeholder, '').replace(/  +/g, ' ').trim();
         }
 
-        const animationHtml = settings.animationEnabled ? '<div class="typing-ellipsis"></div>' : '';
-        const colorStyle = settings.fontColor ? `color: ${settings.fontColor};` : '';
+        const animationHtml = settings.ti_animationEnabled ? '<div class="typing-ellipsis"></div>' : '';
+        const colorStyle = settings.ti_fontColor ? `color: ${settings.ti_fontColor};` : '';
         const htmlContent = `
     <div style="display: flex; justify-content: center; align-items: center; width: 100%; ${colorStyle}">
         <div class="typing-indicator-text">${finalText}</div>
@@ -520,7 +558,7 @@ import { selected_group } from '../../../group-chats.js';
         const settings = getSettings();
         addExtensionSettings(settings);
 
-        applyTheme(settings.activeTheme);
+        applyTheme(settings.ti_activeTheme);
 
         const showIndicatorEvents = [ event_types.GENERATION_AFTER_COMMANDS ];
         const hideIndicatorEvents = [ event_types.GENERATION_STOPPED, event_types.GENERATION_ENDED, event_types.CHAT_CHANGED ];
@@ -580,7 +618,7 @@ import { selected_group } from '../../../group-chats.js';
         start() {
             if (this.isRunning) return;
             const settings = getSettings(); // Get combined settings
-            if (!settings.aiDirectorEnabled) return;
+            if (!settings.ad_enabled) return;
             
             console.log(this.LOG_PREFIX, '启动中...');
             this.parent$ = window.parent.jQuery; // Assuming global access
@@ -665,7 +703,7 @@ import { selected_group } from '../../../group-chats.js';
     function initialAIDirectorCheck() {
         // ... wait for SillyTavern to be ready ...
         const settings = getSettings();
-        if (settings.aiDirectorEnabled) {
+        if (settings.ad_enabled) {
             AIDirector.start();
         }
     }

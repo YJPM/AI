@@ -145,3 +145,40 @@
     from { opacity: 0; transform: translateY(-20px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* Tab Container */
+.ai-director-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border_color);
+    margin-bottom: 15px;
+}
+
+/* Tab Buttons */
+.ai-director-tab-button {
+    background: none;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 1em;
+    color: var(--text_color_secondary);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.ai-director-tab-button.active {
+    color: var(--text_color);
+    border-bottom: 2px solid var(--accent_color, #4a9eff);
+}
+
+.ai-director-tab-button:hover {
+    background-color: var(--background_hover);
+}
+
+/* Tab Content Panes */
+.ai-director-tab-content {
+    display: none; /* Hidden by default */
+}
+
+.ai-director-tab-content.active {
+    display: block; /* Shown when active */
+}
