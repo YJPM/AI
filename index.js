@@ -37,7 +37,7 @@ const defaultSettings = {
     customText: '正在输入',
     optionsGenEnabled: false,
     optionsApiKey: '',
-    optionsApiModel: 'gemini-1.5-pro-latest',
+    optionsApiModel: 'gemini-2.5-pro-free',
     optionsBaseUrl: 'https://newapi.sisuo.de/v1',
     optionsCount: 3,
     optionsTemplate: `你是用户的AI助手。分析以下对话，生成3-5个用户可能想问的后续问题或回应选项，每个选项应简洁、多样化，并根据上下文高度相关。不要解释你的选择，只需提供选项列表，每个选项用"-"开头，格式如下：
@@ -106,17 +106,12 @@ function injectGlobalStyles() {
 }
 
 function addExtensionSettings(settings) {
-    const settingsContainer = document.getElementById('extensions_settings');
+    const settingsContainer = document.getElementById('typing_indicator_container') ?? document.getElementById('extensions_settings');
     if (!settingsContainer) return;
-
-    const container = document.createElement('div');
-    container.id = 'typing_indicator_container';
-    settingsContainer.append(container);
-
 
     const inlineDrawer = document.createElement('div');
     inlineDrawer.classList.add('inline-drawer');
-    container.append(inlineDrawer);
+    settingsContainer.append(inlineDrawer);
 
     const inlineDrawerToggle = document.createElement('div');
     inlineDrawerToggle.classList.add('inline-drawer-toggle', 'inline-drawer-header');
