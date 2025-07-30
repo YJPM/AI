@@ -633,23 +633,79 @@ function addExtensionSettings(settings) {
 
     // --- Update Check Function ---
     async function checkForUpdates() {
-        try {
-            const response = await fetch('https://raw.githubusercontent.com/YJPM/AI/main/manifest.json');
-            if (!response.ok) {
-                throw new Error(`无法获取更新信息: ${response.statusText}`);
+        const logBox = document.getElementById('ad_log_box');
+        const log = (message) => {
+            console.log('[AI导演] 更新检查:', message);
+            if (logBox) {
+                const now = new Date().toLocaleTimeString();
+                logBox.value += `[${now}] 更新检查: ${message}\n`;
+                logBox.scrollTop = logBox.scrollHeight;
             }
-            const remoteManifest = await response.json();
-            const localVersion = "2.0.0"; // Should match version in manifest.json
-            const remoteVersion = remoteManifest.version;
+        };
 
-            if (remoteVersion > localVersion) {
+        try {
+            log('开始检查更新...');
+            log('正在获取本地版本信息...');
+            
+            // 获取本地版本
+            const manifestPath = 'manifest.json';
+            const localManifestResponse = await fetch(manifestPath);
+            if (!localManifestResponse.ok) {
+                throw new Error(`无法读取本地manifest文件: ${localManifestResponse.statusText}`);
+            }
+            const localManifest = await localManifestResponse.json();
+            const localVersion = localManifest.version;
+            log(`本地版本: ${localVersion}`);
+            
+            // 获取远程版本
+            log('正在获取远程版本信息...');
+            const remoteUrl = 'https://raw.githubusercontent.com/YJPM/AI/main/manifest.json';
+            log(`请求URL: ${remoteUrl}`);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+            
+            const response = await fetch(remoteUrl, { 
+                cache: 'no-cache',
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`服务器返回错误: ${response.status} ${response.statusText}`);
+            }
+            
+            const remoteManifest = await response.json();
+            const remoteVersion = remoteManifest.version;
+            log(`远程版本: ${remoteVersion}`);
+
+            // 正确比较版本号
+            function compareVersions(v1, v2) {
+                const parts1 = v1.split('.').map(Number);
+                const parts2 = v2.split('.').map(Number);
+                
+                for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+                    const p1 = parts1[i] || 0;
+                    const p2 = parts2[i] || 0;
+                    if (p1 !== p2) return p1 < p2 ? -1 : 1;
+                }
+                return 0;
+            }
+
+            const comparison = compareVersions(localVersion, remoteVersion);
+            log(`版本比较结果: ${comparison < 0 ? '有新版本' : '已是最新'}`);
+
+            if (comparison < 0) {
+                log('发现新版本！');
                 alert(`发现新版本！\n\n当前版本: ${localVersion}\n最新版本: ${remoteVersion}\n\n请前往项目主页手动更新。`);
             } else {
+                log('已是最新版本');
                 alert(`恭喜，您的插件已是最新版本！ (v${localVersion})`);
             }
         } catch (error) {
+            log(`检查更新失败: ${error.message}`);
             console.error('[AI导演] 检查更新失败:', error);
-            alert('检查更新失败，请检查网络连接或稍后再试。');
+            alert(`检查更新失败: ${error.message}\n请检查网络连接或稍后再试。`);
         }
     }
 
@@ -924,15 +980,38 @@ function hideTypingIndicator() {
         // ... (all other helper and UI methods from the split files)
     };
 
-    // --- Initial Startup ---
-    function initialAIDirectorCheck() {
-        // ... wait for SillyTavern to be ready ...
-        const settings = getSettings();
-        if (settings.ad_enabled) {
-            AIDirector.start();
-        }
-    }
+    // --- SillyTavern Plugin Initializer ---
+    (function () {
+        // This function is called when the UI is fully loaded and ready
+        function onUiLoaded() {
+            const settings = getSettings();
+            
+            // Start the AI Director if it's enabled in settings
+            if (settings.ad_enabled) {
+                AIDirector.start();
+            }
 
-    initialAIDirectorCheck();
+            // Apply the initial theme for the typing indicator
+            if (settings.ti_enabled) {
+                applyTheme(settings.ti_activeTheme);
+            }
+        }
+
+        // This is the main entry point. SillyTavern looks for this event.
+        document.addEventListener('tavern:ui:ready', onUiLoaded, { once: true });
+
+        // Bind the typing indicator functions to the global 'character-is-typing' event
+        document.addEventListener('character-is-typing', (event) => {
+            const { isTyping, type, args, dryRun } = event.detail;
+            if (isTyping) {
+                showTypingIndicator(type, args, dryRun);
+            } else {
+                hideTypingIndicator();
+            }
+        });
+
+        // Inject all necessary CSS styles into the document head on script load
+        injectGlobalStyles();
+    })();
 
 })();
