@@ -152,6 +152,14 @@ function injectGlobalStyles() {
             background-clip: text; /* 标准属性 */
             color: transparent; /* 使文字本身透明，显示背景 */
             display: inline-block; /* 确保背景可以应用和裁剪 */
+            background-size: 200% 100%; /* 使背景宽度是文字的两倍 */
+            animation: shimmer-gradient 3s infinite linear; /* 应用闪烁动画 */
+        }
+
+        /* 闪烁渐变动画 */
+        @keyframes shimmer-gradient {
+            0% { background-position: -100% 0; } /* 渐变从左侧屏幕外开始 */
+            100% { background-position: 100% 0; } /* 渐变移动到右侧屏幕外 */
         }
 
         /* 选项按钮样式 */
@@ -621,7 +629,7 @@ const OptionsGenerator = {
             return;
         }
 
-        this.showGeneratingUI('AI助手思考中...');
+        this.showGeneratingUI('AI助手思考中');
         this.isGenerating = true;
 
         try {
