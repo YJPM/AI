@@ -57,5 +57,4 @@ export function getSettings() {
     }
     return extension_settings[MODULE];
 }
-
 // 假设 saveSettingsDebounced 是外部传入的，这里只导出 defaultSettings 和 getSettings。
