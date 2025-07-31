@@ -7,21 +7,12 @@ import {
 } from '../../../../script.js';
 import { extension_settings } from '../../../extensions.js';
 import { selected_group } from '../../../group-chats.js';
+import { defaultSettings, getSettings } from './settings.js';
+import { logger } from './logger.js';
+import { OptionsGenerator } from './optionsGenerator.js';
 
 const MODULE = 'typing_indicator';
 const legacyIndicatorTemplate = document.getElementById('typing_indicator_template');
-
-// 新增日志记录器
-const logger = {
-    log: (...args) => {
-        if (getSettings().debug) {
-            console.log(`[${MODULE}]`, ...args);
-        }
-    },
-    error: (...args) => {
-        console.error(`[${MODULE}]`, ...args);
-    },
-};
 
 /**
  * @typedef {Object} TypingIndicatorSettings
