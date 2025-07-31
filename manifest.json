@@ -3,7 +3,7 @@
     "loading_order": 777,
     "requires": [],
     "optional": [],
-    "js": "dist/index.js",
+    "js": "index.js",
     "css": "style.css",
     "author": "TJPM",
     "version": "1.0.1",
