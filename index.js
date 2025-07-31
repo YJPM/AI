@@ -106,10 +106,10 @@ function applyBasicStyle() {
         document.head.appendChild(styleTag);
     }
 
-    // 恢复为原始透明背景样式，移除渐变和阴影
+    // 恢复为原始透明背景样式，移除所有渐变、圆角和阴影
     styleTag.textContent = `
         .typing_indicator {
-            background-color: transparent;
+            background-color: transparent; /* 恢复透明背景 */
             padding: 8px 16px;
             margin: 8px auto;
             width: fit-content;
@@ -131,9 +131,7 @@ function injectGlobalStyles() {
         }
 
         /* 省略号动画 */
-        .typing-ellipsis {
-            display: none; /* 隐藏省略号，符合用户要求 */
-        }
+        /* 恢复省略号显示 */
         .typing-ellipsis::after {
             display: inline-block;
             animation: ellipsis-animation 1.4s infinite;
@@ -148,25 +146,26 @@ function injectGlobalStyles() {
             66%, 100% { content: '...'; }
         }
 
-        /* 提示文字渐变样式 */
+        /* 移除提示文字渐变样式，恢复为普通文本 */
         .typing-indicator-text {
-            font-weight: bold; /* 加粗文字 */
-            background: linear-gradient(90deg, #222, #999, #222); /* 新的渐变颜色 */
-            background-size: 200% 200%; /* 新的背景尺寸 */
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent; /* 确保文字透明以显示背景 */
-            /* 移除 color: transparent; 因为 -webkit-text-fill-color: transparent; 更稳定 */
-            display: inline-block;
-            animation: gradient-pulse 3s ease-in-out infinite; /* 新的动画 */
+            font-weight: normal; /* 恢复正常字体粗细 */
+            background: none; /* 移除背景 */
+            -webkit-background-clip: unset; /* 移除裁剪 */
+            background-clip: unset;
+            -webkit-text-fill-color: unset; /* 恢复文本颜色 */
+            display: inline; /* 恢复默认行内显示 */
+            animation: none; /* 移除动画 */
+            color: var(--text_color); /* 确保文字颜色正常 */
         }
 
-        /* 闪烁渐变动画 */
+        /* 移除闪烁渐变动画 */
+        /*
         @keyframes gradient-pulse {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
+        */
 
         /* 选项按钮样式 */
         #ti-options-container {
@@ -760,10 +759,16 @@ const OptionsGenerator = {
             logger.log('showGeneratingUI: 找到现有容器，更新内容并尝试显示。');
         }
 
-        // 恢复原始内容结构 (包含旋转图标)
-        container.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span style="margin-left: 8px;">${message}</span>`;
-        // 恢复通过 JS 控制显示
-        container.style.display = 'flex';
+        // 统一内容结构，使其与 showTypingIndicator 完全一致 (文本 + 省略号动画)
+        const animationHtml = getSettings().animationEnabled ? '<div class="typing-ellipsis"></div>' : '';
+        container.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
+                <div class="typing-indicator-text">${message}</div>
+                ${animationHtml}
+            </div>
+        `;
+        // 不再强制通过 JS 设置 display，让 CSS 控制
+        // container.style.display = 'flex';
         logger.log(`showGeneratingUI: 最终容器 display 属性 (由JS控制): ${container.style.display}`);
 
         if (duration) {
