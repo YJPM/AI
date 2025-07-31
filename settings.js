@@ -1,4 +1,5 @@
-// 设置相关
+import { extension_settings } from '../../../extensions.js';
+
 export const defaultSettings = {
     enabled: true,
     showCharName: true,
@@ -43,7 +44,9 @@ export const defaultSettings = {
 `.trim(),
 };
 
-export function getSettings(extension_settings, MODULE) {
+const MODULE = 'typing_indicator';
+
+export function getSettings() {
     if (extension_settings[MODULE] === undefined) {
         extension_settings[MODULE] = structuredClone(defaultSettings);
     }

@@ -5,7 +5,6 @@ import {
     isStreamingEnabled,
     saveSettingsDebounced,
 } from '../../../../script.js';
-import { extension_settings } from '../../../extensions.js';
 import { selected_group } from '../../../group-chats.js';
 import { defaultSettings, getSettings } from './settings.js';
 import { logger } from './logger.js';
