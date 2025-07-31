@@ -9,11 +9,10 @@ module.exports = (env, argv) => {
       path: path.resolve(__dirname, 'dist'),
       filename: 'index.js',
       library: {
-        name: 'AIAssistantExtension',
-        type: 'umd',
-        export: 'default'
+        type: 'window',
+        name: 'AIAssistantExtension'
       },
-      globalObject: 'this'
+      globalObject: 'window'
     },
     module: {
       rules: [

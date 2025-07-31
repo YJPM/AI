@@ -125,8 +125,5 @@ if (document.readyState === 'loading') {
   extension.initialize();
 }
 
-// 导出扩展实例（用于调试）
-window.AIAssistantExtension = extension;
-
-// 导出主要功能（向后兼容）
-export default extension; 
+// 设置全局变量（供SillyTavern使用）
+window.AIAssistantExtension = extension; 
