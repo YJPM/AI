@@ -109,7 +109,10 @@ function applyBasicStyle() {
     // 使用透明背景样式
     styleTag.textContent = `
         .typing_indicator {
-            background-color: transparent;
+            /* 更改为渐变背景 */
+            background: linear-gradient(90deg, #555, #aaa, #555);
+            border-radius: 16px; /* 胶囊形状 */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* 轻微阴影，增加立体感 */
             padding: 8px 16px;
             margin: 8px auto;
             width: fit-content;
@@ -166,9 +169,10 @@ function injectGlobalStyles() {
         /* 新增：浮动提示样式 */
         .ai-floating-indicator {
             position: fixed;
-            top: 50%;
+            /* 修正为在输入框上方 */
+            bottom: 80px; /* 预估值，可以在后续根据实际情况调整 */
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translateX(-50%); /* 仅水平居中 */
             z-index: 9999; /* 确保它浮动在大多数内容之上 */
             pointer-events: none; /* 允许点击穿透，不阻挡下方操作 */
             background-color: transparent; /* 保持透明，符合用户要求 */
