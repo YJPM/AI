@@ -131,6 +131,9 @@ function injectGlobalStyles() {
         }
 
         /* 省略号动画 */
+        .typing-ellipsis {
+            display: none; /* 隐藏省略号，符合用户要求 */
+        }
         .typing-ellipsis::after {
             display: inline-block;
             animation: ellipsis-animation 1.4s infinite;
@@ -147,19 +150,22 @@ function injectGlobalStyles() {
 
         /* 提示文字渐变样式 */
         .typing-indicator-text {
-            background: linear-gradient(90deg, #555, #aaa, #555); /* 应用渐变 */
-            -webkit-background-clip: text; /* 裁剪背景到文字 */
-            background-clip: text; /* 标准属性 */
-            color: transparent; /* 使文字本身透明，显示背景 */
-            display: inline-block; /* 确保背景可以应用和裁剪 */
-            background-size: 200% 100%; /* 使背景宽度是文字的两倍 */
-            animation: shimmer-gradient 3s infinite linear; /* 应用闪烁动画 */
+            font-weight: bold; /* 加粗文字 */
+            background: linear-gradient(90deg, #222, #999, #222); /* 新的渐变颜色 */
+            background-size: 200% 200%; /* 新的背景尺寸 */
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent; /* 确保文字透明以显示背景 */
+            /* 移除 color: transparent; 因为 -webkit-text-fill-color: transparent; 更稳定 */
+            display: inline-block;
+            animation: gradient-pulse 3s ease-in-out infinite; /* 新的动画 */
         }
 
         /* 闪烁渐变动画 */
-        @keyframes shimmer-gradient {
-            0% { background-position: -100% 0; } /* 渐变从左侧屏幕外开始 */
-            100% { background-position: 100% 0; } /* 渐变移动到右侧屏幕外 */
+        @keyframes gradient-pulse {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
         /* 选项按钮样式 */
@@ -756,9 +762,9 @@ const OptionsGenerator = {
 
         // 恢复原始内容结构 (包含旋转图标)
         container.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span style="margin-left: 8px;">${message}</span>`;
-        // 不再强制通过 JS 设置 display，让 CSS 控制
-        // container.style.display = 'flex';
-        logger.log(`showGeneratingUI: 最终容器 display 属性 (由CSS控制，JS不强制): ${container.style.display}`);
+        // 恢复通过 JS 控制显示
+        container.style.display = 'flex';
+        logger.log(`showGeneratingUI: 最终容器 display 属性 (由JS控制): ${container.style.display}`);
 
         if (duration) {
             logger.log(`showGeneratingUI: 将在 ${duration}ms 后隐藏提示。`);
