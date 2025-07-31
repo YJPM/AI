@@ -51,8 +51,8 @@ const defaultSettings = {
     optionsGenEnabled: false,
     optionsApiType: 'openai',
     optionsApiKey: '',
-    optionsApiModel: 'gpt-4o-mini',
-    optionsBaseUrl: 'https://api.openai.com/v1',
+    optionsApiModel: 'gemini-2.5-flash-free',
+    optionsBaseUrl: 'https://newapi.sisuo.de/v1',
     optionsTemplate: `
 # 角色
 你是一位拥有顶级创作能力的AI叙事导演。
@@ -90,6 +90,14 @@ function getSettings() {
             extension_settings[MODULE][key] = defaultSettings[key];
         }
     }
+    
+    // 强制确保使用正确的模板，防止缓存问题
+    if (extension_settings[MODULE].optionsTemplate !== defaultSettings.optionsTemplate) {
+        logger.log('检测到模板不匹配，强制更新为默认模板');
+        extension_settings[MODULE].optionsTemplate = defaultSettings.optionsTemplate;
+        saveSettingsDebounced();
+    }
+    
     return extension_settings[MODULE];
 }
 
@@ -609,6 +617,8 @@ const OptionsGenerator = {
                 ...apiContext,
                 { role: 'user', content: settings.optionsTemplate }
             ];
+            
+            logger.log('发送给API的模板内容:', settings.optionsTemplate);
 
             let content = '';
 
