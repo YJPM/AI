@@ -447,21 +447,24 @@ function showTypingIndicator(type, _args, dryRun) {
 
     const typingIndicator = document.createElement('div');
     typingIndicator.id = 'typing_indicator';
-    typingIndicator.classList.add('typing_indicator');
+    // 添加 typing_indicator 类以复用基本样式，添加 ai-floating-indicator 类以实现悬浮定位
+    typingIndicator.classList.add('typing_indicator', 'ai-floating-indicator');
     typingIndicator.innerHTML = htmlContent;
 
-    const chat = document.getElementById('chat');
-    if (chat) {
-        // 检查用户是否已滚动到底部（允许有几个像素的误差）
-        const wasChatScrolledDown = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 5;
+    // 直接附加到 body，不再是 chat，以便实现浮动定位
+    document.body.appendChild(typingIndicator);
 
-        chat.appendChild(typingIndicator);
-
-        // 如果用户在指示器出现前就位于底部，则自动滚动到底部以保持指示器可见
-        if (wasChatScrolledDown) {
-            chat.scrollTop = chat.scrollHeight;
-        }
-    }
+    // 由于现在是固定定位，以下滚动逻辑不再需要
+    // const chat = document.getElementById('chat');
+    // if (chat) {
+    //     // 检查用户是否已滚动到底部（允许有几个像素的误差）
+    //     const wasChatScrolledDown = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 5;
+    //     chat.appendChild(typingIndicator);
+    //     // 如果用户在指示器出现前就位于底部，则自动滚动到底部以保持指示器可见
+    //     if (wasChatScrolledDown) {
+    //         chat.scrollTop = chat.scrollHeight;
+    //     }
+    // }
 }
 
 /**
