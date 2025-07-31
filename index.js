@@ -90,14 +90,6 @@ function getSettings() {
             extension_settings[MODULE][key] = defaultSettings[key];
         }
     }
-    
-    // 强制确保使用正确的模板，防止缓存问题
-    if (extension_settings[MODULE].optionsTemplate !== defaultSettings.optionsTemplate) {
-        logger.log('检测到模板不匹配，强制更新为默认模板');
-        extension_settings[MODULE].optionsTemplate = defaultSettings.optionsTemplate;
-        saveSettingsDebounced();
-    }
-    
     return extension_settings[MODULE];
 }
 
@@ -441,23 +433,23 @@ function showTypingIndicator(type, _args, dryRun) {
     } else {
         logger.log('showTypingIndicator: 未找到现有指示器，创建新指示器。');
         typingIndicator = document.createElement('div');
-        typingIndicator.id = 'typing_indicator';
+    typingIndicator.id = 'typing_indicator';
         // 恢复原始 class，移除 ai-floating-indicator
-        typingIndicator.classList.add('typing_indicator');
-        typingIndicator.innerHTML = htmlContent;
+    typingIndicator.classList.add('typing_indicator');
+    typingIndicator.innerHTML = htmlContent;
 
         // 恢复附加到 chat，而不是 body
-        const chat = document.getElementById('chat');
-        if (chat) {
+    const chat = document.getElementById('chat');
+    if (chat) {
             // 检查用户是否已滚动到底部（允许有几个像素的误差）
-            const wasChatScrolledDown = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 5;
+        const wasChatScrolledDown = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 5;
 
-            chat.appendChild(typingIndicator);
+        chat.appendChild(typingIndicator);
             logger.log('showTypingIndicator: 指示器已附加到 chat。');
 
             // 如果用户在指示器出现前就位于底部，则自动滚动到底部以保持指示器可见
-            if (wasChatScrolledDown) {
-                chat.scrollTop = chat.scrollHeight;
+        if (wasChatScrolledDown) {
+            chat.scrollTop = chat.scrollHeight;
                 logger.log('showTypingIndicator: 聊天已自动滚动到底部。');
             }
         }
@@ -552,7 +544,7 @@ const OptionsGenerator = {
                     } else {
                         logger.log(`[消息 ${index}] -> 跳过 (无内容)`);
                     }
-                } else {
+            } else {
                      logger.log(`[消息 ${index}] -> 跳过 (无 .mes_text 子元素)`);
                 }
             });
@@ -617,8 +609,6 @@ const OptionsGenerator = {
                 ...apiContext,
                 { role: 'user', content: settings.optionsTemplate }
             ];
-            
-            logger.log('发送给API的模板内容:', settings.optionsTemplate);
 
             let content = '';
 
@@ -647,20 +637,20 @@ const OptionsGenerator = {
                 logger.log('Requesting options from OpenAI-compatible API:', apiUrl);
                 
                 const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
                         'Authorization': `Bearer ${optionsApiKey}`,
-                    },
-                    body: JSON.stringify({
+                },
+                body: JSON.stringify({
                         model: optionsApiModel,
                         messages: finalMessages,
                         temperature: 0.8,
                         stream: false, // 强制非流式，与参考脚本一致
                     }),
-                });
+            });
 
-                if (!response.ok) {
+            if (!response.ok) {
                     const errorText = await response.text();
                     logger.error('API 响应错误 (raw):', errorText);
                     throw new Error(`API请求失败: ${response.status} - ${errorText}`);
@@ -766,8 +756,8 @@ const OptionsGenerator = {
 
         const sendForm = document.getElementById('send_form');
         if (!sendForm || !options || options.length === 0) {
-            if (!options || options.length === 0) {
-                this.showGeneratingUI('未能生成有效选项', 3000);
+        if (!options || options.length === 0) {
+            this.showGeneratingUI('未能生成有效选项', 3000);
             }
             return;
         }
