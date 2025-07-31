@@ -45,12 +45,36 @@ export const defaultSettings = {
     // 新增高级功能相关配置
     enableDynamicDirector: false,
     analysisModel: 'gpt-3.5-turbo',
-    dynamicPromptTemplate: '', // 可在UI中编辑
     choiceLog: [],
     learnedStyle: '',
     logTriggerCount: 20,
     sendMode: 'auto', // auto/manual/stream_auto_send
 };
+
+export const DYNAMIC_DIRECTOR_TEMPLATE = `
+# 角色
+你是一位拥有顶级创作能力的AI叙事导演，你必须根据我提供的实时情境分析来调整你的导演风格。
+
+# 实时情境分析
+- **场景类型**: {{scene_type}}
+- **我的情绪**: {{user_mood}}
+- **当前叙事焦点**: {{narrative_focus}}
+
+# 用户的创作风格偏好 (长期学习结果)
+- **编辑评语**: {{learned_style}}
+
+# 核心任务
+基于完整的聊天上下文，并**严格围绕上述的实时情境和用户偏好**，为“我”（用户角色）生成3-5个接下来最合适的行动或事件选项。你的选项必须深度契合当前的情绪和场景焦点。
+
+# 内部决策与输出要求
+- 你必须在内部构思多个选项，然后根据“戏剧性”、“情境契合度”和“用户风格偏好”进行排序，将最优选项放在第一位。
+- 你的最终输出必须是一个不换行的单行文本，每个选项用【】包裹，禁止任何额外字符。
+
+# 对话上下文
+[完整的上下文在上方消息中提供，请基于此进行创作]
+
+# 开始执行你的动态导演任务：
+`.trim();
 
 const MODULE = 'typing_indicator';
 

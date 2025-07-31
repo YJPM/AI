@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js';
+import { getSettings, DYNAMIC_DIRECTOR_TEMPLATE } from './settings.js';
 import { logger } from './logger.js';
 import { saveSettingsDebounced } from '../../../../script.js';
 
@@ -254,11 +254,11 @@ async function analyzeContext() {
 // 3. 动态prompt组装
 function assembleDynamicPrompt(analysisResult) {
     const settings = getSettings();
-    let prompt = settings.dynamicPromptTemplate || settings.optionsTemplate;
-    prompt = prompt.replace(/\{\{scene_type\}\}/g, analysisResult.scene_type || '未知');
-    prompt = prompt.replace(/\{\{user_mood\}\}/g, analysisResult.user_mood || '未知');
-    prompt = prompt.replace(/\{\{narrative_focus\}\}/g, analysisResult.narrative_focus || '未知');
-    prompt = prompt.replace(/\{\{learned_style\}\}/g, settings.learnedStyle || '无特定偏好');
+    let prompt = DYNAMIC_DIRECTOR_TEMPLATE;
+    prompt = prompt.replace(/{{scene_type}}/g, analysisResult.scene_type || '未知');
+    prompt = prompt.replace(/{{user_mood}}/g, analysisResult.user_mood || '未知');
+    prompt = prompt.replace(/{{narrative_focus}}/g, analysisResult.narrative_focus || '未知');
+    prompt = prompt.replace(/{{learned_style}}/g, settings.learnedStyle || '无特定偏好');
     return prompt;
 }
 

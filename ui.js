@@ -251,21 +251,6 @@ export function addExtensionSettings(settings) {
     });
     advancedSettingsContainer.appendChild(analysisModelLabel);
     advancedSettingsContainer.appendChild(analysisModelInput);
-    // 动态导演模板
-    const dynamicPromptLabel = document.createElement('label');
-    dynamicPromptLabel.textContent = '动态导演模板:';
-    dynamicPromptLabel.style.display = 'block';
-    const dynamicPromptInput = document.createElement('textarea');
-    dynamicPromptInput.value = settings.dynamicPromptTemplate;
-    dynamicPromptInput.placeholder = '可编辑高级prompt模板';
-    dynamicPromptInput.style.width = '100%';
-    dynamicPromptInput.style.minHeight = '80px';
-    dynamicPromptInput.addEventListener('input', () => {
-        settings.dynamicPromptTemplate = dynamicPromptInput.value;
-        saveSettingsDebounced();
-    });
-    advancedSettingsContainer.appendChild(dynamicPromptLabel);
-    advancedSettingsContainer.appendChild(dynamicPromptInput);
     // 发送模式
     const sendModeLabel = document.createElement('label');
     sendModeLabel.textContent = '发送模式:';
