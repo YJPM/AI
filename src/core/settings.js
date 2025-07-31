@@ -1,6 +1,5 @@
-import { extension_settings } from '../../../../extensions.js';
-
-const MODULE = 'typing_indicator';
+import { MODULE } from './constants.js';
+import { API_TYPES, DEFAULT_MODELS, DEFAULT_BASE_URLS } from './constants.js';
 
 /**
  * @typedef {Object} TypingIndicatorSettings
@@ -28,10 +27,10 @@ export const defaultSettings = {
     debug: false,
     // 选项生成相关设置
     optionsGenEnabled: false,
-    optionsApiType: 'openai',
+    optionsApiType: API_TYPES.OPENAI,
     optionsApiKey: '',
-    optionsApiModel: 'gemini-2.5-flash-free',
-    optionsBaseUrl: 'https://newapi.sisuo.de/v1',
+    optionsApiModel: DEFAULT_MODELS[API_TYPES.GEMINI],
+    optionsBaseUrl: DEFAULT_BASE_URLS[API_TYPES.OPENAI],
     optionsTemplate: `
 # 角色
 你是一位拥有顶级创作能力的AI叙事导演。
@@ -87,20 +86,4 @@ export function getSettings() {
 export function resetSettings() {
     extension_settings[MODULE] = structuredClone(defaultSettings);
     return extension_settings[MODULE];
-}
-
-/**
- * 更新单个设置项
- */
-export function updateSetting(key, value) {
-    const settings = getSettings();
-    settings[key] = value;
-    return settings;
-}
-
-/**
- * 获取模块名称
- */
-export function getModuleName() {
-    return MODULE;
 } 

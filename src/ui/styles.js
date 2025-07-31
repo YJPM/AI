@@ -1,11 +1,11 @@
-import { logger } from '../core/logger.js';
+import { injectCSS } from '@utils/dom-helpers.js';
 
 /**
- * 样式管理器
+ * 样式管理类
  */
 export class StyleManager {
     constructor() {
-        this.styleTags = new Map();
+        this.injectGlobalStyles();
     }
 
     /**
@@ -15,128 +15,159 @@ export class StyleManager {
         const css = `
             /* 核心指示器样式修复 */
             #typing_indicator.typing_indicator {
-                opacity: 1 !important; /* 强制覆盖主机应用可能存在的透明度样式，以修复不透明CSS仍然半透明的问题。 */
-                background-color: transparent !important; /* 强制透明背景 */
-            }
-
-            /* 确保所有提示容器都是透明背景 */
-            .typing_indicator {
+                opacity: 1 !important;
                 background-color: transparent !important;
             }
 
-            /* 省略号动画 */
-            /* 恢复省略号显示 */
-            .typing-ellipsis::after {
-                display: inline-block;
-                animation: ellipsis-animation 1.4s infinite;
-                content: '.';
-                width: 1.2em; /* 预留足够空间防止布局抖动 */
-                text-align: left;
-                vertical-align: bottom;
-            }
-            @keyframes ellipsis-animation {
-                0% { content: '.'; }
-                33% { content: '..'; }
-                66%, 100% { content: '...'; }
-            }
-
-            /* 移除提示文字渐变样式，恢复为普通文本 */
-            .typing-indicator-text {
-                font-weight: normal; /* 恢复正常字体粗细 */
-                background: none; /* 移除背景 */
-                -webkit-background-clip: unset; /* 移除裁剪 */
-                background-clip: unset;
-                -webkit-text-fill-color: unset; /* 恢复文本颜色 */
-                display: inline; /* 恢复默认行内显示 */
-                animation: none; /* 移除动画 */
-                color: var(--text_color); /* 确保文字颜色正常 */
-            }
-
-            /* 选项按钮样式 */
-            #ti-options-container {
-                width: 100%;
-                padding: 8px 0;
+            /* 选项容器样式 */
+            .ti-options-container {
                 display: flex;
                 flex-wrap: wrap;
                 gap: 8px;
-                justify-content: center;
+                margin: 10px 0;
+                padding: 10px;
+                background: var(--SmartThemeBlurple);
+                border-radius: 8px;
+                animation: fadeIn 0.3s ease-in;
             }
+
             .ti-options-capsule {
-                flex: 1;
-                white-space: normal;
-                text-align: center;
-                margin: 0 !important;
-                height: auto;
-                min-width: 120px;
+                background: var(--SmartThemeBlurple);
+                color: white;
+                border: 1px solid var(--border_color);
+                border-radius: 20px;
+                padding: 8px 16px;
+                margin: 4px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                font-size: 14px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 200px;
             }
-        `;
 
-        this.injectStyle('typing-indicator-global-style', css);
-        logger.log('全局样式已注入');
-    }
+            .ti-options-capsule:hover {
+                background: var(--SmartThemeBlurple);
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            }
 
-    /**
-     * 应用基本样式
-     */
-    applyBasicStyle() {
-        const css = `
+            /* 生成中UI样式 */
+            .ti-generating-container {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                margin: 10px 0;
+                padding: 10px;
+                background: var(--SmartThemeBlurple);
+                border-radius: 8px;
+                color: white;
+            }
+
+            .ti-spinner {
+                width: 20px;
+                height: 20px;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-top: 2px solid white;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            }
+
+            .ti-generating-text {
+                font-size: 14px;
+                font-weight: 500;
+            }
+
+            /* 动画 */
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
+            /* 打字指示器样式 */
             .typing_indicator {
-                background-color: transparent; /* 恢复透明背景 */
+                background-color: transparent;
                 padding: 8px 16px;
                 margin: 8px auto;
                 width: fit-content;
                 max-width: 90%;
                 text-align: center;
-                color: var(--text_color); /* 使用主题的默认文字颜色 */
+                color: var(--text_color);
+                opacity: 1 !important;
+            }
+
+            .typing-ellipsis {
+                display: inline-block;
+                animation: typing-dots 1.5s infinite;
+            }
+
+            @keyframes typing-dots {
+                0%, 20% { opacity: 0; }
+                50% { opacity: 1; }
+                100% { opacity: 0; }
+            }
+
+            .typing-ellipsis::after {
+                content: '...';
+                animation: typing-dots 1.5s infinite;
+            }
+
+            /* 设置面板样式 */
+            .inline-drawer {
+                margin-bottom: 10px;
+            }
+
+            .inline-drawer-toggle {
+                cursor: pointer;
+                padding: 10px;
+                background: var(--SmartThemeBlurple);
+                color: white;
+                border-radius: 4px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .inline-drawer-content {
+                padding: 15px;
+                border: 1px solid var(--border_color);
+                border-top: none;
+                border-radius: 0 0 4px 4px;
+                background: var(--SmartThemeBody);
+            }
+
+            .checkbox_label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 10px;
+                cursor: pointer;
+            }
+
+            .checkbox_label input[type="checkbox"] {
+                margin: 0;
+            }
+
+            /* 响应式设计 */
+            @media (max-width: 768px) {
+                .ti-options-container {
+                    flex-direction: column;
+                }
+
+                .ti-options-capsule {
+                    max-width: none;
+                    width: 100%;
+                }
             }
         `;
 
-        this.injectStyle('typing-indicator-theme-style', css);
-        logger.log('基本样式已应用');
+        injectCSS(css, 'ai-assistant-styles');
     }
-
-    /**
-     * 注入样式标签
-     */
-    injectStyle(id, css) {
-        let styleTag = document.getElementById(id);
-        if (!styleTag) {
-            styleTag = document.createElement('style');
-            styleTag.id = id;
-            document.head.appendChild(styleTag);
-        }
-        styleTag.textContent = css;
-        this.styleTags.set(id, styleTag);
-    }
-
-    /**
-     * 移除样式标签
-     */
-    removeStyle(id) {
-        const styleTag = this.styleTags.get(id);
-        if (styleTag) {
-            styleTag.remove();
-            this.styleTags.delete(id);
-        }
-    }
-
-    /**
-     * 移除所有样式
-     */
-    removeAllStyles() {
-        for (const [id] of this.styleTags) {
-            this.removeStyle(id);
-        }
-        logger.log('所有样式已移除');
-    }
-
-    /**
-     * 获取样式标签
-     */
-    getStyleTag(id) {
-        return this.styleTags.get(id);
-    }
-}
-
-// 创建全局样式管理器实例
-export const styleManager = new StyleManager(); 
+} 

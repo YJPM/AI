@@ -1,7 +1,8 @@
-import { logger } from '../core/logger.js';
-import { getSettings } from '../core/settings.js';
-import { DOMUtils } from '../utils/dom-utils.js';
-import { apiClient } from '../utils/api-client.js';
+import { getSettings } from '@core/settings.js';
+import { logger } from '@core/logger.js';
+import { API_TYPES } from '@core/constants.js';
+import { createElement, safeRemoveElement } from '@utils/dom-helpers.js';
+import { parseOptions, replaceTemplateVariables } from '@utils/text-parser.js';
 
 /**
  * 选项生成器类
@@ -10,99 +11,227 @@ export class OptionsGenerator {
     constructor() {
         this.isGenerating = false;
         this.isManuallyStopped = false;
-        this.settings = getSettings();
+    }
+
+    /**
+     * 获取用户输入
+     * @returns {string}
+     */
+    getUserInput() {
+        const textarea = document.querySelector('#send_textarea, .send_textarea');
+        return textarea ? textarea.value : '';
+    }
+
+    /**
+     * 获取角色卡片信息
+     * @returns {string}
+     */
+    getCharacterCard() {
+        if (selected_group && selected_group.avatar_url) {
+            return `角色名称: ${selected_group.name || '未知'}`;
+        }
+        return '';
+    }
+
+    /**
+     * 获取世界设定信息
+     * @returns {string}
+     */
+    getWorldInfo() {
+        const worldInfoElement = document.querySelector('#world_info, .world_info');
+        return worldInfoElement ? worldInfoElement.textContent || '' : '';
+    }
+
+    /**
+     * 获取对话上下文
+     * @returns {string}
+     */
+    getContextForAPI() {
+        const messages = [];
+        const messageElements = document.querySelectorAll('.mes, .message');
+        
+        messageElements.forEach((element, index) => {
+            const isUser = element.classList.contains('mes_user') || element.classList.contains('user');
+            const isAI = element.classList.contains('mes_assistant') || element.classList.contains('assistant');
+            
+            if (isUser || isAI) {
+                const textElement = element.querySelector('.mes_text, .text');
+                const text = textElement ? textElement.textContent || '' : '';
+                
+                if (text.trim()) {
+                    messages.push({
+                        role: isUser ? 'user' : 'assistant',
+                        content: text.trim()
+                    });
+                }
+            }
+        });
+
+        // 只保留最近的10条消息
+        return messages.slice(-10).map(msg => `${msg.role}: ${msg.content}`).join('\n');
+    }
+
+    /**
+     * 转换消息格式为Gemini格式
+     * @param {Array} messages - 消息数组
+     * @returns {Array} Gemini格式的消息
+     */
+    transformMessagesForGemini(messages) {
+        return messages.map(msg => ({
+            parts: [{ text: msg.content }]
+        }));
     }
 
     /**
      * 生成选项
      */
     async generateOptions() {
+        const settings = getSettings();
+        
+        if (!settings.optionsGenEnabled || !settings.optionsApiKey) {
+            logger.log('选项生成已禁用或API密钥未设置');
+            return;
+        }
+
         if (this.isGenerating) {
-            logger.log('已在生成选项，跳过本次请求。');
+            logger.log('选项生成正在进行中，跳过');
             return;
         }
 
-        // 重置手动中止标志，确保每次生成都是新的判断
-        this.isManuallyStopped = false;
-
-        this.settings = getSettings();
-        if (!this.settings.optionsGenEnabled || !this.settings.optionsApiKey) {
-            logger.log('选项生成功能未启用或API密钥未设置');
-            return;
-        }
-
-        this.showGeneratingUI('AI助手思考中');
         this.isGenerating = true;
+        this.showGeneratingUI('正在生成选项...');
 
         try {
-            const apiContext = DOMUtils.getChatContext();
-            if (apiContext.length === 0) {
-                throw new Error('无法获取聊天上下文');
+            const userInput = this.getUserInput();
+            const charCard = this.getCharacterCard();
+            const worldInfo = this.getWorldInfo();
+            const context = this.getContextForAPI();
+
+            const variables = {
+                user_input: userInput,
+                char_card: charCard,
+                world_info: worldInfo,
+                context: context
+            };
+
+            let processedTemplate = settings.optionsTemplate;
+            Object.entries(variables).forEach(([key, value]) => {
+                processedTemplate = processedTemplate.replace(new RegExp(`{{${key}}}`, 'g'), value || '');
+            });
+
+            let response;
+            if (settings.optionsApiType === API_TYPES.GEMINI) {
+                response = await this.callGeminiAPI(processedTemplate);
+            } else {
+                response = await this.callOpenAIAPI(processedTemplate);
             }
 
-            // 获取当前用户输入
-            const userInput = DOMUtils.getUserInput();
-            
-            // 替换模板中的占位符
-            let processedTemplate = this.settings.optionsTemplate
-                .replace(/{{context}}/g, '对话历史已在上方消息中提供')
-                .replace(/{{user_input}}/g, userInput || '用户当前输入')
-                .replace(/{{char_card}}/g, DOMUtils.getCharacterCard() || '角色信息')
-                .replace(/{{world_info}}/g, DOMUtils.getWorldInfo() || '世界设定信息');
-
-            const finalMessages = [
-                ...apiContext,
-                { role: 'user', content: processedTemplate }
-            ];
-
-            const content = await apiClient.generateOptions(finalMessages);
-            const options = apiClient.parseOptions(content);
-            logger.log('解析出的选项:', options);
-            this.displayOptions(options);
+            if (response) {
+                const options = parseOptions(response);
+                if (options.length > 0) {
+                    await this.displayOptions(options);
+                } else {
+                    logger.warn('未能解析到有效选项');
+                }
+            }
         } catch (error) {
-            logger.error('生成选项失败:', error);
-            this.showGeneratingUI(`生成失败: ${error.message}`, 5000);
+            logger.error('生成选项时出错:', error);
         } finally {
             this.isGenerating = false;
+            this.hideGeneratingUI();
         }
     }
 
     /**
+     * 调用Gemini API
+     * @param {string} prompt - 提示文本
+     * @returns {Promise<string>}
+     */
+    async callGeminiAPI(prompt) {
+        const settings = getSettings();
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.optionsApiModel}:generateContent?key=${settings.optionsApiKey}`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: prompt }]
+                }]
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Gemini API错误: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    }
+
+    /**
+     * 调用OpenAI API
+     * @param {string} prompt - 提示文本
+     * @returns {Promise<string>}
+     */
+    async callOpenAIAPI(prompt) {
+        const settings = getSettings();
+        const url = `${settings.optionsBaseUrl}/chat/completions`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${settings.optionsApiKey}`
+            },
+            body: JSON.stringify({
+                model: settings.optionsApiModel,
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.8,
+                max_tokens: 500
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`OpenAI API错误: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content || '';
+    }
+
+    /**
      * 显示生成中UI
+     * @param {string} message - 显示消息
+     * @param {number} duration - 持续时间
      */
     showGeneratingUI(message, duration = null) {
-        logger.log(`showGeneratingUI: 尝试显示提示: "${message}"`);
-        let container = document.getElementById('ti-loading-container');
-        const chat = document.getElementById('chat');
-        if (!chat) {
-            logger.log('showGeneratingUI: chat 未找到，无法显示。');
-            return;
-        }
+        this.hideGeneratingUI();
 
-        if (!container) {
-            logger.log('showGeneratingUI: 未找到现有容器，创建新容器。');
-            container = document.createElement('div');
-            container.id = 'ti-loading-container';
-            container.classList.add('typing_indicator');
-            chat.appendChild(container);
-            logger.log('showGeneratingUI: 容器已附加到 chat。');
-        } else {
-            logger.log('showGeneratingUI: 找到现有容器，更新内容并尝试显示。');
-        }
+        const container = createElement('div', {
+            id: 'ti-generating-container',
+            className: 'ti-generating-container'
+        });
 
-        // 统一内容结构，使其与 showTypingIndicator 完全一致 (文本 + 省略号动画)
-        const animationHtml = getSettings().animationEnabled ? '<div class="typing-ellipsis"></div>' : '';
-        container.innerHTML = `
-            <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
-                <div class="typing-indicator-text">${message}</div>
-                ${animationHtml}
-            </div>
-        `;
-        container.style.display = 'flex';
-        logger.log(`showGeneratingUI: 最终容器 display 属性: ${container.style.display}`);
+        const spinner = createElement('div', {
+            className: 'ti-spinner'
+        });
+
+        const text = createElement('div', {
+            className: 'ti-generating-text'
+        }, message);
+
+        container.appendChild(spinner);
+        container.appendChild(text);
+
+        const chatContainer = document.querySelector('#chat, .chat');
+        if (chatContainer) {
+            chatContainer.appendChild(container);
+        }
 
         if (duration) {
-            logger.log(`showGeneratingUI: 将在 ${duration}ms 后隐藏提示。`);
             setTimeout(() => this.hideGeneratingUI(), duration);
         }
     }
@@ -111,43 +240,33 @@ export class OptionsGenerator {
      * 隐藏生成中UI
      */
     hideGeneratingUI() {
-        const loadingContainer = document.getElementById('ti-loading-container');
-        if (loadingContainer) {
-            logger.log('hideGeneratingUI: 隐藏提示。');
-            loadingContainer.style.display = 'none';
+        const container = document.getElementById('ti-generating-container');
+        if (container) {
+            safeRemoveElement(container);
         }
     }
 
     /**
      * 显示选项
+     * @param {string[]} options - 选项数组
      */
     async displayOptions(options) {
-        this.hideGeneratingUI();
-        const oldContainer = document.getElementById('ti-options-container');
-        if (oldContainer) oldContainer.remove();
+        this.hideOptions();
 
-        const sendForm = document.getElementById('send_form');
-        if (!sendForm || !options || options.length === 0) {
-            if (!options || options.length === 0) {
-                this.showGeneratingUI('未能生成有效选项', 3000);
-            }
-            return;
-        }
-
-        const container = document.createElement('div');
-        container.id = 'ti-options-container';
-        sendForm.insertAdjacentElement('beforebegin', container);
-
-        const sleep = ms => new Promise(res => setTimeout(res, ms));
+        const container = createElement('div', {
+            id: 'ti-options-container',
+            className: 'ti-options-container'
+        });
 
         for (const text of options) {
-            const btn = document.createElement('button');
-            btn.className = 'qr--button menu_button interactable ti-options-capsule';
-            container.appendChild(btn);
+            const btn = createElement('button', {
+                className: 'qr--button menu_button interactable ti-options-capsule'
+            });
 
+            // 打字机效果
             for (let i = 0; i < text.length; i++) {
                 btn.textContent = text.substring(0, i + 1);
-                await sleep(15);
+                await this.sleep(15);
             }
 
             btn.onclick = () => {
@@ -159,30 +278,32 @@ export class OptionsGenerator {
                 }
                 container.remove();
             };
+
+            container.appendChild(btn);
+        }
+
+        const chatContainer = document.querySelector('#chat, .chat');
+        if (chatContainer) {
+            chatContainer.appendChild(container);
         }
     }
 
     /**
-     * 设置手动中止标志
+     * 隐藏选项
      */
-    setManuallyStopped(value) {
-        this.isManuallyStopped = value;
+    hideOptions() {
+        const container = document.getElementById('ti-options-container');
+        if (container) {
+            safeRemoveElement(container);
+        }
     }
 
     /**
-     * 检查是否正在生成
+     * 延时函数
+     * @param {number} ms - 毫秒数
+     * @returns {Promise}
      */
-    isCurrentlyGenerating() {
-        return this.isGenerating;
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
-
-    /**
-     * 检查是否手动中止
-     */
-    isManuallyStopped() {
-        return this.isManuallyStopped;
-    }
-}
-
-// 创建全局选项生成器实例
-export const optionsGenerator = new OptionsGenerator(); 
+} 

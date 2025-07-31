@@ -1,103 +1,115 @@
-import { logger } from '../core/logger.js';
-import { getSettings, defaultSettings } from '../core/settings.js';
-import { DOMUtils } from '../utils/dom-utils.js';
+import { getSettings } from '@core/settings.js';
+import { logger } from '@core/logger.js';
+import { createElement, safeRemoveElement, injectCSS } from '@utils/dom-helpers.js';
 
 /**
  * 打字指示器类
  */
 export class TypingIndicator {
     constructor() {
-        this.settings = getSettings();
+        this.isVisible = false;
         this.legacyIndicatorTemplate = document.getElementById('typing_indicator_template');
+        this.injectStyles();
+    }
+
+    /**
+     * 注入样式
+     */
+    injectStyles() {
+        const css = `
+            .typing_indicator {
+                background-color: transparent;
+                padding: 8px 16px;
+                margin: 8px auto;
+                width: fit-content;
+                max-width: 90%;
+                text-align: center;
+                color: var(--text_color);
+                opacity: 1 !important;
+            }
+
+            .typing-ellipsis {
+                display: inline-block;
+                animation: typing-dots 1.5s infinite;
+            }
+
+            @keyframes typing-dots {
+                0%, 20% { opacity: 0; }
+                50% { opacity: 1; }
+                100% { opacity: 0; }
+            }
+
+            .typing-ellipsis::after {
+                content: '...';
+                animation: typing-dots 1.5s infinite;
+            }
+        `;
+        injectCSS(css, 'typing-indicator-styles');
     }
 
     /**
      * 显示打字指示器
+     * @param {string} type - 指示器类型
+     * @param {Object} args - 参数
+     * @param {boolean} dryRun - 是否仅预览
      */
-    show(type, _args, dryRun) {
-        this.settings = getSettings(); // 重新获取最新设置
-        const noIndicatorTypes = ['quiet', 'impersonate'];
-
-        if (type !== 'refresh' && (noIndicatorTypes.includes(type) || dryRun)) {
+    show(type, args = {}, dryRun = false) {
+        const settings = getSettings();
+        
+        if (!settings.enabled) {
             return;
         }
 
-        if (!this.settings.enabled) {
+        if (settings.showCharName && !name2 && type !== 'refresh') {
             return;
         }
 
-        // 检查是否需要显示角色名称
-        if (this.settings.showCharName && !window.name2 && type !== 'refresh') {
+        if (dryRun) {
             return;
         }
 
-        // 检查流式传输状态
-        if (this.legacyIndicatorTemplate && window.selected_group && !window.isStreamingEnabled()) {
-            return;
+        this.hide();
+
+        let finalText = settings.customText || '正在输入';
+        
+        if (settings.showCharName && name2) {
+            finalText = `${name2} ${finalText}`;
         }
 
-        // 构建最终显示的文本
-        const placeholder = '{char}';
-        let finalText = this.settings.customText || defaultSettings.customText;
+        const animationHtml = settings.animationEnabled ? '<div class="typing-ellipsis"></div>' : '';
 
-        if (this.settings.showCharName && window.name2) {
-            if (finalText.includes(placeholder)) {
-                finalText = finalText.replace(placeholder, window.name2);
-            } else {
-                finalText = `${window.name2}${finalText}`;
-            }
-        } else {
-            finalText = finalText.replace(placeholder, '').replace(/  +/g, ' ').trim();
+        const indicatorHtml = `
+            <div id="typing_indicator" class="typing_indicator">
+                <div class="typing_indicator_text">${finalText}</div>
+                ${animationHtml}
+            </div>
+        `;
+
+        const chatContainer = document.querySelector('#chat, .chat');
+        if (chatContainer) {
+            chatContainer.insertAdjacentHTML('beforeend', indicatorHtml);
+            this.isVisible = true;
+            logger.log('打字指示器已显示');
         }
-
-        const animationHtml = this.settings.animationEnabled ? '<div class="typing-ellipsis"></div>' : '';
-        const htmlContent = `
-        <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
-            <div class="typing-indicator-text">${finalText}</div>
-            ${animationHtml}
-        </div>
-    `;
-
-        let typingIndicator = document.getElementById('typing_indicator');
-        if (typingIndicator) {
-            logger.log('showTypingIndicator: 找到现有指示器，更新内容并尝试显示。');
-            typingIndicator.innerHTML = htmlContent;
-        } else {
-            logger.log('showTypingIndicator: 未找到现有指示器，创建新指示器。');
-            typingIndicator = document.createElement('div');
-            typingIndicator.id = 'typing_indicator';
-            typingIndicator.classList.add('typing_indicator');
-            typingIndicator.innerHTML = htmlContent;
-
-            // 附加到聊天容器
-            const chat = document.getElementById('chat');
-            if (chat) {
-                // 检查用户是否已滚动到底部（允许有几个像素的误差）
-                const wasChatScrolledDown = DOMUtils.isAtBottom(5);
-
-                chat.appendChild(typingIndicator);
-                logger.log('showTypingIndicator: 指示器已附加到 chat。');
-
-                // 如果用户在指示器出现前就位于底部，则自动滚动到底部以保持指示器可见
-                if (wasChatScrolledDown) {
-                    DOMUtils.scrollToBottom();
-                    logger.log('showTypingIndicator: 聊天已自动滚动到底部。');
-                }
-            }
-        }
-        logger.log(`showTypingIndicator: 最终指示器 display 属性 (由CSS控制，JS不强制): ${typingIndicator.style.display}`);
     }
 
     /**
      * 隐藏打字指示器
      */
     hide() {
-        const typingIndicator = document.getElementById('typing_indicator');
-        if (typingIndicator) {
-            typingIndicator.remove();
+        const indicator = document.getElementById('typing_indicator');
+        if (indicator) {
+            safeRemoveElement(indicator);
+            this.isVisible = false;
+            logger.log('打字指示器已隐藏');
         }
     }
-}
 
-// 创建全局打字指示器实例
-export const typingIndicator = new TypingIndicator(); 
+    /**
+     * 检查是否可见
+     * @returns {boolean}
+     */
+    isVisible() {
+        return this.isVisible;
+    }
+} 
