@@ -1,14 +1,3 @@
-// 导入外部依赖
-import {
-    name2,
-    eventSource,
-    event_types,
-    isStreamingEnabled,
-    saveSettingsDebounced,
-} from '../../../../script.js';
-import { extension_settings } from '../../../extensions.js';
-import { selected_group } from '../../../group-chats.js';
-
 // 导入内部模块
 import { TypingIndicator } from '@features/typing-indicator.js';
 import { OptionsGenerator } from '@features/options-generator.js';
@@ -27,6 +16,21 @@ class AIAssistantExtension {
         this.settingsPanel = null;
         this.styleManager = null;
         this.isInitialized = false;
+    }
+
+    /**
+     * 获取SillyTavern的全局变量
+     */
+    getSillyTavernGlobals() {
+        return {
+            name2: window.name2,
+            eventSource: window.eventSource,
+            event_types: window.event_types,
+            isStreamingEnabled: window.isStreamingEnabled,
+            saveSettingsDebounced: window.saveSettingsDebounced,
+            extension_settings: window.extension_settings,
+            selected_group: window.selected_group,
+        };
     }
 
     /**
@@ -68,32 +72,33 @@ class AIAssistantExtension {
      * 绑定事件监听器
      */
     bindEventListeners() {
+        const globals = this.getSillyTavernGlobals();
         const settings = getSettings();
 
         // 打字指示器事件
-        const showIndicatorEvents = [event_types.GENERATION_AFTER_COMMANDS];
-        const hideIndicatorEvents = [event_types.GENERATION_STOPPED, event_types.GENERATION_ENDED, event_types.CHAT_CHANGED];
+        const showIndicatorEvents = [globals.event_types.GENERATION_AFTER_COMMANDS];
+        const hideIndicatorEvents = [globals.event_types.GENERATION_STOPPED, globals.event_types.GENERATION_ENDED, globals.event_types.CHAT_CHANGED];
 
         showIndicatorEvents.forEach(e => {
-            eventSource.on(e, (type, args, dryRun) => {
+            globals.eventSource.on(e, (type, args, dryRun) => {
                 this.typingIndicator.show(type, args, dryRun);
             });
         });
 
         hideIndicatorEvents.forEach(e => {
-            eventSource.on(e, () => {
+            globals.eventSource.on(e, () => {
                 this.typingIndicator.hide();
             });
         });
 
         // 手动中止事件
-        eventSource.on(event_types.GENERATION_STOPPED, () => {
+        globals.eventSource.on(globals.event_types.GENERATION_STOPPED, () => {
             logger.log('GENERATION_STOPPED event triggered. 设置 isManuallyStopped 为 true。');
             this.optionsGenerator.isManuallyStopped = true;
         });
 
         // 生成结束事件
-        eventSource.on(event_types.GENERATION_ENDED, () => {
+        globals.eventSource.on(globals.event_types.GENERATION_ENDED, () => {
             logger.log('GENERATION_ENDED event triggered.', { 
                 isManuallyStopped: this.optionsGenerator.isManuallyStopped, 
                 optionsGenEnabled: getSettings().optionsGenEnabled 
@@ -112,7 +117,7 @@ class AIAssistantExtension {
         });
 
         // 聊天切换事件
-        eventSource.on(event_types.CHAT_CHANGED, () => {
+        globals.eventSource.on(globals.event_types.CHAT_CHANGED, () => {
             logger.log('CHAT_CHANGED event triggered.');
             
             // 首先，像往常一样隐藏所有UI
@@ -177,9 +182,9 @@ function waitForCoreSystem() {
     console.log('AI助手扩展：检查核心系统状态...');
     
     // 检查必要的全局变量
-    const hasEventSource = typeof eventSource !== 'undefined' && eventSource && eventSource.on;
-    const hasExtensionSettings = typeof extension_settings !== 'undefined';
-    const hasSaveSettingsDebounced = typeof saveSettingsDebounced !== 'undefined';
+    const hasEventSource = typeof window.eventSource !== 'undefined' && window.eventSource && window.eventSource.on;
+    const hasExtensionSettings = typeof window.extension_settings !== 'undefined';
+    const hasSaveSettingsDebounced = typeof window.saveSettingsDebounced !== 'undefined';
     
     console.log('AI助手扩展：系统检查结果', {
         hasEventSource,

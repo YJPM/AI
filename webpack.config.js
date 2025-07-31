@@ -34,11 +34,5 @@ module.exports = {
       '@ui': path.resolve(__dirname, 'src/ui'),
       '@utils': path.resolve(__dirname, 'src/utils'),
     }
-  },
-  externals: {
-    // 外部依赖，这些将由SillyTavern提供
-    '../../../../script.js': 'commonjs2 ../../../../script.js',
-    '../../../extensions.js': 'commonjs2 ../../../extensions.js',
-    '../../../group-chats.js': 'commonjs2 ../../../group-chats.js',
   }
 }; 

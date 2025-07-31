@@ -1,12 +1,6 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	"use strict";
 
-;// external "../../../../script.js"
-const external_script_js_namespaceObject = require("../../../../script.js");
-;// external "../../../extensions.js"
-const external_extensions_js_namespaceObject = require("../../../extensions.js");
-;// external "../../../group-chats.js"
-const external_group_chats_js_namespaceObject = require("../../../group-chats.js");
 ;// ./src/core/constants.js
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
@@ -26,7 +20,6 @@ var API_TYPES = {
 var DEFAULT_MODELS = _defineProperty(_defineProperty({}, API_TYPES.OPENAI, 'gpt-3.5-turbo'), API_TYPES.GEMINI, 'gemini-2.5-flash-free');
 var DEFAULT_BASE_URLS = _defineProperty(_defineProperty({}, API_TYPES.OPENAI, 'https://newapi.sisuo.de/v1'), API_TYPES.GEMINI, 'https://generativelanguage.googleapis.com/v1beta');
 ;// ./src/core/settings.js
-
 
 
 
@@ -67,23 +60,25 @@ var defaultSettings = {
  * 获取此扩展的设置。
  */
 function getSettings() {
-  if (external_extensions_js_namespaceObject.extension_settings[MODULE] === undefined) {
-    external_extensions_js_namespaceObject.extension_settings[MODULE] = structuredClone(defaultSettings);
+  var extension_settings = window.extension_settings;
+  if (extension_settings[MODULE] === undefined) {
+    extension_settings[MODULE] = structuredClone(defaultSettings);
   }
   for (var key in defaultSettings) {
-    if (external_extensions_js_namespaceObject.extension_settings[MODULE][key] === undefined) {
-      external_extensions_js_namespaceObject.extension_settings[MODULE][key] = defaultSettings[key];
+    if (extension_settings[MODULE][key] === undefined) {
+      extension_settings[MODULE][key] = defaultSettings[key];
     }
   }
-  return external_extensions_js_namespaceObject.extension_settings[MODULE];
+  return extension_settings[MODULE];
 }
 
 /**
  * 重置所有设置为默认值
  */
 function resetSettings() {
-  external_extensions_js_namespaceObject.extension_settings[MODULE] = structuredClone(defaultSettings);
-  return external_extensions_js_namespaceObject.extension_settings[MODULE];
+  var extension_settings = window.extension_settings;
+  extension_settings[MODULE] = structuredClone(defaultSettings);
+  return extension_settings[MODULE];
 }
 ;// ./src/core/logger.js
 
@@ -1007,7 +1002,7 @@ var SettingsPanel = /*#__PURE__*/function () {
       optionsEnabledCheckbox.addEventListener('change', function () {
         _this.settings.optionsGenEnabled = optionsEnabledCheckbox.checked;
         _this.optionsSettingsContainer.style.display = _this.settings.optionsGenEnabled ? 'block' : 'none';
-        saveSettingsDebounced();
+        window.saveSettingsDebounced();
       });
       var optionsEnabledText = createElement('span', {}, '启用回复选项生成');
       optionsEnabledLabel.append(optionsEnabledCheckbox, optionsEnabledText);
@@ -1026,7 +1021,7 @@ var SettingsPanel = /*#__PURE__*/function () {
       debugCheckbox.checked = this.settings.debug;
       debugCheckbox.addEventListener('change', function () {
         _this.settings.debug = debugCheckbox.checked;
-        saveSettingsDebounced();
+        window.saveSettingsDebounced();
       });
       var debugText = createElement('span', {}, '启用调试日志');
       debugLabel.append(debugCheckbox, debugText);
@@ -1075,7 +1070,7 @@ var SettingsPanel = /*#__PURE__*/function () {
       apiKeyInput.value = this.settings.optionsApiKey;
       apiKeyInput.addEventListener('input', function () {
         _this.settings.optionsApiKey = apiKeyInput.value;
-        saveSettingsDebounced();
+        window.saveSettingsDebounced();
       });
       this.optionsSettingsContainer.appendChild(apiKeyLabel);
       this.optionsSettingsContainer.appendChild(apiKeyInput);
@@ -1097,7 +1092,7 @@ var SettingsPanel = /*#__PURE__*/function () {
       modelInput.value = this.settings.optionsApiModel;
       modelInput.addEventListener('input', function () {
         _this.settings.optionsApiModel = modelInput.value;
-        saveSettingsDebounced();
+        window.saveSettingsDebounced();
       });
       this.optionsSettingsContainer.appendChild(modelLabel);
       this.optionsSettingsContainer.appendChild(modelInput);
@@ -1122,7 +1117,7 @@ var SettingsPanel = /*#__PURE__*/function () {
       baseUrlInput.value = this.settings.optionsBaseUrl;
       baseUrlInput.addEventListener('input', function () {
         _this.settings.optionsBaseUrl = baseUrlInput.value;
-        saveSettingsDebounced();
+        window.saveSettingsDebounced();
       });
       this.baseUrlGroup.appendChild(baseUrlLabel);
       this.baseUrlGroup.appendChild(baseUrlInput);
@@ -1132,7 +1127,7 @@ var SettingsPanel = /*#__PURE__*/function () {
       apiTypeSelect.addEventListener('change', function () {
         _this.settings.optionsApiType = apiTypeSelect.value;
         _this.baseUrlGroup.style.display = _this.settings.optionsApiType === API_TYPES.OPENAI ? 'block' : 'none';
-        saveSettingsDebounced();
+        window.saveSettingsDebounced();
       });
 
       // 初始状态
@@ -1183,7 +1178,7 @@ var SettingsPanel = /*#__PURE__*/function () {
           _this2.updateUIFromSettings();
 
           // 保存设置
-          saveSettingsDebounced();
+          window.saveSettingsDebounced();
 
           // 显示成功消息
           console.log('设置已重置为默认值');
@@ -1294,11 +1289,6 @@ function src_defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o
 function src_createClass(e, r, t) { return r && src_defineProperties(e.prototype, r), t && src_defineProperties(e, t), Object.defineProperty(e, "prototype", { writable: !1 }), e; }
 function src_toPropertyKey(t) { var i = src_toPrimitive(t, "string"); return "symbol" == src_typeof(i) ? i : i + ""; }
 function src_toPrimitive(t, r) { if ("object" != src_typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != src_typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
-// 导入外部依赖
-
-
-
-
 // 导入内部模块
 
 
@@ -1321,9 +1311,26 @@ var AIAssistantExtension = /*#__PURE__*/function () {
   }
 
   /**
-   * 初始化扩展
+   * 获取SillyTavern的全局变量
    */
   return src_createClass(AIAssistantExtension, [{
+    key: "getSillyTavernGlobals",
+    value: function getSillyTavernGlobals() {
+      return {
+        name2: window.name2,
+        eventSource: window.eventSource,
+        event_types: window.event_types,
+        isStreamingEnabled: window.isStreamingEnabled,
+        saveSettingsDebounced: window.saveSettingsDebounced,
+        extension_settings: window.extension_settings,
+        selected_group: window.selected_group
+      };
+    }
+
+    /**
+     * 初始化扩展
+     */
+  }, {
     key: "initialize",
     value: function initialize() {
       if (this.isInitialized) {
@@ -1362,30 +1369,31 @@ var AIAssistantExtension = /*#__PURE__*/function () {
     key: "bindEventListeners",
     value: function bindEventListeners() {
       var _this = this;
+      var globals = this.getSillyTavernGlobals();
       var settings = getSettings();
 
       // 打字指示器事件
-      var showIndicatorEvents = [external_script_js_namespaceObject.event_types.GENERATION_AFTER_COMMANDS];
-      var hideIndicatorEvents = [external_script_js_namespaceObject.event_types.GENERATION_STOPPED, external_script_js_namespaceObject.event_types.GENERATION_ENDED, external_script_js_namespaceObject.event_types.CHAT_CHANGED];
+      var showIndicatorEvents = [globals.event_types.GENERATION_AFTER_COMMANDS];
+      var hideIndicatorEvents = [globals.event_types.GENERATION_STOPPED, globals.event_types.GENERATION_ENDED, globals.event_types.CHAT_CHANGED];
       showIndicatorEvents.forEach(function (e) {
-        external_script_js_namespaceObject.eventSource.on(e, function (type, args, dryRun) {
+        globals.eventSource.on(e, function (type, args, dryRun) {
           _this.typingIndicator.show(type, args, dryRun);
         });
       });
       hideIndicatorEvents.forEach(function (e) {
-        external_script_js_namespaceObject.eventSource.on(e, function () {
+        globals.eventSource.on(e, function () {
           _this.typingIndicator.hide();
         });
       });
 
       // 手动中止事件
-      external_script_js_namespaceObject.eventSource.on(external_script_js_namespaceObject.event_types.GENERATION_STOPPED, function () {
+      globals.eventSource.on(globals.event_types.GENERATION_STOPPED, function () {
         logger.log('GENERATION_STOPPED event triggered. 设置 isManuallyStopped 为 true。');
         _this.optionsGenerator.isManuallyStopped = true;
       });
 
       // 生成结束事件
-      external_script_js_namespaceObject.eventSource.on(external_script_js_namespaceObject.event_types.GENERATION_ENDED, function () {
+      globals.eventSource.on(globals.event_types.GENERATION_ENDED, function () {
         logger.log('GENERATION_ENDED event triggered.', {
           isManuallyStopped: _this.optionsGenerator.isManuallyStopped,
           optionsGenEnabled: getSettings().optionsGenEnabled
@@ -1404,7 +1412,7 @@ var AIAssistantExtension = /*#__PURE__*/function () {
       });
 
       // 聊天切换事件
-      external_script_js_namespaceObject.eventSource.on(external_script_js_namespaceObject.event_types.CHAT_CHANGED, function () {
+      globals.eventSource.on(globals.event_types.CHAT_CHANGED, function () {
         logger.log('CHAT_CHANGED event triggered.');
 
         // 首先，像往常一样隐藏所有UI
@@ -1470,9 +1478,9 @@ function waitForCoreSystem() {
   console.log('AI助手扩展：检查核心系统状态...');
 
   // 检查必要的全局变量
-  var hasEventSource = typeof external_script_js_namespaceObject.eventSource !== 'undefined' && external_script_js_namespaceObject.eventSource && external_script_js_namespaceObject.eventSource.on;
-  var hasExtensionSettings = typeof external_extensions_js_namespaceObject.extension_settings !== 'undefined';
-  var hasSaveSettingsDebounced = typeof external_script_js_namespaceObject.saveSettingsDebounced !== 'undefined';
+  var hasEventSource = typeof window.eventSource !== 'undefined' && window.eventSource && window.eventSource.on;
+  var hasExtensionSettings = typeof window.extension_settings !== 'undefined';
+  var hasSaveSettingsDebounced = typeof window.saveSettingsDebounced !== 'undefined';
   console.log('AI助手扩展：系统检查结果', {
     hasEventSource: hasEventSource,
     hasExtensionSettings: hasExtensionSettings,

@@ -91,7 +91,7 @@ export class SettingsPanel {
         optionsEnabledCheckbox.addEventListener('change', () => {
             this.settings.optionsGenEnabled = optionsEnabledCheckbox.checked;
             this.optionsSettingsContainer.style.display = this.settings.optionsGenEnabled ? 'block' : 'none';
-            saveSettingsDebounced();
+            window.saveSettingsDebounced();
         });
         const optionsEnabledText = createElement('span', {}, '启用回复选项生成');
         optionsEnabledLabel.append(optionsEnabledCheckbox, optionsEnabledText);
@@ -106,7 +106,7 @@ export class SettingsPanel {
         debugCheckbox.checked = this.settings.debug;
         debugCheckbox.addEventListener('change', () => {
             this.settings.debug = debugCheckbox.checked;
-            saveSettingsDebounced();
+            window.saveSettingsDebounced();
         });
         const debugText = createElement('span', {}, '启用调试日志');
         debugLabel.append(debugCheckbox, debugText);
@@ -148,7 +148,7 @@ export class SettingsPanel {
         apiKeyInput.value = this.settings.optionsApiKey;
         apiKeyInput.addEventListener('input', () => {
             this.settings.optionsApiKey = apiKeyInput.value;
-            saveSettingsDebounced();
+            window.saveSettingsDebounced();
         });
         this.optionsSettingsContainer.appendChild(apiKeyLabel);
         this.optionsSettingsContainer.appendChild(apiKeyInput);
@@ -165,7 +165,7 @@ export class SettingsPanel {
         modelInput.value = this.settings.optionsApiModel;
         modelInput.addEventListener('input', () => {
             this.settings.optionsApiModel = modelInput.value;
-            saveSettingsDebounced();
+            window.saveSettingsDebounced();
         });
         this.optionsSettingsContainer.appendChild(modelLabel);
         this.optionsSettingsContainer.appendChild(modelInput);
@@ -183,7 +183,7 @@ export class SettingsPanel {
         baseUrlInput.value = this.settings.optionsBaseUrl;
         baseUrlInput.addEventListener('input', () => {
             this.settings.optionsBaseUrl = baseUrlInput.value;
-            saveSettingsDebounced();
+            window.saveSettingsDebounced();
         });
         this.baseUrlGroup.appendChild(baseUrlLabel);
         this.baseUrlGroup.appendChild(baseUrlInput);
@@ -193,7 +193,7 @@ export class SettingsPanel {
         apiTypeSelect.addEventListener('change', () => {
             this.settings.optionsApiType = apiTypeSelect.value;
             this.baseUrlGroup.style.display = this.settings.optionsApiType === API_TYPES.OPENAI ? 'block' : 'none';
-            saveSettingsDebounced();
+            window.saveSettingsDebounced();
         });
 
         // 初始状态
@@ -243,7 +243,7 @@ export class SettingsPanel {
                 this.updateUIFromSettings();
 
                 // 保存设置
-                saveSettingsDebounced();
+                window.saveSettingsDebounced();
 
                 // 显示成功消息
                 console.log('设置已重置为默认值');

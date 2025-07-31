@@ -1,4 +1,3 @@
-import { extension_settings } from '../../../extensions.js';
 import { MODULE } from './constants.js';
 import { API_TYPES, DEFAULT_MODELS, DEFAULT_BASE_URLS } from './constants.js';
 
@@ -70,6 +69,7 @@ export const defaultSettings = {
  * 获取此扩展的设置。
  */
 export function getSettings() {
+    const extension_settings = window.extension_settings;
     if (extension_settings[MODULE] === undefined) {
         extension_settings[MODULE] = structuredClone(defaultSettings);
     }
@@ -85,6 +85,7 @@ export function getSettings() {
  * 重置所有设置为默认值
  */
 export function resetSettings() {
+    const extension_settings = window.extension_settings;
     extension_settings[MODULE] = structuredClone(defaultSettings);
     return extension_settings[MODULE];
 } 
