@@ -145,6 +145,15 @@ function injectGlobalStyles() {
             66%, 100% { content: '...'; }
         }
 
+        /* 提示文字渐变样式 */
+        .typing-indicator-text {
+            background: linear-gradient(90deg, #555, #aaa, #555); /* 应用渐变 */
+            -webkit-background-clip: text; /* 裁剪背景到文字 */
+            background-clip: text; /* 标准属性 */
+            color: transparent; /* 使文字本身透明，显示背景 */
+            display: inline-block; /* 确保背景可以应用和裁剪 */
+        }
+
         /* 选项按钮样式 */
         #ti-options-container {
             width: 100%;
@@ -853,8 +862,9 @@ function initializeTypingIndicator() {
             const isLastFromAI = isLastMessageFromAI();
             const optionsContainer = document.getElementById('ti-options-container');
 
-            if (isLastFromAI && !optionsContainer && !OptionsGenerator.isGenerating) {
-                logger.log('条件满足，准备自动生成选项。');
+            // 移除 !OptionsGenerator.isGenerating 条件，让 generateOptions 内部的检查来处理
+            if (isLastFromAI && !optionsContainer) {
+                logger.log('条件满足 (AI消息且无选项)，准备自动生成选项。');
                 OptionsGenerator.generateOptions();
             } else {
                 logger.log('不满足自动生成条件:', { isLastFromAI, hasOptionsContainer: !!optionsContainer, isGenerating: OptionsGenerator.isGenerating });
