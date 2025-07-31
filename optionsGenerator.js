@@ -352,17 +352,12 @@ function analyzeUserBehavior() {
 
 // ========== 修改建议点击、输入等行为 ========== //
 // 在 handleSuggestionClick 处埋点
-const oldHandleSuggestionClick = typeof handleSuggestionClick === 'function' ? handleSuggestionClick : null;
 async function handleSuggestionClick(text, analysisData, isAuto = false) {
-    // 埋点
     logUserAction('select_suggestion', {
         suggestionText: text,
         ...(analysisData || {})
     });
     tryAnalyzeUserProfile();
-    if (oldHandleSuggestionClick) {
-        return await oldHandleSuggestionClick(text, analysisData, isAuto);
-    }
     // 兼容UI，支持自动/手动/全自动
     const sendForm = document.getElementById('send_form');
     if (!sendForm || !suggestions || suggestions.length === 0) return;
@@ -409,15 +404,11 @@ async function handleSuggestionClick(text, analysisData, isAuto = false) {
     }
 }
 // 在 sendSuggestion 处埋点（用户手动输入发送）
-const oldSendSuggestion = typeof sendSuggestion === 'function' ? sendSuggestion : null;
 async function sendSuggestion(text, isAuto = false) {
     if (!isAuto) {
         logUserAction('manual_input', { inputText: text });
     }
     tryAnalyzeUserProfile();
-    if (oldSendSuggestion) {
-        return await oldSendSuggestion(text, isAuto);
-    }
     // 兼容自动/手动发送
     const textarea = document.querySelector('#send_textarea, .send_textarea');
     const sendButton = document.querySelector('#send_but, .send_but, button[onclick*="send"], button[onclick*="Send"]');
