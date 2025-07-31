@@ -494,7 +494,7 @@ async function generateOptions() {
         }
         // 解析建议
         const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
-        await renderSuggestions(suggestions, analysisData);
+        await displayOptions(suggestions);
         hideGeneratingUI();
     } catch (error) {
         logger.error('生成选项时出错:', error);
