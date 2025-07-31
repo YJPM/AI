@@ -35,7 +35,6 @@ const logger = {
  * @property {string} optionsApiKey - API密钥
  * @property {string} optionsApiModel - 使用的模型
  * @property {string} optionsBaseUrl - API基础URL (仅限OpenAI)
- * @property {number} optionsCount - 生成选项数量
  * @property {string} optionsTemplate - 选项生成提示模板
  */
 
@@ -54,7 +53,6 @@ const defaultSettings = {
     optionsApiKey: '',
     optionsApiModel: 'gpt-4o-mini',
     optionsBaseUrl: 'https://api.openai.com/v1',
-    optionsCount: 3,
     optionsTemplate: `
 # 角色
 你是一位拥有顶级创作能力的AI叙事导演。
@@ -128,6 +126,12 @@ function injectGlobalStyles() {
         /* 核心指示器样式修复 */
         #typing_indicator.typing_indicator {
             opacity: 1 !important; /* 强制覆盖主机应用可能存在的透明度样式，以修复不透明CSS仍然半透明的问题。 */
+            background-color: transparent !important; /* 强制透明背景 */
+        }
+
+        /* 确保所有提示容器都是透明背景 */
+        .typing_indicator {
+            background-color: transparent !important;
         }
 
         /* 省略号动画 */
@@ -370,49 +374,7 @@ function addExtensionSettings(settings) {
     baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
 
 
-    // 选项数量
-    const countLabel = document.createElement('label');
-    countLabel.textContent = '选项数量:';
-    countLabel.style.display = 'block';
-    countLabel.style.marginTop = '10px';
-    const countInput = document.createElement('input');
-    countInput.type = 'number';
-    countInput.min = 1;
-    countInput.max = 10;
-    countInput.value = settings.optionsCount;
-    countInput.style.width = '100%';
-    countInput.addEventListener('input', () => {
-        settings.optionsCount = parseInt(countInput.value) || 3;
-        saveSettingsDebounced();
-    });
-    optionsSettingsContainer.appendChild(countLabel);
-    optionsSettingsContainer.appendChild(countInput);
 
-    // 提示模板
-    const templateLabel = document.createElement('label');
-    templateLabel.textContent = '提示模板:';
-    templateLabel.style.display = 'block';
-    templateLabel.style.marginTop = '10px';
-    const templateInput = document.createElement('textarea');
-    templateInput.value = settings.optionsTemplate;
-    templateInput.placeholder = '输入提示模板';
-    templateInput.style.width = '100%';
-    templateInput.style.height = '150px';
-    templateInput.style.fontFamily = 'monospace';
-    templateInput.addEventListener('input', () => {
-        settings.optionsTemplate = templateInput.value;
-        saveSettingsDebounced();
-    });
-
-    const templateHint = document.createElement('small');
-    templateHint.textContent = '使用 {{context}} 表示对话历史, {{user_input}} 表示当前输入, {{char_card}} 表示角色卡, {{world_info}} 表示世界设定。';
-    templateHint.style.display = 'block';
-    templateHint.style.marginTop = '4px';
-    templateHint.style.color = 'var(--text_color_secondary)';
-
-    optionsSettingsContainer.appendChild(templateLabel);
-    optionsSettingsContainer.appendChild(templateInput);
-    optionsSettingsContainer.appendChild(templateHint);
 
     optionsContainer.appendChild(optionsSettingsContainer);
     inlineDrawerContent.append(optionsContainer);
@@ -741,9 +703,10 @@ const OptionsGenerator = {
     showGeneratingUI(message, duration = null) {
         logger.log(`showGeneratingUI: 尝试显示提示: "${message}"`);
         let container = document.getElementById('ti-loading-container');
-        const sendForm = document.getElementById('send_form');
-        if (!sendForm) {
-            logger.log('showGeneratingUI: send_form 未找到，无法显示。');
+        // 改为附加到 chat，与 showTypingIndicator 保持一致
+        const chat = document.getElementById('chat');
+        if (!chat) {
+            logger.log('showGeneratingUI: chat 未找到，无法显示。');
             return;
         }
 
@@ -753,8 +716,9 @@ const OptionsGenerator = {
             container.id = 'ti-loading-container';
             // 恢复原始 class，不再添加 ai-floating-indicator
             container.classList.add('typing_indicator');
-            sendForm.insertAdjacentElement('beforebegin', container); // 插入到 send_form 之前
-            logger.log('showGeneratingUI: 容器已插入到 send_form 之前。');
+            // 改为附加到 chat，与 showTypingIndicator 保持一致
+            chat.appendChild(container);
+            logger.log('showGeneratingUI: 容器已附加到 chat。');
         } else {
             logger.log('showGeneratingUI: 找到现有容器，更新内容并尝试显示。');
         }
@@ -767,9 +731,8 @@ const OptionsGenerator = {
                 ${animationHtml}
             </div>
         `;
-        // 不再强制通过 JS 设置 display，让 CSS 控制
-        // container.style.display = 'flex';
-        logger.log(`showGeneratingUI: 最终容器 display 属性 (由JS控制): ${container.style.display}`);
+        container.style.display = 'flex';
+        logger.log(`showGeneratingUI: 最终容器 display 属性: ${container.style.display}`);
 
         if (duration) {
             logger.log(`showGeneratingUI: 将在 ${duration}ms 后隐藏提示。`);
