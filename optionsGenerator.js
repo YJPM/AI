@@ -2,24 +2,94 @@ import { getSettings } from './settings.js';
 import { logger } from './logger.js';
 
 function getUserInput() {
-    // 这里需要根据实际情况实现
-    // return ...
+    // 获取输入框内容
+    const textarea = document.querySelector('#send_textarea, .send_textarea');
+    return textarea ? textarea.value.trim() : '';
 }
 
 function getCharacterCard() {
-    // ...如有需要实现...
+    // 获取角色卡信息
+    try {
+        if (typeof window.getCharacters === 'function') {
+            const characters = window.getCharacters();
+            const currentCharId = window.characterId;
+            if (characters && currentCharId) {
+                const character = characters.find(c => c.avatar === currentCharId);
+                return character ? character.description || character.name : '';
+            }
+        }
+        return '';
+    } catch (error) {
+        logger.error('获取角色卡信息失败:', error);
+        return '';
+    }
 }
 
 function getWorldInfo() {
-    // ...如有需要实现...
+    // 获取世界设定信息
+    try {
+        if (typeof window.getLorebooks === 'function') {
+            const lorebooks = window.getLorebooks();
+            if (lorebooks && lorebooks.length > 0) {
+                return lorebooks.map(lb => lb.entries?.map(entry => entry.content).join('\n')).join('\n\n');
+            }
+        }
+        return '';
+    } catch (error) {
+        logger.error('获取世界设定信息失败:', error);
+        return '';
+    }
 }
 
 function getContextForAPI() {
-    // ...如有需要实现...
+    // 迁移自 index.js 的 DOM 提取逻辑
+    try {
+        const messageElements = document.querySelectorAll('#chat .mes');
+        const messages = [];
+        messageElements.forEach((el) => {
+            const contentEl = el.querySelector('.mes_text');
+            if (contentEl) {
+                let role = 'system';
+                const isUserAttr = el.getAttribute('is_user');
+                if (isUserAttr === 'true') {
+                    role = 'user';
+                } else if (isUserAttr === 'false') {
+                    role = 'assistant';
+                }
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = contentEl.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+                const content = (tempDiv.textContent || tempDiv.innerText || '').trim();
+                if (content && (role === 'user' || role === 'assistant')) {
+                    messages.push({ role, content });
+                }
+            }
+        });
+        // 只取最后20条
+        return messages.slice(-20);
+    } catch (error) {
+        logger.error('getContextForAPI 解析失败:', error);
+        return [];
+    }
 }
 
 function transformMessagesForGemini(messages) {
-    // ...如有需要实现...
+    // Gemini API 需要 user/model 角色交替
+    const contents = [];
+    let lastRole = '';
+    messages.forEach(msg => {
+        const currentRole = msg.role === 'assistant' ? 'model' : 'user';
+        if (currentRole === 'user' && lastRole === 'user' && contents.length > 0) {
+            contents[contents.length - 1].parts[0].text += `\n\n${msg.content}`;
+        } else {
+            contents.push({ role: currentRole, parts: [{ text: msg.content }] });
+        }
+        lastRole = currentRole;
+    });
+    // 最后一条必须是 user
+    if (contents.length > 0 && contents[contents.length - 1].role !== 'user') {
+        contents.push({ role: 'user', parts: [{text: '(继续)'}]});
+    }
+    return contents;
 }
 
 function parseOptions(content) {
