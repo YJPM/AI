@@ -60,7 +60,11 @@ var defaultSettings = {
  * 获取此扩展的设置。
  */
 function getSettings() {
-  var extension_settings = window.extension_settings;
+  var extension_settings = window.extension_settings || window.extensionSettings;
+  if (!extension_settings) {
+    console.error('AI助手扩展：无法找到extension_settings全局变量');
+    return defaultSettings;
+  }
   if (extension_settings[MODULE] === undefined) {
     extension_settings[MODULE] = structuredClone(defaultSettings);
   }
@@ -76,7 +80,11 @@ function getSettings() {
  * 重置所有设置为默认值
  */
 function resetSettings() {
-  var extension_settings = window.extension_settings;
+  var extension_settings = window.extension_settings || window.extensionSettings;
+  if (!extension_settings) {
+    console.error('AI助手扩展：无法找到extension_settings全局变量');
+    return defaultSettings;
+  }
   extension_settings[MODULE] = structuredClone(defaultSettings);
   return extension_settings[MODULE];
 }
@@ -1002,7 +1010,7 @@ var SettingsPanel = /*#__PURE__*/function () {
       optionsEnabledCheckbox.addEventListener('change', function () {
         _this.settings.optionsGenEnabled = optionsEnabledCheckbox.checked;
         _this.optionsSettingsContainer.style.display = _this.settings.optionsGenEnabled ? 'block' : 'none';
-        window.saveSettingsDebounced();
+        (window.saveSettingsDebounced || window.saveSettings)();
       });
       var optionsEnabledText = createElement('span', {}, '启用回复选项生成');
       optionsEnabledLabel.append(optionsEnabledCheckbox, optionsEnabledText);
@@ -1021,7 +1029,7 @@ var SettingsPanel = /*#__PURE__*/function () {
       debugCheckbox.checked = this.settings.debug;
       debugCheckbox.addEventListener('change', function () {
         _this.settings.debug = debugCheckbox.checked;
-        window.saveSettingsDebounced();
+        (window.saveSettingsDebounced || window.saveSettings)();
       });
       var debugText = createElement('span', {}, '启用调试日志');
       debugLabel.append(debugCheckbox, debugText);
@@ -1070,7 +1078,7 @@ var SettingsPanel = /*#__PURE__*/function () {
       apiKeyInput.value = this.settings.optionsApiKey;
       apiKeyInput.addEventListener('input', function () {
         _this.settings.optionsApiKey = apiKeyInput.value;
-        window.saveSettingsDebounced();
+        (window.saveSettingsDebounced || window.saveSettings)();
       });
       this.optionsSettingsContainer.appendChild(apiKeyLabel);
       this.optionsSettingsContainer.appendChild(apiKeyInput);
@@ -1092,7 +1100,7 @@ var SettingsPanel = /*#__PURE__*/function () {
       modelInput.value = this.settings.optionsApiModel;
       modelInput.addEventListener('input', function () {
         _this.settings.optionsApiModel = modelInput.value;
-        window.saveSettingsDebounced();
+        (window.saveSettingsDebounced || window.saveSettings)();
       });
       this.optionsSettingsContainer.appendChild(modelLabel);
       this.optionsSettingsContainer.appendChild(modelInput);
@@ -1117,7 +1125,7 @@ var SettingsPanel = /*#__PURE__*/function () {
       baseUrlInput.value = this.settings.optionsBaseUrl;
       baseUrlInput.addEventListener('input', function () {
         _this.settings.optionsBaseUrl = baseUrlInput.value;
-        window.saveSettingsDebounced();
+        (window.saveSettingsDebounced || window.saveSettings)();
       });
       this.baseUrlGroup.appendChild(baseUrlLabel);
       this.baseUrlGroup.appendChild(baseUrlInput);
@@ -1127,7 +1135,7 @@ var SettingsPanel = /*#__PURE__*/function () {
       apiTypeSelect.addEventListener('change', function () {
         _this.settings.optionsApiType = apiTypeSelect.value;
         _this.baseUrlGroup.style.display = _this.settings.optionsApiType === API_TYPES.OPENAI ? 'block' : 'none';
-        window.saveSettingsDebounced();
+        (window.saveSettingsDebounced || window.saveSettings)();
       });
 
       // 初始状态
@@ -1178,7 +1186,7 @@ var SettingsPanel = /*#__PURE__*/function () {
           _this2.updateUIFromSettings();
 
           // 保存设置
-          window.saveSettingsDebounced();
+          (window.saveSettingsDebounced || window.saveSettings)();
 
           // 显示成功消息
           console.log('设置已重置为默认值');
@@ -1316,14 +1324,31 @@ var AIAssistantExtension = /*#__PURE__*/function () {
   return src_createClass(AIAssistantExtension, [{
     key: "getSillyTavernGlobals",
     value: function getSillyTavernGlobals() {
+      // 尝试不同的全局变量名称
+      var eventSource = window.eventSource || window.EventSource;
+      var event_types = window.event_types || window.eventTypes || window.EVENT_TYPES;
+      var extension_settings = window.extension_settings || window.extensionSettings;
+      var saveSettingsDebounced = window.saveSettingsDebounced || window.saveSettings;
+      var name2 = window.name2;
+      var selected_group = window.selected_group || window.selectedGroup;
+      var isStreamingEnabled = window.isStreamingEnabled;
+      console.log('AI助手扩展：获取到的全局变量', {
+        eventSource: !!eventSource,
+        event_types: !!event_types,
+        extension_settings: !!extension_settings,
+        saveSettingsDebounced: !!saveSettingsDebounced,
+        name2: !!name2,
+        selected_group: !!selected_group,
+        isStreamingEnabled: !!isStreamingEnabled
+      });
       return {
-        name2: window.name2,
-        eventSource: window.eventSource,
-        event_types: window.event_types,
-        isStreamingEnabled: window.isStreamingEnabled,
-        saveSettingsDebounced: window.saveSettingsDebounced,
-        extension_settings: window.extension_settings,
-        selected_group: window.selected_group
+        name2: name2,
+        eventSource: eventSource,
+        event_types: event_types,
+        isStreamingEnabled: isStreamingEnabled,
+        saveSettingsDebounced: saveSettingsDebounced,
+        extension_settings: extension_settings,
+        selected_group: selected_group
       };
     }
 
@@ -1477,22 +1502,54 @@ var AIAssistantExtension = /*#__PURE__*/function () {
 function waitForCoreSystem() {
   console.log('AI助手扩展：检查核心系统状态...');
 
+  // 检查所有可能的全局变量
+  var globalVars = {
+    eventSource: window.eventSource,
+    event_types: window.event_types,
+    extension_settings: window.extension_settings,
+    saveSettingsDebounced: window.saveSettingsDebounced,
+    // 可能的替代名称
+    eventSourceAlt: window.EventSource,
+    extensionSettingsAlt: window.extensionSettings,
+    saveSettingsAlt: window.saveSettings,
+    // 检查SillyTavern特有的全局变量
+    sillyTavern: window.SillyTavern,
+    st: window.st,
+    api: window.api,
+    // 检查其他可能的变量
+    name2: window.name2,
+    selected_group: window.selected_group,
+    isStreamingEnabled: window.isStreamingEnabled
+  };
+  console.log('AI助手扩展：所有全局变量检查结果', globalVars);
+
   // 检查必要的全局变量
   var hasEventSource = typeof window.eventSource !== 'undefined' && window.eventSource && window.eventSource.on;
   var hasExtensionSettings = typeof window.extension_settings !== 'undefined';
   var hasSaveSettingsDebounced = typeof window.saveSettingsDebounced !== 'undefined';
+
+  // 尝试替代名称
+  var hasEventSourceAlt = typeof window.EventSource !== 'undefined' && window.EventSource && window.EventSource.on;
+  var hasExtensionSettingsAlt = typeof window.extensionSettings !== 'undefined';
+  var hasSaveSettingsAlt = typeof window.saveSettings !== 'undefined';
   console.log('AI助手扩展：系统检查结果', {
     hasEventSource: hasEventSource,
     hasExtensionSettings: hasExtensionSettings,
-    hasSaveSettingsDebounced: hasSaveSettingsDebounced
+    hasSaveSettingsDebounced: hasSaveSettingsDebounced,
+    hasEventSourceAlt: hasEventSourceAlt,
+    hasExtensionSettingsAlt: hasExtensionSettingsAlt,
+    hasSaveSettingsAlt: hasSaveSettingsAlt
   });
-  if (hasEventSource && hasExtensionSettings && hasSaveSettingsDebounced) {
+
+  // 如果找到任何可用的全局变量，就尝试初始化
+  if ((hasEventSource || hasEventSourceAlt) && (hasExtensionSettings || hasExtensionSettingsAlt) && (hasSaveSettingsDebounced || hasSaveSettingsAlt)) {
     console.log('AI助手扩展：核心事件系统已就绪，初始化插件。');
     var extension = AIAssistantExtension.getInstance();
     extension.initialize();
   } else {
     console.log('AI助手扩展：等待核心事件系统加载...');
-    setTimeout(waitForCoreSystem, 500); // 增加延迟时间
+    // 增加延迟时间，避免过于频繁的检查
+    setTimeout(waitForCoreSystem, 1000);
   }
 }
 

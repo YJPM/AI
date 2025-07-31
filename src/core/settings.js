@@ -69,7 +69,12 @@ export const defaultSettings = {
  * 获取此扩展的设置。
  */
 export function getSettings() {
-    const extension_settings = window.extension_settings;
+    const extension_settings = window.extension_settings || window.extensionSettings;
+    if (!extension_settings) {
+        console.error('AI助手扩展：无法找到extension_settings全局变量');
+        return defaultSettings;
+    }
+    
     if (extension_settings[MODULE] === undefined) {
         extension_settings[MODULE] = structuredClone(defaultSettings);
     }
@@ -85,7 +90,12 @@ export function getSettings() {
  * 重置所有设置为默认值
  */
 export function resetSettings() {
-    const extension_settings = window.extension_settings;
+    const extension_settings = window.extension_settings || window.extensionSettings;
+    if (!extension_settings) {
+        console.error('AI助手扩展：无法找到extension_settings全局变量');
+        return defaultSettings;
+    }
+    
     extension_settings[MODULE] = structuredClone(defaultSettings);
     return extension_settings[MODULE];
 } 

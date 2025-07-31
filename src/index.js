@@ -22,14 +22,33 @@ class AIAssistantExtension {
      * 获取SillyTavern的全局变量
      */
     getSillyTavernGlobals() {
+        // 尝试不同的全局变量名称
+        const eventSource = window.eventSource || window.EventSource;
+        const event_types = window.event_types || window.eventTypes || window.EVENT_TYPES;
+        const extension_settings = window.extension_settings || window.extensionSettings;
+        const saveSettingsDebounced = window.saveSettingsDebounced || window.saveSettings;
+        const name2 = window.name2;
+        const selected_group = window.selected_group || window.selectedGroup;
+        const isStreamingEnabled = window.isStreamingEnabled;
+        
+        console.log('AI助手扩展：获取到的全局变量', {
+            eventSource: !!eventSource,
+            event_types: !!event_types,
+            extension_settings: !!extension_settings,
+            saveSettingsDebounced: !!saveSettingsDebounced,
+            name2: !!name2,
+            selected_group: !!selected_group,
+            isStreamingEnabled: !!isStreamingEnabled
+        });
+        
         return {
-            name2: window.name2,
-            eventSource: window.eventSource,
-            event_types: window.event_types,
-            isStreamingEnabled: window.isStreamingEnabled,
-            saveSettingsDebounced: window.saveSettingsDebounced,
-            extension_settings: window.extension_settings,
-            selected_group: window.selected_group,
+            name2,
+            eventSource,
+            event_types,
+            isStreamingEnabled,
+            saveSettingsDebounced,
+            extension_settings,
+            selected_group,
         };
     }
 
@@ -181,24 +200,58 @@ class AIAssistantExtension {
 function waitForCoreSystem() {
     console.log('AI助手扩展：检查核心系统状态...');
     
+    // 检查所有可能的全局变量
+    const globalVars = {
+        eventSource: window.eventSource,
+        event_types: window.event_types,
+        extension_settings: window.extension_settings,
+        saveSettingsDebounced: window.saveSettingsDebounced,
+        // 可能的替代名称
+        eventSourceAlt: window.EventSource,
+        extensionSettingsAlt: window.extensionSettings,
+        saveSettingsAlt: window.saveSettings,
+        // 检查SillyTavern特有的全局变量
+        sillyTavern: window.SillyTavern,
+        st: window.st,
+        api: window.api,
+        // 检查其他可能的变量
+        name2: window.name2,
+        selected_group: window.selected_group,
+        isStreamingEnabled: window.isStreamingEnabled
+    };
+    
+    console.log('AI助手扩展：所有全局变量检查结果', globalVars);
+    
     // 检查必要的全局变量
     const hasEventSource = typeof window.eventSource !== 'undefined' && window.eventSource && window.eventSource.on;
     const hasExtensionSettings = typeof window.extension_settings !== 'undefined';
     const hasSaveSettingsDebounced = typeof window.saveSettingsDebounced !== 'undefined';
     
+    // 尝试替代名称
+    const hasEventSourceAlt = typeof window.EventSource !== 'undefined' && window.EventSource && window.EventSource.on;
+    const hasExtensionSettingsAlt = typeof window.extensionSettings !== 'undefined';
+    const hasSaveSettingsAlt = typeof window.saveSettings !== 'undefined';
+    
     console.log('AI助手扩展：系统检查结果', {
         hasEventSource,
         hasExtensionSettings,
-        hasSaveSettingsDebounced
+        hasSaveSettingsDebounced,
+        hasEventSourceAlt,
+        hasExtensionSettingsAlt,
+        hasSaveSettingsAlt
     });
 
-    if (hasEventSource && hasExtensionSettings && hasSaveSettingsDebounced) {
+    // 如果找到任何可用的全局变量，就尝试初始化
+    if ((hasEventSource || hasEventSourceAlt) && 
+        (hasExtensionSettings || hasExtensionSettingsAlt) && 
+        (hasSaveSettingsDebounced || hasSaveSettingsAlt)) {
         console.log('AI助手扩展：核心事件系统已就绪，初始化插件。');
         const extension = AIAssistantExtension.getInstance();
         extension.initialize();
     } else {
         console.log('AI助手扩展：等待核心事件系统加载...');
-        setTimeout(waitForCoreSystem, 500); // 增加延迟时间
+        // 增加延迟时间，避免过于频繁的检查
+        setTimeout(waitForCoreSystem, 1000);
     }
 }
 
