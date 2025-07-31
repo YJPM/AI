@@ -396,14 +396,6 @@ async function handleSuggestionClick(text, analysisData, isAuto = false) {
         }
     }
 }
-async function handleSuggestionClick(text, analysisData, isAuto = false) {
-    await sendSuggestion(text, isAuto);
-    const settings = getSettings();
-    if (settings.enableDynamicDirector && analysisData) {
-        await logChoice(analysisData);
-    }
-}
-// 在 sendSuggestion 处埋点（用户手动输入发送）
 async function sendSuggestion(text, isAuto = false) {
     if (!isAuto) {
         logUserAction('manual_input', { inputText: text });
