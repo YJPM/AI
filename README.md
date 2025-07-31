@@ -14,68 +14,83 @@
 
 ## 项目架构
 
-### 目录结构
+### 现代化开发架构
+
+本项目采用现代化的开发架构，参考了 [SillyTavern Prompt Template](https://codeberg.org/zonde306/ST-Prompt-Template) 的项目结构：
+
 ```
 AI/
-├── index.js                 # 主入口文件
-├── manifest.json            # 扩展清单
-├── README.md               # 项目文档
-├── LICENSE                 # 许可证
-└── src/                    # 源代码目录
-    ├── config/             # 配置文件
-    │   └── constants.js    # 常量定义
-    ├── core/               # 核心功能
-    │   ├── settings.js     # 设置管理
-    │   ├── api-manager.js  # API管理
-    │   ├── context-manager.js # 上下文管理
-    │   └── event-manager.js # 事件管理
-    ├── components/         # 组件
-    │   ├── options-generator.js # 选项生成器
-    │   └── ui-manager.js   # UI管理
-    └── utils/              # 工具类
-        └── logger.js       # 日志工具
+├── src/                    # 源代码目录
+│   ├── config/            # 配置文件
+│   │   └── constants.js   # 常量定义
+│   ├── core/              # 核心功能
+│   │   ├── settings.js    # 设置管理
+│   │   ├── api-manager.js # API管理
+│   │   ├── context-manager.js # 上下文管理
+│   │   └── event-manager.js # 事件管理
+│   ├── components/        # 组件
+│   │   ├── options-generator.js # 选项生成器
+│   │   └── ui-manager.js  # UI管理
+│   ├── utils/             # 工具类
+│   │   └── logger.js      # 日志工具
+│   └── index.js           # 主入口文件
+├── dist/                  # 编译输出目录
+├── package.json           # 项目配置
+├── webpack.config.js      # Webpack配置
+├── babel.config.json      # Babel配置
+├── manifest.json          # 扩展清单
+├── README.md              # 项目文档
+└── LICENSE                # 许可证
 ```
 
-### 核心模块
+### 技术栈
 
-#### 1. 配置管理 (`src/config/constants.js`)
-- 定义所有常量和默认设置
-- 集中管理API端点、UI配置、事件类型等
+- **构建工具**: Webpack + Babel
+- **模块系统**: ES6 Modules
+- **代码转换**: Babel (ES6+ → ES5)
+- **开发体验**: 热重载、源码映射
 
-#### 2. 设置管理 (`src/core/settings.js`)
-- 处理扩展设置的加载、保存和验证
-- 提供设置更新和重置功能
+### 开发优势
 
-#### 3. API管理 (`src/core/api-manager.js`)
-- 支持多种API提供商（OpenAI、Gemini）
-- 统一的API调用接口
-- 错误处理和重试机制
+1. **现代化开发**: 使用ES6+语法，通过构建工具编译成兼容代码
+2. **模块化设计**: 清晰的代码组织结构，易于维护和扩展
+3. **开发体验**: 支持热重载、源码映射等现代开发特性
+4. **兼容性**: 编译后的代码兼容所有浏览器
 
-#### 4. 上下文管理 (`src/core/context-manager.js`)
-- 获取聊天上下文、角色信息、世界设定
-- 处理模板占位符替换
-- 检查消息来源
+## 开发指南
 
-#### 5. 事件管理 (`src/core/event-manager.js`)
-- 统一的事件监听和分发
-- 自动触发选项生成
-- 事件清理机制
+### 环境要求
 
-#### 6. 选项生成器 (`src/components/options-generator.js`)
-- 生成和解析回复选项
-- 支持多种解析格式（【】、列表等）
-- 状态管理和错误处理
+- Node.js >= 14.0.0
+- npm >= 6.0.0
 
-#### 7. UI管理 (`src/components/ui-manager.js`)
-- 打字指示器显示/隐藏
-- 选项按钮创建和动画
-- 设置界面生成
-- 样式注入和管理
+### 安装依赖
 
-#### 8. 日志工具 (`src/utils/logger.js`)
-- 分级日志记录
-- 性能监控
-- 调试模式支持
+```bash
+npm install
+```
+
+### 开发模式
+
+```bash
+npm run dev
+```
+
+这将启动开发模式，监听文件变化并自动重新编译。
+
+### 生产构建
+
+```bash
+npm run build
+```
+
+这将生成优化后的生产代码到 `dist/` 目录。
+
+### 清理构建
+
+```bash
+npm run clean
+```
 
 ## 使用方法
 
@@ -123,44 +138,6 @@ AI/
 - `{{world_info}}`: 世界设定信息
 - `{{context}}`: 对话上下文
 
-## 开发指南
-
-### 添加新的API提供商
-1. 在 `src/core/api-manager.js` 中创建新的Provider类
-2. 实现 `generate` 方法
-3. 在 `APIManager` 构造函数中注册
-
-### 添加新的UI组件
-1. 在 `src/components/` 中创建新的组件类
-2. 在 `src/components/ui-manager.js` 中集成
-3. 添加相应的样式定义
-
-### 添加新的事件处理
-1. 在 `src/config/constants.js` 中定义事件类型
-2. 在 `src/core/event-manager.js` 中添加事件处理逻辑
-
-## 技术特点
-
-### 1. 模块化设计
-- 清晰的职责分离
-- 易于维护和扩展
-- 松耦合的组件架构
-
-### 2. 错误处理
-- 完善的异常捕获
-- 详细的错误日志
-- 优雅的降级处理
-
-### 3. 性能优化
-- 异步操作处理
-- 缓存机制
-- 按需加载
-
-### 4. 向后兼容
-- 保持原有API接口
-- 全局变量兼容
-- 渐进式升级
-
 ## 调试
 
 启用调试模式后，可以在浏览器控制台查看详细的日志信息：
@@ -180,3 +157,7 @@ MIT License
 ## 贡献
 
 欢迎提交Issue和Pull Request来改进这个扩展。
+
+## 参考项目
+
+本项目参考了 [SillyTavern Prompt Template](https://codeberg.org/zonde306/ST-Prompt-Template) 的项目架构，感谢其开源贡献。
