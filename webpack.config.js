@@ -1,48 +1,61 @@
 const path = require('path');
+const TerserPlugin = require('terser-webpack-plugin');
 
-module.exports = (env, argv) => {
-  const isProduction = argv.mode === 'production';
-  
-  return {
+const serverConfig = {
+    devtool: 'source-map',
+    target: 'browserslist',
     entry: './src/index.js',
     output: {
-      path: path.resolve(__dirname, 'dist'),
-      filename: 'index.js'
-    },
-    module: {
-      rules: [
-        {
-          test: /\.js$/,
-          exclude: /node_modules/,
-          use: {
-            loader: 'babel-loader',
-            options: {
-              presets: [
-                ['@babel/preset-env', {
-                  targets: {
-                    browsers: ['> 1%', 'last 2 versions', 'not dead']
-                  },
-                  useBuiltIns: 'usage',
-                  corejs: 3
-                }]
-              ]
-            }
-          }
-        }
-      ]
+        path: path.resolve('.', 'dist'),
+        filename: 'index.js',
+        libraryTarget: 'module',
+        libraryExport: 'default',
     },
     resolve: {
-      extensions: ['.js', '.json']
+        extensions: ['.js'],
     },
-    devtool: isProduction ? false : 'source-map',
+    module: {
+        rules: [
+            {
+                test: /\.js/,
+                exclude: /node_modules/,
+                options: {
+                    cacheDirectory: true,
+                    presets: [
+                        ['@babel/preset-env', { "modules": false }],
+                    ],
+                    sourceMaps: true,
+                },
+                loader: 'babel-loader',
+            },
+        ],
+    },
+    experiments: {
+        outputModule: true,
+    },
     optimization: {
-      minimize: isProduction
+        minimizer: [
+            new TerserPlugin({
+                extractComments: false,
+                terserOptions: {
+                    format: {
+                        comments: false,
+                    },
+                },
+            }),
+        ],
     },
-    externals: {
-      // 外部依赖，这些将由SillyTavern提供
-      'script.js': 'commonjs script.js',
-      'extensions.js': 'commonjs extensions.js',
-      'group-chats.js': 'commonjs group-chats.js'
-    }
-  };
-}; 
+    plugins: [],
+    externals: function({ context, request }, callback) {
+        if (request.startsWith('../../') || request.includes('libs/')) {
+            if(context.search(/(\/|\\)src\1/) > 0)
+                return callback(null, request.substring(3));
+            return callback(null, request);
+        } else if(request.startsWith('https://') || request.startsWith('http://')) {
+            return callback(null, request);
+        }
+        callback();
+    },
+};
+
+module.exports = [serverConfig]; 

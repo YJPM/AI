@@ -1,36 +1,36 @@
-/**
- * AI助手扩展 - 测试版本
- */
+import { init as typingInit, exit as typingExit } from './modules/typing-indicator';
+import { init as optionsInit, exit as optionsExit } from './modules/options-generator';
+import { init as settingsInit, exit as settingsExit } from './modules/settings';
 
-console.log('AI助手扩展开始加载...');
-
-// 简单的初始化函数
-function initializeExtension() {
-  console.log('AI助手扩展初始化完成');
-  
-  // 设置全局变量
-  window.AIAssistantExtension = {
-    initialized: true,
-    version: '1.0.0',
-    getStatus: function() {
-      return {
-        initialized: true,
-        version: '1.0.0'
-      };
-    }
-  };
-  
-  console.log('AI助手扩展已设置到全局变量');
-  
-  // 通知SillyTavern扩展已加载
-  if (window.eventSource && window.eventSource.emit) {
-    window.eventSource.emit('extension_loaded', 'AI助手');
-  }
+export async function init() {
+    await typingInit();
+    await optionsInit();
+    await settingsInit();
+    console.log('AI助手扩展初始化完成');
 }
 
-// 等待DOM加载完成后初始化
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeExtension);
-} else {
-  initializeExtension();
-} 
+export async function exit() {
+    await typingExit();
+    await optionsExit();
+    await settingsExit();
+    console.log('AI助手扩展已退出');
+}
+
+export const info = {
+    id: 'AI-Assistant',
+    name: 'AI助手',
+    description: '为SillyTavern提供打字指示器和智能回复选项生成功能',
+};
+
+const plugin = {
+    init,
+    exit,
+    info,
+};
+
+export default plugin;
+
+// jQuery初始化
+$(async () => {
+    await init();
+}); 
