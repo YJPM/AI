@@ -439,20 +439,25 @@ function showTypingIndicator(type, _args, dryRun) {
     </div>
 `;
 
-    const existingIndicator = document.getElementById('typing_indicator');
-    if (existingIndicator) {
-        existingIndicator.innerHTML = htmlContent;
-        return;
+    let typingIndicator = document.getElementById('typing_indicator');
+    if (typingIndicator) {
+        logger.log('showTypingIndicator: 找到现有指示器，更新内容并尝试显示。');
+        typingIndicator.innerHTML = htmlContent;
+        typingIndicator.style.display = 'flex'; // 确保可见
+    } else {
+        logger.log('showTypingIndicator: 未找到现有指示器，创建新指示器。');
+        typingIndicator = document.createElement('div');
+        typingIndicator.id = 'typing_indicator';
+        // 添加 typing_indicator 类以复用基本样式，添加 ai-floating-indicator 类以实现悬浮定位
+        typingIndicator.classList.add('typing_indicator', 'ai-floating-indicator');
+        typingIndicator.innerHTML = htmlContent;
+
+        // 直接附加到 body，不再是 chat，以便实现浮动定位
+        document.body.appendChild(typingIndicator);
+        logger.log('showTypingIndicator: 指示器已附加到 body。');
+        typingIndicator.style.display = 'flex'; // 确保可见
     }
-
-    const typingIndicator = document.createElement('div');
-    typingIndicator.id = 'typing_indicator';
-    // 添加 typing_indicator 类以复用基本样式，添加 ai-floating-indicator 类以实现悬浮定位
-    typingIndicator.classList.add('typing_indicator', 'ai-floating-indicator');
-    typingIndicator.innerHTML = htmlContent;
-
-    // 直接附加到 body，不再是 chat，以便实现浮动定位
-    document.body.appendChild(typingIndicator);
+    logger.log(`showTypingIndicator: 最终指示器 display 属性: ${typingIndicator.style.display}`);
 
     // 由于现在是固定定位，以下滚动逻辑不再需要
     // const chat = document.getElementById('chat');
@@ -504,6 +509,7 @@ function isLastMessageFromAI() {
 // 选项生成器对象
 const OptionsGenerator = {
     isGenerating: false,
+    isManuallyStopped: false, // 新增标志，用于判断是否手动中止
 
     // (DOM-based, v2) 获取API上下文，增加详细日志
     getContextForAPI() {
@@ -583,6 +589,9 @@ const OptionsGenerator = {
             logger.log('已在生成选项，跳过本次请求。');
             return;
         }
+
+        // 重置手动中止标志，确保每次生成都是新的判断
+        this.isManuallyStopped = false;
 
         const settings = getSettings();
         if (!settings.optionsGenEnabled || !settings.optionsApiKey) {
@@ -695,31 +704,38 @@ const OptionsGenerator = {
 
 
     showGeneratingUI(message, duration = null) {
+        logger.log(`showGeneratingUI: 尝试显示提示: "${message}"`);
         let container = document.getElementById('ti-loading-container');
         // 不再依赖 send_form，直接附加到 body
         // const sendForm = document.getElementById('send_form');
         // if (!sendForm) return;
 
         if (!container) {
+            logger.log('showGeneratingUI: 未找到现有容器，创建新容器。');
             container = document.createElement('div');
             container.id = 'ti-loading-container';
             // 添加 typing_indicator 类以复用基本样式，添加 ai-floating-indicator 类以实现悬浮定位
             container.classList.add('typing_indicator', 'ai-floating-indicator');
             document.body.appendChild(container); // 附加到 body 以实现固定定位
+            logger.log('showGeneratingUI: 容器已附加到 body。');
+        } else {
+            logger.log('showGeneratingUI: 找到现有容器，更新内容并尝试显示。');
         }
 
         // 统一内容结构，复用打字指示器的样式 (文本 + 省略号动画)
         container.innerHTML = `
-            <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
-                <div class="typing-indicator-text">${message}</div>
-                <div class="typing-ellipsis"></div>
-            </div>
-        `;
+                <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
+                    <div class="typing-indicator-text">${message}</div>
+                    <div class="typing-ellipsis"></div>
+                </div>
+            `;
         // 通过 JS 控制显示，覆盖 CSS 中的 display: none
         container.style.display = 'flex';
+        logger.log(`showGeneratingUI: 最终容器 display 属性: ${container.style.display}`);
 
 
         if (duration) {
+            logger.log(`showGeneratingUI: 将在 ${duration}ms 后隐藏提示。`);
             setTimeout(() => this.hideGeneratingUI(), duration);
         }
     },
@@ -727,6 +743,7 @@ const OptionsGenerator = {
     hideGeneratingUI() {
         const loadingContainer = document.getElementById('ti-loading-container');
         if (loadingContainer) {
+            logger.log('hideGeneratingUI: 隐藏提示。');
             // 简单隐藏，以便重复利用
             loadingContainer.style.display = 'none';
         }
@@ -784,12 +801,24 @@ function initializeTypingIndicator() {
     const hideIndicatorEvents = [event_types.GENERATION_STOPPED, event_types.GENERATION_ENDED, event_types.CHAT_CHANGED];
 
     showIndicatorEvents.forEach(e => eventSource.on(e, showTypingIndicator));
+    // 在手动中止时设置标志
+    eventSource.on(event_types.GENERATION_STOPPED, () => {
+        logger.log('GENERATION_STOPPED event triggered. 设置 isManuallyStopped 为 true。');
+        OptionsGenerator.isManuallyStopped = true;
+    });
     hideIndicatorEvents.forEach(e => eventSource.on(e, hideTypingIndicator));
 
     eventSource.on(event_types.GENERATION_ENDED, () => {
-        if (getSettings().optionsGenEnabled) {
+        logger.log('GENERATION_ENDED event triggered.', { isManuallyStopped: OptionsGenerator.isManuallyStopped, optionsGenEnabled: getSettings().optionsGenEnabled });
+        // 只有当选项生成功能启用且没有手动中止时才生成选项
+        if (getSettings().optionsGenEnabled && !OptionsGenerator.isManuallyStopped) {
+            logger.log('GENERATION_ENDED: 条件满足，触发选项生成。');
             OptionsGenerator.generateOptions();
+        } else {
+            logger.log('GENERATION_ENDED: 不满足选项生成条件，跳过。');
         }
+        // 无论是否生成选项，都重置标志，为下一次生成做准备
+        OptionsGenerator.isManuallyStopped = false;
     });
 
     eventSource.on(event_types.CHAT_CHANGED, () => {
