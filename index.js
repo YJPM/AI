@@ -71,8 +71,17 @@ const defaultSettings = {
 - 每个选项都必须用全角括号【】包裹。
 - **绝对禁止**包含任何序号、JSON、思考过程、解释或其他多余字符。
 
+# 当前用户输入
+{{user_input}}
+
+# 角色信息
+{{char_card}}
+
+# 世界设定
+{{world_info}}
+
 # 对话上下文
-[完整的上下文在上方消息中提供，请基于此进行创作]
+{{context}}
 
 # 开始执行导演任务，并输出你的最终选项列表：
 `.trim(),
@@ -508,6 +517,46 @@ const OptionsGenerator = {
     isGenerating: false,
     isManuallyStopped: false, // 新增标志，用于判断是否手动中止
 
+    // 获取当前用户输入
+    getUserInput() {
+        const textarea = document.querySelector('#send_textarea, .send_textarea');
+        return textarea ? textarea.value.trim() : '';
+    },
+
+    // 获取角色卡信息
+    getCharacterCard() {
+        try {
+            if (typeof window.getCharacters === 'function') {
+                const characters = window.getCharacters();
+                const currentCharId = window.characterId;
+                if (characters && currentCharId) {
+                    const character = characters.find(c => c.avatar === currentCharId);
+                    return character ? character.description || character.name : '';
+                }
+            }
+            return '';
+        } catch (error) {
+            logger.error('获取角色卡信息失败:', error);
+            return '';
+        }
+    },
+
+    // 获取世界设定信息
+    getWorldInfo() {
+        try {
+            if (typeof window.getLorebooks === 'function') {
+                const lorebooks = window.getLorebooks();
+                if (lorebooks && lorebooks.length > 0) {
+                    return lorebooks.map(lb => lb.entries?.map(entry => entry.content).join('\n')).join('\n\n');
+                }
+            }
+            return '';
+        } catch (error) {
+            logger.error('获取世界设定信息失败:', error);
+            return '';
+        }
+    },
+
     // (DOM-based, v2) 获取API上下文，增加详细日志
     getContextForAPI() {
         logger.log('从DOM获取API上下文 (属性模式, 增强日志)...');
@@ -605,9 +654,19 @@ const OptionsGenerator = {
                 throw new Error('无法获取聊天上下文');
             }
 
+            // 获取当前用户输入
+            const userInput = this.getUserInput();
+            
+            // 替换模板中的占位符
+            let processedTemplate = settings.optionsTemplate
+                .replace(/{{context}}/g, '对话历史已在上方消息中提供')
+                .replace(/{{user_input}}/g, userInput || '用户当前输入')
+                .replace(/{{char_card}}/g, this.getCharacterCard() || '角色信息')
+                .replace(/{{world_info}}/g, this.getWorldInfo() || '世界设定信息');
+
             const finalMessages = [
                 ...apiContext,
-                { role: 'user', content: settings.optionsTemplate }
+                { role: 'user', content: processedTemplate }
             ];
 
             let content = '';
