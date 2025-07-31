@@ -30,21 +30,6 @@ const legacyIndicatorTemplate = document.getElementById('typing_indicator_templa
  */
 
 /**
- * 获取此扩展的设置。
- */
-function getSettings() {
-    if (extension_settings[MODULE] === undefined) {
-        extension_settings[MODULE] = structuredClone(defaultSettings);
-    }
-    for (const key in defaultSettings) {
-        if (extension_settings[MODULE][key] === undefined) {
-            extension_settings[MODULE][key] = defaultSettings[key];
-        }
-    }
-    return extension_settings[MODULE];
-}
-
-/**
  * 应用固定样式
  */
 function applyBasicStyle() {
