@@ -106,13 +106,10 @@ function applyBasicStyle() {
         document.head.appendChild(styleTag);
     }
 
-    // 使用透明背景样式
+    // 恢复为原始透明背景样式，移除渐变和阴影
     styleTag.textContent = `
         .typing_indicator {
-            /* 更改为渐变背景 */
-            background: linear-gradient(90deg, #555, #aaa, #555);
-            border-radius: 16px; /* 胶囊形状 */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* 轻微阴影，增加立体感 */
+            background-color: transparent;
             padding: 8px 16px;
             margin: 8px auto;
             width: fit-content;
@@ -166,27 +163,28 @@ function injectGlobalStyles() {
             min-width: 120px;
         }
 
-        /* 新增：浮动提示样式 */
+        /* 移除：浮动提示样式 */
+        /*
         .ai-floating-indicator {
             position: fixed;
-            /* 修正为在输入框上方 */
-            bottom: 80px; /* 预估值，可以在后续根据实际情况调整 */
+            bottom: 80px;
             left: 50%;
-            transform: translateX(-50%); /* 仅水平居中 */
-            z-index: 9999; /* 确保它浮动在大多数内容之上 */
-            pointer-events: none; /* 允许点击穿透，不阻挡下方操作 */
-            background-color: transparent; /* 保持透明，符合用户要求 */
-            padding: 8px 16px; /* 沿用打字指示器的内边距 */
-            margin: 0; /* 清除自动margin */
+            transform: translateX(-50%);
+            z-index: 9999;
+            pointer-events: none;
+            background-color: transparent;
+            padding: 8px 16px;
+            margin: 0;
             width: fit-content;
             max-width: 90%;
             text-align: center;
-            color: var(--text_color); /* 沿用主题颜色 */
-            box-shadow: none; /* 确保没有默认的边框或阴影 */
-            display: none; /* 默认隐藏，由JS控制显示 */
-            justify-content: center; /* 内部内容居中 */
-            align-items: center; /* 内部内容居中 */
+            color: var(--text_color);
+            box-shadow: none;
+            display: none;
+            justify-content: center;
+            align-items: center;
         }
+        */
     `;
     let styleTag = document.getElementById('typing-indicator-global-style');
     if (!styleTag) {
@@ -447,21 +445,32 @@ function showTypingIndicator(type, _args, dryRun) {
     if (typingIndicator) {
         logger.log('showTypingIndicator: 找到现有指示器，更新内容并尝试显示。');
         typingIndicator.innerHTML = htmlContent;
-        typingIndicator.style.display = 'flex'; // 确保可见
+        // typingIndicator.style.display = 'flex'; // 不再强制display，让系统控制
     } else {
         logger.log('showTypingIndicator: 未找到现有指示器，创建新指示器。');
         typingIndicator = document.createElement('div');
         typingIndicator.id = 'typing_indicator';
-        // 添加 typing_indicator 类以复用基本样式，添加 ai-floating-indicator 类以实现悬浮定位
-        typingIndicator.classList.add('typing_indicator', 'ai-floating-indicator');
+        // 恢复原始 class，移除 ai-floating-indicator
+        typingIndicator.classList.add('typing_indicator');
         typingIndicator.innerHTML = htmlContent;
 
-        // 直接附加到 body，不再是 chat，以便实现浮动定位
-        document.body.appendChild(typingIndicator);
-        logger.log('showTypingIndicator: 指示器已附加到 body。');
-        typingIndicator.style.display = 'flex'; // 确保可见
+        // 恢复附加到 chat，而不是 body
+        const chat = document.getElementById('chat');
+        if (chat) {
+            // 检查用户是否已滚动到底部（允许有几个像素的误差）
+            const wasChatScrolledDown = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 5;
+
+            chat.appendChild(typingIndicator);
+            logger.log('showTypingIndicator: 指示器已附加到 chat。');
+
+            // 如果用户在指示器出现前就位于底部，则自动滚动到底部以保持指示器可见
+            if (wasChatScrolledDown) {
+                chat.scrollTop = chat.scrollHeight;
+                logger.log('showTypingIndicator: 聊天已自动滚动到底部。');
+            }
+        }
     }
-    logger.log(`showTypingIndicator: 最终指示器 display 属性: ${typingIndicator.style.display}`);
+    logger.log(`showTypingIndicator: 最终指示器 display 属性 (由CSS控制，JS不强制): ${typingIndicator.style.display}`);
 
     // 由于现在是固定定位，以下滚动逻辑不再需要
     // const chat = document.getElementById('chat');
@@ -710,33 +719,29 @@ const OptionsGenerator = {
     showGeneratingUI(message, duration = null) {
         logger.log(`showGeneratingUI: 尝试显示提示: "${message}"`);
         let container = document.getElementById('ti-loading-container');
-        // 不再依赖 send_form，直接附加到 body
-        // const sendForm = document.getElementById('send_form');
-        // if (!sendForm) return;
+        const sendForm = document.getElementById('send_form');
+        if (!sendForm) {
+            logger.log('showGeneratingUI: send_form 未找到，无法显示。');
+            return;
+        }
 
         if (!container) {
             logger.log('showGeneratingUI: 未找到现有容器，创建新容器。');
             container = document.createElement('div');
             container.id = 'ti-loading-container';
-            // 添加 typing_indicator 类以复用基本样式，添加 ai-floating-indicator 类以实现悬浮定位
-            container.classList.add('typing_indicator', 'ai-floating-indicator');
-            document.body.appendChild(container); // 附加到 body 以实现固定定位
-            logger.log('showGeneratingUI: 容器已附加到 body。');
+            // 恢复原始 class，不再添加 ai-floating-indicator
+            container.classList.add('typing_indicator');
+            sendForm.insertAdjacentElement('beforebegin', container); // 插入到 send_form 之前
+            logger.log('showGeneratingUI: 容器已插入到 send_form 之前。');
         } else {
             logger.log('showGeneratingUI: 找到现有容器，更新内容并尝试显示。');
         }
 
-        // 统一内容结构，复用打字指示器的样式 (文本 + 省略号动画)
-        container.innerHTML = `
-                <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
-                    <div class="typing-indicator-text">${message}</div>
-                    <div class="typing-ellipsis"></div>
-                </div>
-            `;
-        // 通过 JS 控制显示，覆盖 CSS 中的 display: none
-        container.style.display = 'flex';
-        logger.log(`showGeneratingUI: 最终容器 display 属性: ${container.style.display}`);
-
+        // 恢复原始内容结构 (包含旋转图标)
+        container.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span style="margin-left: 8px;">${message}</span>`;
+        // 不再强制通过 JS 设置 display，让 CSS 控制
+        // container.style.display = 'flex';
+        logger.log(`showGeneratingUI: 最终容器 display 属性 (由CSS控制，JS不强制): ${container.style.display}`);
 
         if (duration) {
             logger.log(`showGeneratingUI: 将在 ${duration}ms 后隐藏提示。`);
@@ -749,7 +754,7 @@ const OptionsGenerator = {
         if (loadingContainer) {
             logger.log('hideGeneratingUI: 隐藏提示。');
             // 简单隐藏，以便重复利用
-            loadingContainer.style.display = 'none';
+            loadingContainer.style.display = 'none'; // 保持隐藏逻辑
         }
     },
 
