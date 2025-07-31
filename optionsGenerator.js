@@ -305,7 +305,6 @@ async function reflectOnChoices() {
 }
 
 // ========== 用户行为采集与分析 ========== //
-import { getSettings } from './settings.js';
 
 function logUserAction(actionType, detail) {
     const settings = getSettings();
