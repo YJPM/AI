@@ -386,7 +386,58 @@ function addExtensionSettings(settings) {
 
 
     optionsContainer.appendChild(optionsSettingsContainer);
-    inlineDrawerContent.append(optionsContainer);
+    
+    // 添加重置按钮
+    const resetContainer = document.createElement('div');
+    resetContainer.style.marginTop = '20px';
+    resetContainer.style.borderTop = '1px solid var(--border_color)';
+    resetContainer.style.paddingTop = '15px';
+    
+    const resetHeader = document.createElement('h4');
+    resetHeader.textContent = '重置设置';
+    resetHeader.style.margin = '0 0 10px 0';
+    resetContainer.appendChild(resetHeader);
+    
+    const resetButton = document.createElement('button');
+    resetButton.textContent = '重置所有设置为默认值';
+    resetButton.className = 'menu_button';
+    resetButton.style.width = '100%';
+    resetButton.style.padding = '8px 12px';
+    resetButton.style.backgroundColor = 'var(--SmartThemeBlurple)';
+    resetButton.style.color = 'white';
+    resetButton.style.border = 'none';
+    resetButton.style.borderRadius = '4px';
+    resetButton.style.cursor = 'pointer';
+    
+    resetButton.addEventListener('click', () => {
+        if (confirm('确定要将所有设置重置为默认值吗？此操作不可撤销。')) {
+            // 重置所有设置为默认值
+            Object.assign(settings, structuredClone(defaultSettings));
+            
+            // 更新UI显示
+            optionsEnabledCheckbox.checked = settings.optionsGenEnabled;
+            debugCheckbox.checked = settings.debug;
+            apiTypeSelect.value = settings.optionsApiType;
+            apiKeyInput.value = settings.optionsApiKey;
+            modelInput.value = settings.optionsApiModel;
+            baseUrlInput.value = settings.optionsBaseUrl;
+            
+            // 更新UI状态
+            optionsSettingsContainer.style.display = settings.optionsGenEnabled ? 'block' : 'none';
+            baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
+            
+            // 保存设置
+            saveSettingsDebounced();
+            
+            // 显示成功消息
+            console.log('设置已重置为默认值');
+            alert('设置已重置为默认值');
+        }
+    });
+    
+    resetContainer.appendChild(resetButton);
+    
+    inlineDrawerContent.append(optionsContainer, resetContainer);
 }
 
 /**
