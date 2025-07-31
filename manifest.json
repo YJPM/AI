@@ -1,12 +1,21 @@
 {
-    "display_name": "AI助手",
-    "loading_order": 777,
-    "requires": [],
-    "optional": [],
-    "js": "index.js",
-    "css": "style.css",
-    "author": "TJPM",
-    "version": "1.0.1",
-    "homePage": "https://github.com/YJPM/AI",
-    "auto_update": true
+  "name": "AI助手扩展",
+  "version": "1.0.0",
+  "description": "为SillyTavern提供AI助手功能，包括打字指示器和智能回复选项生成",
+  "author": "AI Assistant Developer",
+  "main": "index.js",
+  "dependencies": [],
+  "permissions": ["api_access", "ui_modification", "chat_access"],
+  "settings": {
+    "enabled": true,
+    "showCharName": true,
+    "animationEnabled": true,
+    "customText": "正在输入",
+    "debug": false,
+    "optionsGenEnabled": false,
+    "optionsApiType": "openai",
+    "optionsApiKey": "",
+    "optionsApiModel": "gpt-4o-mini",
+    "optionsBaseUrl": "https://api.openai.com/v1"
+  }
 }
