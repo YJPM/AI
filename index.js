@@ -162,6 +162,27 @@ function injectGlobalStyles() {
             height: auto;
             min-width: 120px;
         }
+
+        /* 新增：浮动提示样式 */
+        .ai-floating-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999; /* 确保它浮动在大多数内容之上 */
+            pointer-events: none; /* 允许点击穿透，不阻挡下方操作 */
+            background-color: transparent; /* 保持透明，符合用户要求 */
+            padding: 8px 16px; /* 沿用打字指示器的内边距 */
+            margin: 0; /* 清除自动margin */
+            width: fit-content;
+            max-width: 90%;
+            text-align: center;
+            color: var(--text_color); /* 沿用主题颜色 */
+            box-shadow: none; /* 确保没有默认的边框或阴影 */
+            display: none; /* 默认隐藏，由JS控制显示 */
+            justify-content: center; /* 内部内容居中 */
+            align-items: center; /* 内部内容居中 */
+        }
     `;
     let styleTag = document.getElementById('typing-indicator-global-style');
     if (!styleTag) {
@@ -453,25 +474,25 @@ function hideTypingIndicator() {
     }
 }
 
-// (DOM-based, v2) 检查最后一条消息是否来自AI
+// (DOM-based, v4) 检查最后一条消息是否来自AI
 function isLastMessageFromAI() {
-    logger.log('检查最后一条消息 (DOM模式, v3)...');
+    logger.log('检查最后一条消息 (last_mes 属性模式)...');
     try {
-        // 只选择明确来自用户或机器人的消息
-        const allMessages = document.querySelectorAll('#chat .mes.bot_mes, #chat .mes.user_mes');
-        logger.log(`找到 ${allMessages.length} 条有效对话消息。`);
-
-        if (allMessages.length === 0) {
-            logger.log('聊天记录中未找到用户或机器人消息，判定为非AI。');
+        const lastMessage = document.querySelector('#chat .last_mes');
+        if (!lastMessage) {
+            logger.log('未找到 .last_mes 元素，判定为非AI。');
             return false;
         }
-        const lastMessage = allMessages[allMessages.length - 1];
-        const isBot = lastMessage.classList.contains('bot_mes');
-        const messageText = (lastMessage.querySelector('.mes_text')?.textContent || '').substring(0, 50);
-        logger.log(`找到最后一条有效消息元素。内容预览: "${messageText}...". ClassList: ${Array.from(lastMessage.classList)}. 结论: ${isBot ? '是' : '不是'} AI消息。`);
+
+        const isUser = lastMessage.getAttribute('is_user');
+        logger.log(`找到 .last_mes 元素。is_user 属性为: "${isUser}".`);
+
+        // The attribute value is a string "false", not a boolean.
+        const isBot = isUser === 'false';
+        logger.log(`结论: ${isBot ? '是' : '不是'} AI消息。`);
         return isBot;
     } catch (error) {
-        logger.error('通过DOM检查最后一条消息时出错:', error);
+        logger.error('通过 .last_mes 检查最后一条消息时出错:', error);
         return false;
     }
 }
@@ -481,9 +502,9 @@ function isLastMessageFromAI() {
 const OptionsGenerator = {
     isGenerating: false,
 
-    // (DOM-based) 获取API上下文，增加详细日志
+    // (DOM-based, v2) 获取API上下文，增加详细日志
     getContextForAPI() {
-        logger.log('从DOM获取API上下文 (增强日志模式)...');
+        logger.log('从DOM获取API上下文 (属性模式, 增强日志)...');
         try {
             const messageElements = document.querySelectorAll('#chat .mes');
             const messages = [];
@@ -492,16 +513,28 @@ const OptionsGenerator = {
             messageElements.forEach((el, index) => {
                 const contentEl = el.querySelector('.mes_text');
                 if (contentEl) {
-                    const role = el.classList.contains('user_mes') ? 'user' : (el.classList.contains('bot_mes') ? 'assistant' : 'system');
+                    let role = 'system'; // Default role
+                    const isUserAttr = el.getAttribute('is_user');
                     
+                    if (isUserAttr === 'true') {
+                        role = 'user';
+                    } else if (isUserAttr === 'false') {
+                        role = 'assistant';
+                    }
+
                     const tempDiv = document.createElement('div');
                     tempDiv.innerHTML = contentEl.innerHTML.replace(/<br\s*\/?>/gi, '\n');
                     const content = (tempDiv.textContent || tempDiv.innerText || '').trim();
 
                     if (content) {
-                        const messageData = { role, content };
-                        messages.push(messageData);
-                        logger.log(`[消息 ${index}] -> 有效:`, messageData);
+                        // 只包括用户和助手的消息
+                        if (role === 'user' || role === 'assistant') {
+                            const messageData = { role, content };
+                            messages.push(messageData);
+                            logger.log(`[消息 ${index}] -> 有效 (${role}):`, messageData);
+                        } else {
+                            logger.log(`[消息 ${index}] -> 跳过 (系统消息)`);
+                        }
                     } else {
                         logger.log(`[消息 ${index}] -> 跳过 (无内容)`);
                     }
@@ -510,7 +543,7 @@ const OptionsGenerator = {
                 }
             });
             
-            logger.log(`从DOM中提取了 ${messages.length} 条有效消息。`);
+            logger.log(`从DOM中提取了 ${messages.length} 条有效对话消息。`);
             const finalMessages = messages.slice(-20);
             logger.log('最终用于API的上下文:', finalMessages);
             return finalMessages;
@@ -554,7 +587,7 @@ const OptionsGenerator = {
             return;
         }
 
-        this.showGeneratingUI('导演思考中...');
+        this.showGeneratingUI('AI助手思考中...');
         this.isGenerating = true;
 
         try {
@@ -660,24 +693,26 @@ const OptionsGenerator = {
 
     showGeneratingUI(message, duration = null) {
         let container = document.getElementById('ti-loading-container');
-        const sendForm = document.getElementById('send_form');
-        if (!sendForm) return;
+        // 不再依赖 send_form，直接附加到 body
+        // const sendForm = document.getElementById('send_form');
+        // if (!sendForm) return;
 
         if (!container) {
             container = document.createElement('div');
             container.id = 'ti-loading-container';
-            Object.assign(container.style, {
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                padding: '10px',
-                color: 'var(--text_color_secondary)',
-                opacity: '0.8',
-                width: '100%',
-            });
-            sendForm.insertAdjacentElement('beforebegin', container);
+            // 添加 typing_indicator 类以复用基本样式，添加 ai-floating-indicator 类以实现悬浮定位
+            container.classList.add('typing_indicator', 'ai-floating-indicator');
+            document.body.appendChild(container); // 附加到 body 以实现固定定位
         }
-        container.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span style="margin-left: 8px;">${message}</span>`;
+
+        // 统一内容结构，复用打字指示器的样式 (文本 + 省略号动画)
+        container.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
+                <div class="typing-indicator-text">${message}</div>
+                <div class="typing-ellipsis"></div>
+            </div>
+        `;
+        // 通过 JS 控制显示，覆盖 CSS 中的 display: none
         container.style.display = 'flex';
 
 
@@ -688,7 +723,10 @@ const OptionsGenerator = {
 
     hideGeneratingUI() {
         const loadingContainer = document.getElementById('ti-loading-container');
-        if (loadingContainer) loadingContainer.style.display = 'none';
+        if (loadingContainer) {
+            // 简单隐藏，以便重复利用
+            loadingContainer.style.display = 'none';
+        }
     },
 
     async displayOptions(options) {
