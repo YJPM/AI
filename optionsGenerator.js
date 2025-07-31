@@ -259,6 +259,10 @@ function assembleDynamicPrompt(analysisResult) {
     prompt = prompt.replace(/{{user_mood}}/g, analysisResult.user_mood || '未知');
     prompt = prompt.replace(/{{narrative_focus}}/g, analysisResult.narrative_focus || '未知');
     prompt = prompt.replace(/{{learned_style}}/g, settings.learnedStyle || '无特定偏好');
+    // 注入用户画像
+    if (settings.userProfile && settings.userProfile.summary) {
+        prompt += `\n# 用户画像：${settings.userProfile.summary}`;
+    }
     return prompt;
 }
 
@@ -300,8 +304,66 @@ async function reflectOnChoices() {
     }
 }
 
-// 5. 建议渲染与点击处理
-async function renderSuggestions(suggestions, analysisData) {
+// ========== 用户行为采集与分析 ========== //
+import { getSettings } from './settings.js';
+
+function logUserAction(actionType, detail) {
+    const settings = getSettings();
+    const log = {
+        type: actionType,
+        detail,
+        timestamp: Date.now()
+    };
+    settings.userBehaviorLog.push(log);
+    // 限制日志长度，防止无限增长
+    if (settings.userBehaviorLog.length > 100) settings.userBehaviorLog.shift();
+    if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
+}
+
+function analyzeUserBehavior() {
+    const settings = getSettings();
+    const logs = settings.userBehaviorLog;
+    if (!logs.length) return;
+    // 简单统计：
+    const sceneCount = {};
+    const moodCount = {};
+    const focusCount = {};
+    const keywordCount = {};
+    logs.forEach(log => {
+        if (log.type === 'select_suggestion' && log.detail) {
+            const { scene_type, user_mood, narrative_focus, keywords } = log.detail;
+            if (scene_type) sceneCount[scene_type] = (sceneCount[scene_type] || 0) + 1;
+            if (user_mood) moodCount[user_mood] = (moodCount[user_mood] || 0) + 1;
+            if (narrative_focus) focusCount[narrative_focus] = (focusCount[narrative_focus] || 0) + 1;
+            if (Array.isArray(keywords)) keywords.forEach(k => keywordCount[k] = (keywordCount[k] || 0) + 1);
+        }
+    });
+    // 取出现最多的
+    function getTop(obj) {
+        return Object.entries(obj).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+    }
+    settings.userProfile.favoriteScene = getTop(sceneCount);
+    settings.userProfile.favoriteMood = getTop(moodCount);
+    settings.userProfile.preferedFocus = getTop(focusCount);
+    settings.userProfile.customKeywords = Object.entries(keywordCount).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
+    // 生成简单总结
+    settings.userProfile.summary = `偏好场景：${settings.userProfile.favoriteScene}，情绪：${settings.userProfile.favoriteMood}，叙事焦点：${settings.userProfile.preferedFocus}，关键词：${settings.userProfile.customKeywords.join('、')}`;
+    if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
+}
+
+// ========== 修改建议点击、输入等行为 ========== //
+// 在 handleSuggestionClick 处埋点
+const oldHandleSuggestionClick = typeof handleSuggestionClick === 'function' ? handleSuggestionClick : null;
+async function handleSuggestionClick(text, analysisData, isAuto = false) {
+    // 埋点
+    logUserAction('select_suggestion', {
+        suggestionText: text,
+        ...(analysisData || {})
+    });
+    tryAnalyzeUserProfile();
+    if (oldHandleSuggestionClick) {
+        return await oldHandleSuggestionClick(text, analysisData, isAuto);
+    }
     // 兼容UI，支持自动/手动/全自动
     const sendForm = document.getElementById('send_form');
     if (!sendForm || !suggestions || suggestions.length === 0) return;
@@ -347,7 +409,16 @@ async function handleSuggestionClick(text, analysisData, isAuto = false) {
         await logChoice(analysisData);
     }
 }
+// 在 sendSuggestion 处埋点（用户手动输入发送）
+const oldSendSuggestion = typeof sendSuggestion === 'function' ? sendSuggestion : null;
 async function sendSuggestion(text, isAuto = false) {
+    if (!isAuto) {
+        logUserAction('manual_input', { inputText: text });
+    }
+    tryAnalyzeUserProfile();
+    if (oldSendSuggestion) {
+        return await oldSendSuggestion(text, isAuto);
+    }
     // 兼容自动/手动发送
     const textarea = document.querySelector('#send_textarea, .send_textarea');
     const sendButton = document.querySelector('#send_but, .send_but, button[onclick*="send"], button[onclick*="Send"]');
@@ -379,6 +450,14 @@ async function sendSuggestion(text, isAuto = false) {
     // 清理建议UI
     const oldContainer = document.getElementById('ti-options-container');
     if (oldContainer) oldContainer.remove();
+}
+
+// 在建议生成/选择后定期分析
+function tryAnalyzeUserProfile() {
+    const settings = getSettings();
+    if (settings.userBehaviorLog.length % 20 === 0) {
+        analyzeUserBehavior();
+    }
 }
 
 async function generateOptions() {

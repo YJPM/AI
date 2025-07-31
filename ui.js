@@ -249,4 +249,86 @@ export function addExtensionSettings(settings) {
     });
     resetContainer.appendChild(resetButton);
     inlineDrawerContent.append(optionsContainer, resetContainer);
+
+    // ========== 用户画像查看与编辑 ========== //
+    const profileContainer = document.createElement('div');
+    profileContainer.style.marginTop = '20px';
+    profileContainer.style.borderTop = '1px solid var(--border_color)';
+    profileContainer.style.paddingTop = '15px';
+    const profileHeader = document.createElement('h4');
+    profileHeader.textContent = '用户画像（可手动编辑）';
+    profileHeader.style.margin = '0 0 10px 0';
+    profileContainer.appendChild(profileHeader);
+    // summary
+    const summaryLabel = document.createElement('label');
+    summaryLabel.textContent = '画像总结：';
+    summaryLabel.style.display = 'block';
+    const summaryInput = document.createElement('textarea');
+    summaryInput.value = settings.userProfile.summary || '';
+    summaryInput.style.width = '100%';
+    summaryInput.style.minHeight = '40px';
+    summaryInput.addEventListener('input', () => {
+        settings.userProfile.summary = summaryInput.value;
+        saveSettingsDebounced();
+    });
+    profileContainer.appendChild(summaryLabel);
+    profileContainer.appendChild(summaryInput);
+    // favoriteScene
+    const sceneLabel = document.createElement('label');
+    sceneLabel.textContent = '偏好场景类型：';
+    sceneLabel.style.display = 'block';
+    const sceneInput = document.createElement('input');
+    sceneInput.type = 'text';
+    sceneInput.value = settings.userProfile.favoriteScene || '';
+    sceneInput.style.width = '100%';
+    sceneInput.addEventListener('input', () => {
+        settings.userProfile.favoriteScene = sceneInput.value;
+        saveSettingsDebounced();
+    });
+    profileContainer.appendChild(sceneLabel);
+    profileContainer.appendChild(sceneInput);
+    // favoriteMood
+    const moodLabel = document.createElement('label');
+    moodLabel.textContent = '偏好情绪：';
+    moodLabel.style.display = 'block';
+    const moodInput = document.createElement('input');
+    moodInput.type = 'text';
+    moodInput.value = settings.userProfile.favoriteMood || '';
+    moodInput.style.width = '100%';
+    moodInput.addEventListener('input', () => {
+        settings.userProfile.favoriteMood = moodInput.value;
+        saveSettingsDebounced();
+    });
+    profileContainer.appendChild(moodLabel);
+    profileContainer.appendChild(moodInput);
+    // preferedFocus
+    const focusLabel = document.createElement('label');
+    focusLabel.textContent = '偏好叙事焦点：';
+    focusLabel.style.display = 'block';
+    const focusInput = document.createElement('input');
+    focusInput.type = 'text';
+    focusInput.value = settings.userProfile.preferedFocus || '';
+    focusInput.style.width = '100%';
+    focusInput.addEventListener('input', () => {
+        settings.userProfile.preferedFocus = focusInput.value;
+        saveSettingsDebounced();
+    });
+    profileContainer.appendChild(focusLabel);
+    profileContainer.appendChild(focusInput);
+    // customKeywords
+    const keywordsLabel = document.createElement('label');
+    keywordsLabel.textContent = '关键词（逗号分隔）：';
+    keywordsLabel.style.display = 'block';
+    const keywordsInput = document.createElement('input');
+    keywordsInput.type = 'text';
+    keywordsInput.value = (settings.userProfile.customKeywords || []).join(',');
+    keywordsInput.style.width = '100%';
+    keywordsInput.addEventListener('input', () => {
+        settings.userProfile.customKeywords = keywordsInput.value.split(',').map(s => s.trim()).filter(Boolean);
+        saveSettingsDebounced();
+    });
+    profileContainer.appendChild(keywordsLabel);
+    profileContainer.appendChild(keywordsInput);
+    // 添加到面板
+    inlineDrawerContent.appendChild(profileContainer);
 }

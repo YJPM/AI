@@ -16,6 +16,15 @@ export const defaultSettings = {
     learnedStyle: '',
     logTriggerCount: 20,
     sendMode: 'auto',
+    // 用户行为日志与画像
+    userBehaviorLog: [], // {type, detail, timestamp}
+    userProfile: {
+        favoriteScene: '',
+        favoriteMood: '',
+        preferedFocus: '',
+        customKeywords: [],
+        summary: '' // 画像总结
+    },
 };
 export const MERGED_DIRECTOR_PROMPT = `
 你是一位顶级AI叙事导演。请按如下流程操作：
