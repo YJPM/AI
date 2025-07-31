@@ -1,12 +1,8 @@
 {
   "display_name": "AI助手",
-  "loading_order": 777,
-  "requires": [],
-  "optional": [],
   "js": "dist/index.js",
   "css": "style.css",
   "author": "AI Assistant Developer",
   "version": "1.0.0",
-  "homePage": "https://github.com/your-repo/AI-Assistant-Extension",
-  "auto_update": true
+  "description": "AI助手扩展 - 为SillyTavern提供打字指示器和智能回复选项生成功能"
 }
