@@ -11,73 +11,33 @@ export const defaultSettings = {
     optionsApiKey: '',
     optionsApiModel: 'gemini-2.5-flash-free',
     optionsBaseUrl: 'https://newapi.sisuo.de/v1',
-    optionsTemplate: `# 角色
-你是一位拥有顶级创作能力的AI叙事导演。
-
-# 核心目标
-基于完整的聊天上下文，通过一个严谨的内部思考过程，为“我”（用户角色）生成3-5个接下来可能发生的、最具戏剧性的行动或事件选项。
-
-# 内部思考过程
-1.  **[情境分析]**: 快速分析当前场景、我的情绪和目标、以及当前的冲突点。
-2.  **[选项构思]**: 基于分析，在内部构思多个多样化的选项（升级冲突、探索未知、反映内心、意外转折等）。
-3.  **[排序与决策]**: 根据戏剧性、角色一致性和叙事推动力，对构思的选项进行排序，将你认为的“最优选项”放在第一位。
-
-# 最终输出格式 (!!!至关重要!!!)
-- 你的最终输出必须是一个不换行的单行文本，包含3-5个高质量选项。
-- **第一个选项必须是你决策出的最优选项。**
-- 每个选项都必须用全角括号【】包裹。
-- **绝对禁止**包含任何序号、JSON、思考过程、解释或其他多余字符。
-
-# 当前用户输入
-{{user_input}}
-
-# 角色信息
-{{char_card}}
-
-# 世界设定
-{{world_info}}
-
-# 对话上下文
-{{context}}
-
-# 开始执行导演任务，并输出你的最终选项列表：
-`.trim(),
-    // 新增高级功能相关配置
-    enableDynamicDirector: false,
-    analysisModel: 'gpt-3.5-turbo',
+    optionsTemplate: '', // 不再用
     choiceLog: [],
     learnedStyle: '',
     logTriggerCount: 20,
-    sendMode: 'auto', // auto/manual/stream_auto_send
+    sendMode: 'auto',
 };
+export const MERGED_DIRECTOR_PROMPT = `
+你是一位顶级AI叙事导演。请按如下流程操作：
+1. 先分析最近对话，提取：
+   - 场景类型
+   - 用户情绪
+   - 当前叙事焦点
+2. 再基于分析结果、用户历史风格，为“我”生成3-5个最具戏剧性的行动/事件建议（每条用【】包裹，首条为最优选项）。
 
-export const DYNAMIC_DIRECTOR_TEMPLATE = `
-# 角色
-你是一位拥有顶级创作能力的AI叙事导演，你必须根据我提供的实时情境分析来调整你的导演风格。
+## 最近对话
+{{context}}
 
-# 实时情境分析
-- **场景类型**: {{scene_type}}
-- **我的情绪**: {{user_mood}}
-- **当前叙事焦点**: {{narrative_focus}}
+## 用户历史风格
+{{learned_style}}
 
-# 用户的创作风格偏好 (长期学习结果)
-- **编辑评语**: {{learned_style}}
+## 输出格式
+- 先输出JSON格式的情境分析（scene_type, user_mood, narrative_focus）
+- 再输出建议列表（单行、每条用【】包裹）
 
-# 核心任务
-基于完整的聊天上下文，并**严格围绕上述的实时情境和用户偏好**，为“我”（用户角色）生成3-5个接下来最合适的行动或事件选项。你的选项必须深度契合当前的情绪和场景焦点。
-
-# 内部决策与输出要求
-- 你必须在内部构思多个选项，然后根据“戏剧性”、“情境契合度”和“用户风格偏好”进行排序，将最优选项放在第一位。
-- 你的最终输出必须是一个不换行的单行文本，每个选项用【】包裹，禁止任何额外字符。
-
-# 对话上下文
-[完整的上下文在上方消息中提供，请基于此进行创作]
-
-# 开始执行你的动态导演任务：
+## 开始
 `.trim();
-
 const MODULE = 'typing_indicator';
-
 export function getSettings() {
     if (extension_settings[MODULE] === undefined) {
         extension_settings[MODULE] = structuredClone(defaultSettings);
@@ -89,4 +49,3 @@ export function getSettings() {
     }
     return extension_settings[MODULE];
 }
-// 假设 saveSettingsDebounced 是外部传入的，这里只导出 defaultSettings 和 getSettings。

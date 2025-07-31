@@ -1,4 +1,4 @@
-import { getSettings, DYNAMIC_DIRECTOR_TEMPLATE } from './settings.js';
+import { getSettings, MERGED_DIRECTOR_PROMPT } from './settings.js';
 import { logger } from './logger.js';
 import { saveSettingsDebounced } from '../../../../script.js';
 
@@ -389,65 +389,51 @@ async function generateOptions() {
     showGeneratingUI('AI助手思考中');
     OptionsGenerator.isGenerating = true;
     try {
-        let prompt = settings.optionsTemplate;
-        let analysisData = null;
-        if (settings.enableDynamicDirector && settings.analysisModel && settings.dynamicPromptTemplate) {
-            analysisData = await analyzeContext();
-            if (analysisData) {
-                prompt = assembleDynamicPrompt(analysisData);
-            }
-        }
+        // 组装合并prompt
         const context = await getContextCompatible();
-        const finalMessages = [...context.messages, { role: 'user', content: prompt }];
+        const prompt = MERGED_DIRECTOR_PROMPT
+            .replace(/{{context}}/g, context.messages.map(m => `[${m.role}] ${m.content}`).join('\n'))
+            .replace(/{{learned_style}}/g, settings.learnedStyle || '无');
+        const finalMessages = [{ role: 'user', content: prompt }];
         let content = '';
-        if (settings.optionsApiType === 'gemini') {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.optionsApiModel}:generateContent?key=${settings.optionsApiKey}`;
-            logger.log('Requesting options from Gemini:', url);
-            const body = { contents: OptionsGenerator.transformMessagesForGemini(finalMessages) };
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-            });
-            if (!response.ok) {
-                const errorText = await response.text();
-                logger.error('API 响应错误 (raw):', errorText);
-                throw new Error('Gemini API 请求失败');
-            }
-            const data = await response.json();
-            logger.log('API 响应数据 (Gemini):', data);
-            content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        } else {
-            const apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${settings.optionsApiKey}`,
-                },
-                body: JSON.stringify({
-                    model: settings.optionsApiModel,
-                    messages: finalMessages,
-                    temperature: 0.8,
-                    stream: false,
-                }),
-            });
-            if (!response.ok) {
-                const errorText = await response.text();
-                logger.error('API 响应错误 (raw):', errorText);
-                throw new Error('OpenAI-兼容 API 请求失败');
-            }
-            const data = await response.json();
-            content = data.candidates?.[0]?.content?.parts?.[0]?.text || data.choices?.[0]?.message?.content || '';
+        const apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${settings.optionsApiKey}`,
+            },
+            body: JSON.stringify({
+                model: settings.optionsApiModel,
+                messages: finalMessages,
+                temperature: 0.8,
+                stream: false,
+            }),
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            logger.error('API 响应错误 (raw):', errorText);
+            throw new Error('API 请求失败');
         }
-        const suggestions = parseOptions(content);
-        if (settings.sendMode === 'stream_auto_send' && suggestions.length > 0) {
-            await handleSuggestionClick(suggestions[0], analysisData, true);
-        } else if (settings.sendMode === 'auto' && suggestions.length > 0) {
-            await renderSuggestions(suggestions, analysisData);
-        } else if (settings.sendMode === 'manual') {
-            await renderSuggestions(suggestions, analysisData);
+        const data = await response.json();
+        content = data.candidates?.[0]?.content?.parts?.[0]?.text || data.choices?.[0]?.message?.content || '';
+        // 解析AI返回
+        const jsonMatch = content.match(/\{.*\}/s);
+        let analysisData = null;
+        if (jsonMatch) {
+            try { analysisData = JSON.parse(jsonMatch[0]); } catch {}
         }
+        // 记录情境分析到choiceLog
+        if (analysisData) {
+            settings.choiceLog.push(analysisData);
+            if (settings.choiceLog.length >= settings.logTriggerCount) {
+                await reflectOnChoices();
+            }
+            if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
+        }
+        // 解析建议
+        const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+        await renderSuggestions(suggestions, analysisData);
         hideGeneratingUI();
     } catch (error) {
         logger.error('生成选项时出错:', error);
