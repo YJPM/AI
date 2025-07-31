@@ -100,35 +100,29 @@ export function addExtensionSettings(settings) {
     optionsContainer.style.marginTop = '20px';
     optionsContainer.style.borderTop = '1px solid var(--border_color)';
     optionsContainer.style.paddingTop = '15px';
-    // ===== 美化样式增强 =====
-    applyBasicStyle();
-    injectGlobalStyles();
-    // ===== 标题与重置按钮 =====
-    const optionsHeaderRow = document.createElement('div');
-    optionsHeaderRow.style.display = 'flex';
-    optionsHeaderRow.style.alignItems = 'center';
-    optionsHeaderRow.style.justifyContent = 'space-between';
-    optionsHeaderRow.style.marginBottom = '12px';
-    const optionsHeader = document.createElement('h4');
-    optionsHeader.textContent = '回复选项生成';
-    optionsHeader.style.margin = '0';
-    optionsHeader.style.fontWeight = 'bold';
-    optionsHeader.style.fontSize = '1.15em';
-    optionsHeader.style.letterSpacing = '1px';
+    // 回复选项生成标题和重置按钮
+    const optionsHeader = document.createElement('div');
+    optionsHeader.style.display = 'flex';
+    optionsHeader.style.alignItems = 'center';
+    optionsHeader.style.margin = '0 0 10px 0';
+    // 标题
+    const optionsTitle = document.createElement('h4');
+    optionsTitle.textContent = '回复选项生成';
+    optionsTitle.style.margin = '0';
+    optionsTitle.style.flex = '1';
+    optionsHeader.appendChild(optionsTitle);
+    // 重置按钮
     const resetButton = document.createElement('button');
     resetButton.textContent = '重置';
     resetButton.className = 'menu_button';
-    resetButton.style.padding = '2px 14px';
-    resetButton.style.fontSize = '0.95em';
     resetButton.style.marginLeft = '10px';
-    resetButton.style.background = 'linear-gradient(90deg, #4a9eff 60%, #6ec6ff 100%)';
+    resetButton.style.padding = '4px 10px';
+    resetButton.style.fontSize = '0.95em';
+    resetButton.style.backgroundColor = 'var(--SmartThemeBlurple)';
     resetButton.style.color = 'white';
     resetButton.style.border = 'none';
-    resetButton.style.borderRadius = '16px';
+    resetButton.style.borderRadius = '4px';
     resetButton.style.cursor = 'pointer';
-    resetButton.style.transition = 'background 0.2s, box-shadow 0.2s';
-    resetButton.onmouseover = () => { resetButton.style.boxShadow = '0 2px 8px #4a9eff44'; };
-    resetButton.onmouseout = () => { resetButton.style.boxShadow = 'none'; };
     resetButton.addEventListener('click', () => {
         if (confirm('确定要将所有设置重置为默认值吗？此操作不可撤销。')) {
             Object.assign(settings, structuredClone(defaultSettings));
@@ -146,205 +140,30 @@ export function addExtensionSettings(settings) {
             alert('设置已重置为默认值');
         }
     });
-    optionsHeaderRow.appendChild(optionsHeader);
-    optionsHeaderRow.appendChild(resetButton);
-    optionsContainer.appendChild(optionsHeaderRow);
-    // ===== 分组卡片 =====
-    const groupCard = document.createElement('div');
-    groupCard.style.background = 'rgba(255,255,255,0.04)';
-    groupCard.style.border = '1px solid var(--border_color,#e0e0e0)';
-    groupCard.style.borderRadius = '12px';
-    groupCard.style.padding = '18px 16px 10px 16px';
-    groupCard.style.marginBottom = '18px';
-    groupCard.style.boxShadow = '0 2px 8px #0001';
-    // ===== 发送模式 =====
-    const sendModeRow = document.createElement('div');
-    sendModeRow.style.display = 'flex';
-    sendModeRow.style.alignItems = 'center';
-    sendModeRow.style.marginBottom = '12px';
-    const sendModeLabel = document.createElement('label');
-    sendModeLabel.textContent = '发送模式:';
-    sendModeLabel.style.width = '90px';
-    sendModeLabel.style.fontWeight = '500';
-    sendModeLabel.style.marginRight = '10px';
-    const sendModeSelect = document.createElement('select');
-    sendModeSelect.style.flex = '1';
-    sendModeSelect.style.padding = '6px 10px';
-    sendModeSelect.style.borderRadius = '8px';
-    sendModeSelect.style.border = '1px solid #b0c4de';
-    sendModeSelect.style.background = '#f8fbff';
-    sendModeSelect.style.transition = 'box-shadow 0.2s';
-    sendModeSelect.onfocus = () => { sendModeSelect.style.boxShadow = '0 0 0 2px #4a9eff55'; };
-    sendModeSelect.onblur = () => { sendModeSelect.style.boxShadow = 'none'; };
-    [
-        { value: 'auto', text: '自动发送' },
-        { value: 'manual', text: '手动发送' },
-        { value: 'stream_auto_send', text: '全自动导演模式' }
-    ].forEach(opt => {
-        const option = document.createElement('option');
-        option.value = opt.value;
-        option.textContent = opt.text;
-        sendModeSelect.appendChild(option);
-    });
-    sendModeSelect.value = settings.sendMode;
-    sendModeSelect.addEventListener('change', () => {
-        settings.sendMode = sendModeSelect.value;
-        saveSettingsDebounced();
-    });
-    sendModeRow.appendChild(sendModeLabel);
-    sendModeRow.appendChild(sendModeSelect);
-    groupCard.appendChild(sendModeRow);
-    // ===== API类型 =====
-    const apiTypeRow = document.createElement('div');
-    apiTypeRow.style.display = 'flex';
-    apiTypeRow.style.alignItems = 'center';
-    apiTypeRow.style.marginBottom = '12px';
-    const apiTypeLabel = document.createElement('label');
-    apiTypeLabel.textContent = 'API 类型:';
-    apiTypeLabel.style.width = '90px';
-    apiTypeLabel.style.fontWeight = '500';
-    apiTypeLabel.style.marginRight = '10px';
-    const apiTypeSelect = document.createElement('select');
-    apiTypeSelect.style.flex = '1';
-    apiTypeSelect.style.padding = '6px 10px';
-    apiTypeSelect.style.borderRadius = '8px';
-    apiTypeSelect.style.border = '1px solid #b0c4de';
-    apiTypeSelect.style.background = '#f8fbff';
-    apiTypeSelect.style.transition = 'box-shadow 0.2s';
-    apiTypeSelect.onfocus = () => { apiTypeSelect.style.boxShadow = '0 0 0 2px #4a9eff55'; };
-    apiTypeSelect.onblur = () => { apiTypeSelect.style.boxShadow = 'none'; };
-    apiTypeSelect.innerHTML = `
-        <option value="openai">OpenAI-兼容</option>
-        <option value="gemini">Google Gemini</option>
-    `;
-    apiTypeSelect.value = settings.optionsApiType;
-    apiTypeSelect.addEventListener('change', () => {
-        settings.optionsApiType = apiTypeSelect.value;
-        baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
-        saveSettingsDebounced();
-    });
-    apiTypeRow.appendChild(apiTypeLabel);
-    apiTypeRow.appendChild(apiTypeSelect);
-    groupCard.appendChild(apiTypeRow);
-    // ===== 模型 =====
-    const modelRow = document.createElement('div');
-    modelRow.style.display = 'flex';
-    modelRow.style.alignItems = 'center';
-    modelRow.style.marginBottom = '12px';
-    const modelLabel = document.createElement('label');
-    modelLabel.textContent = '模型:';
-    modelLabel.style.width = '90px';
-    modelLabel.style.fontWeight = '500';
-    modelLabel.style.marginRight = '10px';
-    const modelInput = document.createElement('input');
-    modelInput.type = 'text';
-    modelInput.value = settings.optionsApiModel;
-    modelInput.style.flex = '1';
-    modelInput.style.padding = '6px 10px';
-    modelInput.style.borderRadius = '8px';
-    modelInput.style.border = '1px solid #b0c4de';
-    modelInput.style.background = '#f8fbff';
-    modelInput.style.transition = 'box-shadow 0.2s';
-    modelInput.onfocus = () => { modelInput.style.boxShadow = '0 0 0 2px #4a9eff55'; };
-    modelInput.onblur = () => { modelInput.style.boxShadow = 'none'; };
-    modelInput.addEventListener('input', () => {
-        settings.optionsApiModel = modelInput.value;
-        saveSettingsDebounced();
-    });
-    modelRow.appendChild(modelLabel);
-    modelRow.appendChild(modelInput);
-    groupCard.appendChild(modelRow);
-    // ===== API Key =====
-    const apiKeyRow = document.createElement('div');
-    apiKeyRow.style.display = 'flex';
-    apiKeyRow.style.alignItems = 'center';
-    apiKeyRow.style.marginBottom = '12px';
-    const apiKeyLabel = document.createElement('label');
-    apiKeyLabel.textContent = 'API密钥:';
-    apiKeyLabel.style.width = '90px';
-    apiKeyLabel.style.fontWeight = '500';
-    apiKeyLabel.style.marginRight = '10px';
-    const apiKeyInput = document.createElement('input');
-    apiKeyInput.type = 'password';
-    apiKeyInput.value = settings.optionsApiKey;
-    apiKeyInput.style.flex = '1';
-    apiKeyInput.style.padding = '6px 10px';
-    apiKeyInput.style.borderRadius = '8px';
-    apiKeyInput.style.border = '1px solid #b0c4de';
-    apiKeyInput.style.background = '#f8fbff';
-    apiKeyInput.style.transition = 'box-shadow 0.2s';
-    apiKeyInput.onfocus = () => { apiKeyInput.style.boxShadow = '0 0 0 2px #4a9eff55'; };
-    apiKeyInput.onblur = () => { apiKeyInput.style.boxShadow = 'none'; };
-    apiKeyInput.placeholder = '输入API密钥';
-    apiKeyInput.addEventListener('input', () => {
-        settings.optionsApiKey = apiKeyInput.value;
-        saveSettingsDebounced();
-    });
-    apiKeyRow.appendChild(apiKeyLabel);
-    apiKeyRow.appendChild(apiKeyInput);
-    groupCard.appendChild(apiKeyRow);
-    // ===== Base URL =====
-    const baseUrlRow = document.createElement('div');
-    baseUrlRow.style.display = 'flex';
-    baseUrlRow.style.alignItems = 'center';
-    baseUrlRow.style.marginBottom = '12px';
-    const baseUrlLabel = document.createElement('label');
-    baseUrlLabel.textContent = '基础URL:';
-    baseUrlLabel.style.width = '90px';
-    baseUrlLabel.style.fontWeight = '500';
-    baseUrlLabel.style.marginRight = '10px';
-    const baseUrlInput = document.createElement('input');
-    baseUrlInput.type = 'text';
-    baseUrlInput.value = settings.optionsBaseUrl;
-    baseUrlInput.style.flex = '1';
-    baseUrlInput.style.padding = '6px 10px';
-    baseUrlInput.style.borderRadius = '8px';
-    baseUrlInput.style.border = '1px solid #b0c4de';
-    baseUrlInput.style.background = '#f8fbff';
-    baseUrlInput.style.transition = 'box-shadow 0.2s';
-    baseUrlInput.onfocus = () => { baseUrlInput.style.boxShadow = '0 0 0 2px #4a9eff55'; };
-    baseUrlInput.onblur = () => { baseUrlInput.style.boxShadow = 'none'; };
-    baseUrlInput.placeholder = '输入API基础URL';
-    baseUrlInput.addEventListener('input', () => {
-        settings.optionsBaseUrl = baseUrlInput.value;
-        saveSettingsDebounced();
-    });
-    baseUrlRow.appendChild(baseUrlLabel);
-    baseUrlRow.appendChild(baseUrlInput);
-    groupCard.appendChild(baseUrlRow);
-    // ===== 选项生成开关与调试模式 =====
-    const switchesRow = document.createElement('div');
-    switchesRow.style.display = 'flex';
-    switchesRow.style.alignItems = 'center';
-    switchesRow.style.gap = '18px';
-    switchesRow.style.margin = '10px 0 0 0';
+    optionsHeader.appendChild(resetButton);
+    optionsContainer.appendChild(optionsHeader);
     // 启用选项生成
     const optionsEnabledLabel = document.createElement('label');
     optionsEnabledLabel.classList.add('checkbox_label');
-    optionsEnabledLabel.style.display = 'flex';
-    optionsEnabledLabel.style.alignItems = 'center';
     const optionsEnabledCheckbox = document.createElement('input');
     optionsEnabledCheckbox.type = 'checkbox';
     optionsEnabledCheckbox.checked = settings.optionsGenEnabled;
-    optionsEnabledCheckbox.style.marginRight = '6px';
     optionsEnabledCheckbox.addEventListener('change', () => {
         settings.optionsGenEnabled = optionsEnabledCheckbox.checked;
-        groupCard.style.opacity = settings.optionsGenEnabled ? '1' : '0.5';
+        optionsSettingsContainer.style.display = settings.optionsGenEnabled ? 'block' : 'none';
         saveSettingsDebounced();
     });
     const optionsEnabledText = document.createElement('span');
     optionsEnabledText.textContent = '启用回复选项生成';
     optionsEnabledLabel.append(optionsEnabledCheckbox, optionsEnabledText);
+    optionsContainer.appendChild(optionsEnabledLabel);
     // 调试模式
     const debugLabel = document.createElement('label');
     debugLabel.classList.add('checkbox_label');
-    debugLabel.style.display = 'flex';
-    debugLabel.style.alignItems = 'center';
     debugLabel.style.marginLeft = '10px';
     const debugCheckbox = document.createElement('input');
     debugCheckbox.type = 'checkbox';
     debugCheckbox.checked = settings.debug;
-    debugCheckbox.style.marginRight = '6px';
     debugCheckbox.addEventListener('change', () => {
         settings.debug = debugCheckbox.checked;
         saveSettingsDebounced();
@@ -352,10 +171,103 @@ export function addExtensionSettings(settings) {
     const debugText = document.createElement('span');
     debugText.textContent = '启用调试日志';
     debugLabel.append(debugCheckbox, debugText);
-    switchesRow.appendChild(optionsEnabledLabel);
-    switchesRow.appendChild(debugLabel);
-    groupCard.appendChild(switchesRow);
-    optionsContainer.appendChild(groupCard);
+    optionsContainer.appendChild(debugLabel);
+    // 选项设置容器
+    const optionsSettingsContainer = document.createElement('div');
+    optionsSettingsContainer.style.marginTop = '10px';
+    optionsSettingsContainer.style.display = settings.optionsGenEnabled ? 'block' : 'none';
+    // API Type
+    const apiTypeLabel = document.createElement('label');
+    apiTypeLabel.textContent = 'API 类型:';
+    apiTypeLabel.style.display = 'block';
+    apiTypeLabel.style.marginTop = '10px';
+    const apiTypeSelect = document.createElement('select');
+    apiTypeSelect.id = 'options-api-type';
+    apiTypeSelect.style.width = '100%';
+    apiTypeSelect.innerHTML = `
+        <option value="openai">OpenAI-兼容</option>
+        <option value="gemini">Google Gemini</option>
+    `;
+    apiTypeSelect.value = settings.optionsApiType;
+    optionsSettingsContainer.appendChild(apiTypeLabel);
+    optionsSettingsContainer.appendChild(apiTypeSelect);
+    // API Key
+    const apiKeyLabel = document.createElement('label');
+    apiKeyLabel.textContent = 'API密钥:';
+    apiKeyLabel.style.display = 'block';
+    apiKeyLabel.style.marginTop = '10px';
+    const apiKeyInput = document.createElement('input');
+    apiKeyInput.type = 'password';
+    apiKeyInput.value = settings.optionsApiKey;
+    apiKeyInput.placeholder = '输入API密钥';
+    apiKeyInput.style.width = '100%';
+    apiKeyInput.addEventListener('input', () => {
+        settings.optionsApiKey = apiKeyInput.value;
+        saveSettingsDebounced();
+    });
+    optionsSettingsContainer.appendChild(apiKeyLabel);
+    optionsSettingsContainer.appendChild(apiKeyInput);
+    // 模型选择
+    const modelLabel = document.createElement('label');
+    modelLabel.textContent = '模型:';
+    modelLabel.style.display = 'block';
+    modelLabel.style.marginTop = '10px';
+    const modelInput = document.createElement('input');
+    modelInput.type = 'text';
+    modelInput.value = settings.optionsApiModel;
+    modelInput.placeholder = '输入模型名称';
+    modelInput.style.width = '100%';
+    modelInput.addEventListener('input', () => {
+        settings.optionsApiModel = modelInput.value;
+        saveSettingsDebounced();
+    });
+    optionsSettingsContainer.appendChild(modelLabel);
+    optionsSettingsContainer.appendChild(modelInput);
+    // 基础URL
+    const baseUrlGroup = document.createElement('div');
+    baseUrlGroup.id = 'options-base-url-group';
+    const baseUrlLabel = document.createElement('label');
+    baseUrlLabel.textContent = '基础URL:';
+    baseUrlLabel.style.display = 'block';
+    baseUrlLabel.style.marginTop = '10px';
+    const baseUrlInput = document.createElement('input');
+    baseUrlInput.type = 'text';
+    baseUrlInput.value = settings.optionsBaseUrl;
+    baseUrlInput.placeholder = '输入API基础URL';
+    baseUrlInput.style.width = '100%';
+    baseUrlInput.addEventListener('input', () => {
+        settings.optionsBaseUrl = baseUrlInput.value;
+        saveSettingsDebounced();
+    });
+    baseUrlGroup.appendChild(baseUrlLabel);
+    baseUrlGroup.appendChild(baseUrlInput);
+    optionsSettingsContainer.appendChild(baseUrlGroup);
+    apiTypeSelect.addEventListener('change', () => {
+        settings.optionsApiType = apiTypeSelect.value;
+        baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
+        saveSettingsDebounced();
+    });
+    baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
+    // 发送模式选项
+    const sendModeLabel = document.createElement('label');
+    sendModeLabel.textContent = '发送模式:';
+    sendModeLabel.style.display = 'block';
+    sendModeLabel.style.marginTop = '10px';
+    const sendModeSelect = document.createElement('select');
+    sendModeSelect.style.width = '100%';
+    sendModeSelect.innerHTML = `
+        <option value="auto">自动发送</option>
+        <option value="manual">手动发送</option>
+        <option value="stream_auto_send">全自动导演模式</option>
+    `;
+    sendModeSelect.value = settings.sendMode;
+    sendModeSelect.addEventListener('change', () => {
+        settings.sendMode = sendModeSelect.value;
+        saveSettingsDebounced();
+    });
+    optionsSettingsContainer.appendChild(sendModeLabel);
+    optionsSettingsContainer.appendChild(sendModeSelect);
+    optionsContainer.appendChild(optionsSettingsContainer);
 
     // ========== 用户画像查看与编辑 ========== //
     const profileContainer = document.createElement('div');
@@ -432,7 +344,7 @@ export function addExtensionSettings(settings) {
     keywordsInput.style.width = '100%';
     keywordsInput.addEventListener('input', () => {
         settings.userProfile.customKeywords = keywordsInput.value.split(',').map(s => s.trim()).filter(Boolean);
-            saveSettingsDebounced();
+        saveSettingsDebounced();
     });
     profileContainer.appendChild(keywordsLabel);
     profileContainer.appendChild(keywordsInput);
