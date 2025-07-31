@@ -1,5 +1,6 @@
 import { getSettings } from './settings.js';
 import { logger } from './logger.js';
+import { saveSettingsDebounced } from '../../../../script.js';
 
 function getUserInput() {
     // 获取输入框内容
@@ -304,19 +305,39 @@ async function renderSuggestions(suggestions, analysisData) {
     // 兼容UI，支持自动/手动/全自动
     const sendForm = document.getElementById('send_form');
     if (!sendForm || !suggestions || suggestions.length === 0) return;
+    
+    // 清理旧的建议容器
+    const oldContainer = document.getElementById('ti-options-container');
+    if (oldContainer) oldContainer.remove();
+    
     const container = document.createElement('div');
     container.id = 'ti-options-container';
+    container.style.marginBottom = '10px';
     sendForm.insertAdjacentElement('beforebegin', container);
+    
     const sleep = ms => new Promise(res => setTimeout(res, ms));
     for (const text of suggestions) {
         const btn = document.createElement('button');
         btn.className = 'qr--button menu_button interactable ti-options-capsule';
+        btn.style.margin = '2px';
+        btn.style.padding = '8px 12px';
         container.appendChild(btn);
+        
+        // 打字机效果
         for (let i = 0; i < text.length; i++) {
             btn.textContent = text.substring(0, i + 1);
             await sleep(15);
         }
-        btn.onclick = () => handleSuggestionClick(text, analysisData, false);
+        
+        // 根据发送模式设置点击行为
+        const settings = getSettings();
+        if (settings.sendMode === 'auto') {
+            // 自动模式：点击后自动发送
+            btn.onclick = () => handleSuggestionClick(text, analysisData, true);
+        } else {
+            // 手动模式：点击后只填充文本
+            btn.onclick = () => handleSuggestionClick(text, analysisData, false);
+        }
     }
 }
 async function handleSuggestionClick(text, analysisData, isAuto = false) {
@@ -329,21 +350,32 @@ async function handleSuggestionClick(text, analysisData, isAuto = false) {
 async function sendSuggestion(text, isAuto = false) {
     // 兼容自动/手动发送
     const textarea = document.querySelector('#send_textarea, .send_textarea');
-    if (!isAuto && getSettings().sendMode === 'manual') {
-        if (textarea) {
-            textarea.value = text;
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-            textarea.focus();
+    const sendButton = document.querySelector('#send_but, .send_but, button[onclick*="send"], button[onclick*="Send"]');
+    
+    if (textarea) {
+        textarea.value = text;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.focus();
+        
+        // 根据发送模式处理
+        if (isAuto || getSettings().sendMode === 'auto' || getSettings().sendMode === 'stream_auto_send') {
+            // 自动发送：模拟点击发送按钮
+            if (sendButton) {
+                sendButton.click();
+            } else {
+                // 尝试触发回车键事件
+                textarea.dispatchEvent(new KeyboardEvent('keydown', {
+                    key: 'Enter',
+                    code: 'Enter',
+                    keyCode: 13,
+                    which: 13,
+                    bubbles: true
+                }));
+            }
         }
-    } else {
-        // 自动发送（可扩展为调用外部API或模拟发送）
-        if (textarea) {
-            textarea.value = text;
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-            textarea.focus();
-            // 可扩展为自动点击发送按钮
-        }
+        // manual 模式只填充文本，不自动发送
     }
+    
     // 清理建议UI
     const oldContainer = document.getElementById('ti-options-container');
     if (oldContainer) oldContainer.remove();
@@ -416,6 +448,7 @@ async function generateOptions() {
         } else if (settings.sendMode === 'manual') {
             await renderSuggestions(suggestions, analysisData);
         }
+        hideGeneratingUI();
     } catch (error) {
         logger.error('生成选项时出错:', error);
         showGeneratingUI(`生成失败: ${error.message}`, 5000);
