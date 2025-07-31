@@ -190,34 +190,183 @@ async function displayOptions(options) {
     }
 }
 
-async function generateOptions() {
-    if (OptionsGenerator.isGenerating) {
-        logger.log('已在生成选项，跳过本次请求。');
-        return;
+// 1. 兼容型上下文提取
+async function getContextCompatible(limit = 20) {
+    // 兼容 TavernHelper 或 DOM
+    if (typeof window.TavernHelper?.getContext === 'function') {
+        return await window.TavernHelper.getContext({ tokenLimit: 8192 });
+    } else {
+        // DOM fallback
+        const messageElements = document.querySelectorAll('#chat .mes');
+        const messages = [];
+        messageElements.forEach((el) => {
+            const contentEl = el.querySelector('.mes_text');
+            if (contentEl) {
+                let role = 'system';
+                const isUserAttr = el.getAttribute('is_user');
+                if (isUserAttr === 'true') role = 'user';
+                else if (isUserAttr === 'false') role = 'assistant';
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = contentEl.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+                const content = (tempDiv.textContent || tempDiv.innerText || '').trim();
+                if (content && (role === 'user' || role === 'assistant')) {
+                    messages.push({ role, content });
+                }
+            }
+        });
+        return { messages: messages.slice(-limit) };
     }
-    OptionsGenerator.isManuallyStopped = false;
+}
+
+// 2. 情境分析
+async function analyzeContext() {
     const settings = getSettings();
-    if (!settings.optionsGenEnabled || !settings.optionsApiKey) {
-        logger.log('选项生成功能未启用或API密钥未设置');
-        return;
+    const context = await getContextCompatible(5);
+    if (!context || !context.messages.length) return null;
+    const analysisPrompt = `分析以下最新的对话片段，严格以JSON格式返回当前情境。JSON必须包含 scene_type(场景类型), user_mood(我的情绪), narrative_focus(当前叙事焦点) 三个键。\n\n对话片段:\n${JSON.stringify(context.messages)}\n\n你的JSON输出:`;
+    try {
+        // 用 analysisModel 调用 OpenAI 兼容API
+        const response = await fetch(settings.optionsBaseUrl + '/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${settings.optionsApiKey}`
+            },
+            body: JSON.stringify({
+                model: settings.analysisModel,
+                messages: [{ role: 'user', content: analysisPrompt }],
+                temperature: 0.2,
+                stream: false
+            })
+        });
+        const data = await response.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        const jsonMatch = text.match(/\{.*\}/s);
+        if (!jsonMatch) return null;
+        return JSON.parse(jsonMatch[0]);
+    } catch (e) {
+        logger.error('analyzeContext 失败:', e);
+        return null;
     }
+}
+
+// 3. 动态prompt组装
+function assembleDynamicPrompt(analysisResult) {
+    const settings = getSettings();
+    let prompt = settings.dynamicPromptTemplate || settings.optionsTemplate;
+    prompt = prompt.replace(/\{\{scene_type\}\}/g, analysisResult.scene_type || '未知');
+    prompt = prompt.replace(/\{\{user_mood\}\}/g, analysisResult.user_mood || '未知');
+    prompt = prompt.replace(/\{\{narrative_focus\}\}/g, analysisResult.narrative_focus || '未知');
+    prompt = prompt.replace(/\{\{learned_style\}\}/g, settings.learnedStyle || '无特定偏好');
+    return prompt;
+}
+
+// 4. 长期记忆/自我进化
+async function logChoice(analysisData) {
+    const settings = getSettings();
+    if (!analysisData) return;
+    settings.choiceLog.push(analysisData);
+    if (settings.choiceLog.length >= settings.logTriggerCount) {
+        await reflectOnChoices();
+    }
+    // 这里假设有 saveSettingsDebounced
+    if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
+}
+async function reflectOnChoices() {
+    const settings = getSettings();
+    const reflectionPrompt = `这里是一个用户在不同叙事场景下的情境分析日志（JSON数组）。请分析这些数据，用一句话总结出该用户的核心创作偏好或“玩家风格”。你的回答必须简洁、精炼、如同一个资深编辑的评语。\n\n情境日志:\n${JSON.stringify(settings.choiceLog)}\n\n你的总结评语:`;
+    try {
+        const response = await fetch(settings.optionsBaseUrl + '/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${settings.optionsApiKey}`
+            },
+            body: JSON.stringify({
+                model: settings.analysisModel,
+                messages: [{ role: 'user', content: reflectionPrompt }],
+                temperature: 0.5,
+                stream: false
+            })
+        });
+        const data = await response.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        settings.learnedStyle = text.trim();
+        settings.choiceLog = [];
+        if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
+    } catch (e) {
+        logger.error('reflectOnChoices 失败:', e);
+    }
+}
+
+// 5. 建议渲染与点击处理
+async function renderSuggestions(suggestions, analysisData) {
+    // 兼容UI，支持自动/手动/全自动
+    const sendForm = document.getElementById('send_form');
+    if (!sendForm || !suggestions || suggestions.length === 0) return;
+    const container = document.createElement('div');
+    container.id = 'ti-options-container';
+    sendForm.insertAdjacentElement('beforebegin', container);
+    const sleep = ms => new Promise(res => setTimeout(res, ms));
+    for (const text of suggestions) {
+        const btn = document.createElement('button');
+        btn.className = 'qr--button menu_button interactable ti-options-capsule';
+        container.appendChild(btn);
+        for (let i = 0; i < text.length; i++) {
+            btn.textContent = text.substring(0, i + 1);
+            await sleep(15);
+        }
+        btn.onclick = () => handleSuggestionClick(text, analysisData, false);
+    }
+}
+async function handleSuggestionClick(text, analysisData, isAuto = false) {
+    await sendSuggestion(text, isAuto);
+    const settings = getSettings();
+    if (settings.enableDynamicDirector && analysisData) {
+        await logChoice(analysisData);
+    }
+}
+async function sendSuggestion(text, isAuto = false) {
+    // 兼容自动/手动发送
+    const textarea = document.querySelector('#send_textarea, .send_textarea');
+    if (!isAuto && getSettings().sendMode === 'manual') {
+        if (textarea) {
+            textarea.value = text;
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            textarea.focus();
+        }
+    } else {
+        // 自动发送（可扩展为调用外部API或模拟发送）
+        if (textarea) {
+            textarea.value = text;
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            textarea.focus();
+            // 可扩展为自动点击发送按钮
+        }
+    }
+    // 清理建议UI
+    const oldContainer = document.getElementById('ti-options-container');
+    if (oldContainer) oldContainer.remove();
+}
+
+async function generateOptions() {
+    const settings = getSettings();
+    if (OptionsGenerator.isGenerating) return;
+    OptionsGenerator.isManuallyStopped = false;
+    if (!settings.optionsGenEnabled || !settings.optionsApiKey) return;
     showGeneratingUI('AI助手思考中');
     OptionsGenerator.isGenerating = true;
     try {
-        const apiContext = OptionsGenerator.getContextForAPI();
-        if (apiContext.length === 0) {
-            throw new Error('无法获取聊天上下文');
+        let prompt = settings.optionsTemplate;
+        let analysisData = null;
+        if (settings.enableDynamicDirector && settings.analysisModel && settings.dynamicPromptTemplate) {
+            analysisData = await analyzeContext();
+            if (analysisData) {
+                prompt = assembleDynamicPrompt(analysisData);
+            }
         }
-        const userInput = OptionsGenerator.getUserInput();
-        let processedTemplate = settings.optionsTemplate
-            .replace(/{{context}}/g, '对话历史已在上方消息中提供')
-            .replace(/{{user_input}}/g, userInput || '用户当前输入')
-            .replace(/{{char_card}}/g, OptionsGenerator.getCharacterCard() || '角色信息')
-            .replace(/{{world_info}}/g, OptionsGenerator.getWorldInfo() || '世界设定信息');
-        const finalMessages = [
-            ...apiContext,
-            { role: 'user', content: processedTemplate }
-        ];
+        const context = await getContextCompatible();
+        const finalMessages = [...context.messages, { role: 'user', content: prompt }];
         let content = '';
         if (settings.optionsApiType === 'gemini') {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.optionsApiModel}:generateContent?key=${settings.optionsApiKey}`;
@@ -237,19 +386,15 @@ async function generateOptions() {
             logger.log('API 响应数据 (Gemini):', data);
             content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         } else {
-            const optionsBaseUrl = settings.optionsBaseUrl;
-            const optionsApiKey = settings.optionsApiKey;
-            const optionsApiModel = settings.optionsApiModel;
-            const apiUrl = `${optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
-            logger.log('Requesting options from OpenAI-compatible API:', apiUrl);
+            const apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${optionsApiKey}`,
+                    'Authorization': `Bearer ${settings.optionsApiKey}`,
                 },
                 body: JSON.stringify({
-                    model: optionsApiModel,
+                    model: settings.optionsApiModel,
                     messages: finalMessages,
                     temperature: 0.8,
                     stream: false,
@@ -261,12 +406,16 @@ async function generateOptions() {
                 throw new Error('OpenAI-兼容 API 请求失败');
             }
             const data = await response.json();
-            logger.log('API 响应数据 (OpenAI-兼容模式):', data);
             content = data.candidates?.[0]?.content?.parts?.[0]?.text || data.choices?.[0]?.message?.content || '';
         }
-        const options = parseOptions(content);
-        logger.log('解析出的选项:', options);
-        await displayOptions(options);
+        const suggestions = parseOptions(content);
+        if (settings.sendMode === 'stream_auto_send' && suggestions.length > 0) {
+            await handleSuggestionClick(suggestions[0], analysisData, true);
+        } else if (settings.sendMode === 'auto' && suggestions.length > 0) {
+            await renderSuggestions(suggestions, analysisData);
+        } else if (settings.sendMode === 'manual') {
+            await renderSuggestions(suggestions, analysisData);
+        }
     } catch (error) {
         logger.error('生成选项时出错:', error);
         showGeneratingUI(`生成失败: ${error.message}`, 5000);

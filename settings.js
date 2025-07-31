@@ -42,6 +42,14 @@ export const defaultSettings = {
 
 # 开始执行导演任务，并输出你的最终选项列表：
 `.trim(),
+    // 新增高级功能相关配置
+    enableDynamicDirector: false,
+    analysisModel: 'gpt-3.5-turbo',
+    dynamicPromptTemplate: '', // 可在UI中编辑
+    choiceLog: [],
+    learnedStyle: '',
+    logTriggerCount: 20,
+    sendMode: 'auto', // auto/manual/stream_auto_send
 };
 
 const MODULE = 'typing_indicator';
