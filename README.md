@@ -1,11 +1,64 @@
-# 打字指示器
-在消息生成过程中显示消息。{{char}} is typing...
-原拓展链接为https://github.com/SillyTavern/Extension-TypingIndicator
-原版作者为SillyTavern社区的cohee guy/dude
-此版本为基于原版的二改版本
-# 如何使用
-1.使用 URL 通过内置扩展管理器安装：https://github.com/gfdxvv596/TypingIndicator.git
-2.在扩展设置面板中找到“打字指示器”并启用它。
-3.如果您希望在流式传输消息时显示指示器，请选中“如果流式传输显示”。
-# 许可证
-AGPL-3.0 系列
+# AI助手扩展
+
+一个为聊天应用提供智能回复选项生成和打字指示器功能的扩展。
+
+## 重构后的项目结构
+
+```
+AI/
+├── src/
+│   ├── core/
+│   │   ├── settings.js          # 设置管理
+│   │   ├── logger.js            # 日志系统
+│   │   └── events.js            # 事件处理
+│   ├── features/
+│   │   ├── typing-indicator.js  # 打字指示器
+│   │   └── options-generator.js # 选项生成器
+│   ├── ui/
+│   │   ├── settings-ui.js       # 设置界面
+│   │   └── styles.js            # 样式管理
+│   └── utils/
+│       ├── api-client.js        # API客户端
+│       └── dom-utils.js         # DOM工具
+├── index.js                     # 主入口文件
+├── manifest.json                # 扩展清单
+└── README.md                    # 项目说明
+```
+
+## 功能特性
+
+- **打字指示器**: 显示AI正在输入的状态
+- **智能选项生成**: 基于对话上下文生成回复选项
+- **多API支持**: 支持OpenAI和Google Gemini API
+- **设置管理**: 完整的设置界面和重置功能
+- **调试支持**: 内置日志系统
+
+## 使用方法
+
+1. 将扩展文件放入应用的扩展目录
+2. 在设置中配置API密钥和模型
+3. 启用选项生成功能
+4. 开始聊天，AI会自动生成回复选项
+
+## 开发
+
+### 模块化架构
+
+项目采用模块化设计，每个功能都有独立的模块：
+
+- **核心模块**: 处理设置、日志和事件
+- **功能模块**: 实现具体功能
+- **UI模块**: 管理用户界面
+- **工具模块**: 提供通用工具函数
+
+### 扩展性
+
+通过模块化设计，可以轻松添加新功能：
+
+1. 在 `features/` 目录下创建新功能模块
+2. 在 `ui/` 目录下添加对应的UI组件
+3. 在主入口文件中注册新功能
+
+## 许可证
+
+MIT License
