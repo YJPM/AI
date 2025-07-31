@@ -174,15 +174,43 @@ class AIAssistantExtension {
  * 等待核心系统就绪
  */
 function waitForCoreSystem() {
-    if (typeof eventSource !== 'undefined' && eventSource.on) {
-        logger.log('核心事件系统已就绪，初始化插件。');
+    console.log('AI助手扩展：检查核心系统状态...');
+    
+    // 检查必要的全局变量
+    const hasEventSource = typeof eventSource !== 'undefined' && eventSource && eventSource.on;
+    const hasExtensionSettings = typeof extension_settings !== 'undefined';
+    const hasSaveSettingsDebounced = typeof saveSettingsDebounced !== 'undefined';
+    
+    console.log('AI助手扩展：系统检查结果', {
+        hasEventSource,
+        hasExtensionSettings,
+        hasSaveSettingsDebounced
+    });
+
+    if (hasEventSource && hasExtensionSettings && hasSaveSettingsDebounced) {
+        console.log('AI助手扩展：核心事件系统已就绪，初始化插件。');
         const extension = AIAssistantExtension.getInstance();
         extension.initialize();
     } else {
-        logger.log('等待核心事件系统加载...');
-        setTimeout(waitForCoreSystem, 200);
+        console.log('AI助手扩展：等待核心事件系统加载...');
+        setTimeout(waitForCoreSystem, 500); // 增加延迟时间
     }
 }
 
 // 启动就绪检查
-waitForCoreSystem(); 
+waitForCoreSystem();
+
+// 暴露给全局作用域，确保SillyTavern能够找到扩展
+window.typing_indicator_extension = {
+    initialize: () => {
+        const extension = AIAssistantExtension.getInstance();
+        extension.initialize();
+    },
+    getInstance: () => AIAssistantExtension.getInstance()
+};
+
+// 兼容性：也暴露为全局函数
+window.initializeTypingIndicator = () => {
+    const extension = AIAssistantExtension.getInstance();
+    extension.initialize();
+}; 

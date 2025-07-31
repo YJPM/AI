@@ -29,6 +29,7 @@ var DEFAULT_BASE_URLS = _defineProperty(_defineProperty({}, API_TYPES.OPENAI, 'h
 
 
 
+
 /**
  * @typedef {Object} TypingIndicatorSettings
  * @property {boolean} enabled
@@ -66,23 +67,23 @@ var defaultSettings = {
  * 获取此扩展的设置。
  */
 function getSettings() {
-  if (extension_settings[MODULE] === undefined) {
-    extension_settings[MODULE] = structuredClone(defaultSettings);
+  if (external_extensions_js_namespaceObject.extension_settings[MODULE] === undefined) {
+    external_extensions_js_namespaceObject.extension_settings[MODULE] = structuredClone(defaultSettings);
   }
   for (var key in defaultSettings) {
-    if (extension_settings[MODULE][key] === undefined) {
-      extension_settings[MODULE][key] = defaultSettings[key];
+    if (external_extensions_js_namespaceObject.extension_settings[MODULE][key] === undefined) {
+      external_extensions_js_namespaceObject.extension_settings[MODULE][key] = defaultSettings[key];
     }
   }
-  return extension_settings[MODULE];
+  return external_extensions_js_namespaceObject.extension_settings[MODULE];
 }
 
 /**
  * 重置所有设置为默认值
  */
 function resetSettings() {
-  extension_settings[MODULE] = structuredClone(defaultSettings);
-  return extension_settings[MODULE];
+  external_extensions_js_namespaceObject.extension_settings[MODULE] = structuredClone(defaultSettings);
+  return external_extensions_js_namespaceObject.extension_settings[MODULE];
 }
 ;// ./src/core/logger.js
 
@@ -885,6 +886,9 @@ var OptionsGenerator = /*#__PURE__*/function () {
 }();
 ;// ./src/ui/settings-panel.js
 function settings_panel_typeof(o) { "@babel/helpers - typeof"; return settings_panel_typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, settings_panel_typeof(o); }
+function settings_panel_createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = settings_panel_unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
+function settings_panel_unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return settings_panel_arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? settings_panel_arrayLikeToArray(r, a) : void 0; } }
+function settings_panel_arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function settings_panel_classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
 function settings_panel_defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = r[t]; o.enumerable = o.enumerable || !1, o.configurable = !0, "value" in o && (o.writable = !0), Object.defineProperty(e, settings_panel_toPropertyKey(o.key), o); } }
 function settings_panel_createClass(e, r, t) { return r && settings_panel_defineProperties(e.prototype, r), t && settings_panel_defineProperties(e, t), Object.defineProperty(e, "prototype", { writable: !1 }), e; }
@@ -910,9 +914,38 @@ var SettingsPanel = /*#__PURE__*/function () {
   return settings_panel_createClass(SettingsPanel, [{
     key: "createSettingsPanel",
     value: function createSettingsPanel() {
-      var _document$getElementB;
-      var settingsContainer = (_document$getElementB = document.getElementById('typing_indicator_container')) !== null && _document$getElementB !== void 0 ? _document$getElementB : document.getElementById('extensions_settings');
-      if (!settingsContainer) return;
+      // 尝试多个可能的容器ID
+      var settingsContainer = document.getElementById('typing_indicator_container');
+      if (!settingsContainer) {
+        settingsContainer = document.getElementById('extensions_settings');
+      }
+      if (!settingsContainer) {
+        settingsContainer = document.getElementById('extensions_settings_container');
+      }
+      if (!settingsContainer) {
+        // 如果都找不到，尝试查找包含"extensions"的容器
+        var containers = document.querySelectorAll('[id*="extension"], [id*="settings"]');
+        var _iterator = settings_panel_createForOfIteratorHelper(containers),
+          _step;
+        try {
+          for (_iterator.s(); !(_step = _iterator.n()).done;) {
+            var container = _step.value;
+            if (container.id.includes('extension') || container.id.includes('settings')) {
+              settingsContainer = container;
+              break;
+            }
+          }
+        } catch (err) {
+          _iterator.e(err);
+        } finally {
+          _iterator.f();
+        }
+      }
+      if (!settingsContainer) {
+        console.error('AI助手扩展：无法找到设置容器');
+        return;
+      }
+      console.log('AI助手扩展：找到设置容器', settingsContainer.id);
       var inlineDrawer = createElement('div', {
         className: 'inline-drawer'
       });
@@ -937,6 +970,7 @@ var SettingsPanel = /*#__PURE__*/function () {
       // 创建重置设置
       var resetContainer = this.createResetSettings();
       inlineDrawerContent.append(resetContainer);
+      console.log('AI助手扩展：设置面板创建完成');
       return inlineDrawer;
     }
 
@@ -1222,12 +1256,30 @@ var StyleManager = /*#__PURE__*/function () {
   function StyleManager() {
     styles_classCallCheck(this, StyleManager);
     this.injectGlobalStyles();
+    this.applyBasicStyle();
   }
 
   /**
-   * 注入全局样式
+   * 应用基本样式
    */
   return styles_createClass(StyleManager, [{
+    key: "applyBasicStyle",
+    value: function applyBasicStyle() {
+      var styleTag = document.getElementById('typing-indicator-theme-style');
+      if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'typing-indicator-theme-style';
+        document.head.appendChild(styleTag);
+      }
+
+      // 恢复为原始透明背景样式，移除所有渐变、圆角和阴影
+      styleTag.textContent = "\n            .typing_indicator {\n                background-color: transparent; /* \u6062\u590D\u900F\u660E\u80CC\u666F */\n                padding: 8px 16px;\n                margin: 8px auto;\n                width: fit-content;\n                max-width: 90%;\n                text-align: center;\n                color: var(--text_color); /* \u4F7F\u7528\u4E3B\u9898\u7684\u9ED8\u8BA4\u6587\u5B57\u989C\u8272 */\n            }\n        ";
+    }
+
+    /**
+     * 注入全局样式
+     */
+  }, {
     key: "injectGlobalStyles",
     value: function injectGlobalStyles() {
       var css = "\n            /* \u6838\u5FC3\u6307\u793A\u5668\u6837\u5F0F\u4FEE\u590D */\n            #typing_indicator.typing_indicator {\n                opacity: 1 !important;\n                background-color: transparent !important;\n            }\n\n            /* \u9009\u9879\u5BB9\u5668\u6837\u5F0F */\n            .ti-options-container {\n                display: flex;\n                flex-wrap: wrap;\n                gap: 8px;\n                margin: 10px 0;\n                padding: 10px;\n                background: var(--SmartThemeBlurple);\n                border-radius: 8px;\n                animation: fadeIn 0.3s ease-in;\n            }\n\n            .ti-options-capsule {\n                background: var(--SmartThemeBlurple);\n                color: white;\n                border: 1px solid var(--border_color);\n                border-radius: 20px;\n                padding: 8px 16px;\n                margin: 4px;\n                cursor: pointer;\n                transition: all 0.2s ease;\n                font-size: 14px;\n                white-space: nowrap;\n                overflow: hidden;\n                text-overflow: ellipsis;\n                max-width: 200px;\n            }\n\n            .ti-options-capsule:hover {\n                background: var(--SmartThemeBlurple);\n                transform: translateY(-2px);\n                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);\n            }\n\n            /* \u751F\u6210\u4E2DUI\u6837\u5F0F */\n            .ti-generating-container {\n                display: flex;\n                align-items: center;\n                justify-content: center;\n                gap: 10px;\n                margin: 10px 0;\n                padding: 10px;\n                background: var(--SmartThemeBlurple);\n                border-radius: 8px;\n                color: white;\n            }\n\n            .ti-spinner {\n                width: 20px;\n                height: 20px;\n                border: 2px solid rgba(255, 255, 255, 0.3);\n                border-top: 2px solid white;\n                border-radius: 50%;\n                animation: spin 1s linear infinite;\n            }\n\n            .ti-generating-text {\n                font-size: 14px;\n                font-weight: 500;\n            }\n\n            /* \u52A8\u753B */\n            @keyframes spin {\n                0% { transform: rotate(0deg); }\n                100% { transform: rotate(360deg); }\n            }\n\n            @keyframes fadeIn {\n                from { opacity: 0; transform: translateY(10px); }\n                to { opacity: 1; transform: translateY(0); }\n            }\n\n            /* \u6253\u5B57\u6307\u793A\u5668\u6837\u5F0F */\n            .typing_indicator {\n                background-color: transparent;\n                padding: 8px 16px;\n                margin: 8px auto;\n                width: fit-content;\n                max-width: 90%;\n                text-align: center;\n                color: var(--text_color);\n                opacity: 1 !important;\n            }\n\n            .typing-ellipsis {\n                display: inline-block;\n                animation: typing-dots 1.5s infinite;\n            }\n\n            @keyframes typing-dots {\n                0%, 20% { opacity: 0; }\n                50% { opacity: 1; }\n                100% { opacity: 0; }\n            }\n\n            .typing-ellipsis::after {\n                content: '...';\n                animation: typing-dots 1.5s infinite;\n            }\n\n            /* \u8BBE\u7F6E\u9762\u677F\u6837\u5F0F */\n            .inline-drawer {\n                margin-bottom: 10px;\n            }\n\n            .inline-drawer-toggle {\n                cursor: pointer;\n                padding: 10px;\n                background: var(--SmartThemeBlurple);\n                color: white;\n                border-radius: 4px;\n                display: flex;\n                justify-content: space-between;\n                align-items: center;\n            }\n\n            .inline-drawer-content {\n                padding: 15px;\n                border: 1px solid var(--border_color);\n                border-top: none;\n                border-radius: 0 0 4px 4px;\n                background: var(--SmartThemeBody);\n            }\n\n            .checkbox_label {\n                display: flex;\n                align-items: center;\n                gap: 8px;\n                margin-bottom: 10px;\n                cursor: pointer;\n            }\n\n            .checkbox_label input[type=\"checkbox\"] {\n                margin: 0;\n            }\n\n            /* \u54CD\u5E94\u5F0F\u8BBE\u8BA1 */\n            @media (max-width: 768px) {\n                .ti-options-container {\n                    flex-direction: column;\n                }\n\n                .ti-options-capsule {\n                    max-width: none;\n                    width: 100%;\n                }\n            }\n        ";
@@ -1415,17 +1467,45 @@ var AIAssistantExtension = /*#__PURE__*/function () {
  * 等待核心系统就绪
  */
 function waitForCoreSystem() {
-  if (typeof external_script_js_namespaceObject.eventSource !== 'undefined' && external_script_js_namespaceObject.eventSource.on) {
-    logger.log('核心事件系统已就绪，初始化插件。');
+  console.log('AI助手扩展：检查核心系统状态...');
+
+  // 检查必要的全局变量
+  var hasEventSource = typeof external_script_js_namespaceObject.eventSource !== 'undefined' && external_script_js_namespaceObject.eventSource && external_script_js_namespaceObject.eventSource.on;
+  var hasExtensionSettings = typeof external_extensions_js_namespaceObject.extension_settings !== 'undefined';
+  var hasSaveSettingsDebounced = typeof external_script_js_namespaceObject.saveSettingsDebounced !== 'undefined';
+  console.log('AI助手扩展：系统检查结果', {
+    hasEventSource: hasEventSource,
+    hasExtensionSettings: hasExtensionSettings,
+    hasSaveSettingsDebounced: hasSaveSettingsDebounced
+  });
+  if (hasEventSource && hasExtensionSettings && hasSaveSettingsDebounced) {
+    console.log('AI助手扩展：核心事件系统已就绪，初始化插件。');
     var extension = AIAssistantExtension.getInstance();
     extension.initialize();
   } else {
-    logger.log('等待核心事件系统加载...');
-    setTimeout(waitForCoreSystem, 200);
+    console.log('AI助手扩展：等待核心事件系统加载...');
+    setTimeout(waitForCoreSystem, 500); // 增加延迟时间
   }
 }
 
 // 启动就绪检查
 waitForCoreSystem();
+
+// 暴露给全局作用域，确保SillyTavern能够找到扩展
+window.typing_indicator_extension = {
+  initialize: function initialize() {
+    var extension = AIAssistantExtension.getInstance();
+    extension.initialize();
+  },
+  getInstance: function getInstance() {
+    return AIAssistantExtension.getInstance();
+  }
+};
+
+// 兼容性：也暴露为全局函数
+window.initializeTypingIndicator = function () {
+  var extension = AIAssistantExtension.getInstance();
+  extension.initialize();
+};
 /******/ })()
 ;

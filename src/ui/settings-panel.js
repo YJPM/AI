@@ -15,8 +15,31 @@ export class SettingsPanel {
      * 创建设置界面
      */
     createSettingsPanel() {
-        const settingsContainer = document.getElementById('typing_indicator_container') ?? document.getElementById('extensions_settings');
-        if (!settingsContainer) return;
+        // 尝试多个可能的容器ID
+        let settingsContainer = document.getElementById('typing_indicator_container');
+        if (!settingsContainer) {
+            settingsContainer = document.getElementById('extensions_settings');
+        }
+        if (!settingsContainer) {
+            settingsContainer = document.getElementById('extensions_settings_container');
+        }
+        if (!settingsContainer) {
+            // 如果都找不到，尝试查找包含"extensions"的容器
+            const containers = document.querySelectorAll('[id*="extension"], [id*="settings"]');
+            for (const container of containers) {
+                if (container.id.includes('extension') || container.id.includes('settings')) {
+                    settingsContainer = container;
+                    break;
+                }
+            }
+        }
+
+        if (!settingsContainer) {
+            console.error('AI助手扩展：无法找到设置容器');
+            return;
+        }
+
+        console.log('AI助手扩展：找到设置容器', settingsContainer.id);
 
         const inlineDrawer = createElement('div', { className: 'inline-drawer' });
         settingsContainer.append(inlineDrawer);
@@ -36,6 +59,8 @@ export class SettingsPanel {
         // 创建重置设置
         const resetContainer = this.createResetSettings();
         inlineDrawerContent.append(resetContainer);
+
+        console.log('AI助手扩展：设置面板创建完成');
 
         return inlineDrawer;
     }

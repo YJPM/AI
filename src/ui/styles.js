@@ -6,6 +6,32 @@ import { injectCSS } from '@utils/dom-helpers.js';
 export class StyleManager {
     constructor() {
         this.injectGlobalStyles();
+        this.applyBasicStyle();
+    }
+
+    /**
+     * 应用基本样式
+     */
+    applyBasicStyle() {
+        let styleTag = document.getElementById('typing-indicator-theme-style');
+        if (!styleTag) {
+            styleTag = document.createElement('style');
+            styleTag.id = 'typing-indicator-theme-style';
+            document.head.appendChild(styleTag);
+        }
+
+        // 恢复为原始透明背景样式，移除所有渐变、圆角和阴影
+        styleTag.textContent = `
+            .typing_indicator {
+                background-color: transparent; /* 恢复透明背景 */
+                padding: 8px 16px;
+                margin: 8px auto;
+                width: fit-content;
+                max-width: 90%;
+                text-align: center;
+                color: var(--text_color); /* 使用主题的默认文字颜色 */
+            }
+        `;
     }
 
     /**

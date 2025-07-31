@@ -1,3 +1,4 @@
+import { extension_settings } from '../../../extensions.js';
 import { MODULE } from './constants.js';
 import { API_TYPES, DEFAULT_MODELS, DEFAULT_BASE_URLS } from './constants.js';
 
