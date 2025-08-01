@@ -1,12 +1,12 @@
 {
-    "display_name": "AI助手",
+    "display_name": "AI智能助手",
     "loading_order": 777,
     "requires": [],
     "optional": [],
     "js": "index.js",
     "css": "style.css",
     "author": "TJPM",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "homePage": "https://github.com/YJPM/AI",
     "auto_update": true
 }

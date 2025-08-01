@@ -2,44 +2,26 @@ import { getSettings, MERGED_DIRECTOR_PROMPT } from './settings.js';
 import { logger } from './logger.js';
 import { saveSettingsDebounced } from '../../../../script.js';
 
-function getUserInput() {
-    // 获取输入框内容
-    const textarea = document.querySelector('#send_textarea, .send_textarea');
-    return textarea ? textarea.value.trim() : '';
-}
-
-function getCharacterCard() {
-    // 获取角色卡信息
-    try {
-        if (typeof window.getCharacters === 'function') {
-            const characters = window.getCharacters();
-            const currentCharId = window.characterId;
-            if (characters && currentCharId) {
-                const character = characters.find(c => c.avatar === currentCharId);
-                return character ? character.description || character.name : '';
-            }
-        }
-        return '';
-    } catch (error) {
-        logger.error('获取角色卡信息失败:', error);
-        return '';
+function parseOptions(content) {
+    // 1. 优先尝试解析【...】格式
+    let options = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim());
+    if (options.length > 0) {
+        logger.log('使用【】格式解析器成功。');
+        return options.filter(Boolean);
     }
-}
-
-function getWorldInfo() {
-    // 获取世界设定信息
-    try {
-        if (typeof window.getLorebooks === 'function') {
-            const lorebooks = window.getLorebooks();
-            if (lorebooks && lorebooks.length > 0) {
-                return lorebooks.map(lb => lb.entries?.map(entry => entry.content).join('\n')).join('\n\n');
-            }
-        }
-        return '';
-    } catch (error) {
-        logger.error('获取世界设定信息失败:', error);
-        return '';
+    // 2. 如果失败，尝试解析列表格式 (e.g., "- ...", "1. ...")
+    const lines = content.split('\n').filter(line => line.trim() !== '');
+    const listRegex = /^(?:\*|-\s|\d+\.\s)\s*(.*)/;
+    options = lines.map(line => {
+        const match = line.trim().match(listRegex);
+        return match ? match[1].trim() : null;
+    }).filter(Boolean);
+    if (options.length > 0) {
+        logger.log('使用列表格式解析器成功。');
+        return options;
     }
+    logger.log('所有解析器都未能找到选项。');
+    return [];
 }
 
 function getContextForAPI() {
@@ -71,48 +53,6 @@ function getContextForAPI() {
         logger.error('getContextForAPI 解析失败:', error);
         return [];
     }
-}
-
-function transformMessagesForGemini(messages) {
-    // Gemini API 需要 user/model 角色交替
-    const contents = [];
-    let lastRole = '';
-    messages.forEach(msg => {
-        const currentRole = msg.role === 'assistant' ? 'model' : 'user';
-        if (currentRole === 'user' && lastRole === 'user' && contents.length > 0) {
-            contents[contents.length - 1].parts[0].text += `\n\n${msg.content}`;
-        } else {
-            contents.push({ role: currentRole, parts: [{ text: msg.content }] });
-        }
-        lastRole = currentRole;
-    });
-    // 最后一条必须是 user
-    if (contents.length > 0 && contents[contents.length - 1].role !== 'user') {
-        contents.push({ role: 'user', parts: [{text: '(继续)'}]});
-    }
-    return contents;
-}
-
-function parseOptions(content) {
-    // 1. 优先尝试解析【...】格式
-    let options = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim());
-    if (options.length > 0) {
-        logger.log('使用【】格式解析器成功。');
-        return options.filter(Boolean);
-    }
-    // 2. 如果失败，尝试解析列表格式 (e.g., "- ...", "1. ...")
-    const lines = content.split('\n').filter(line => line.trim() !== '');
-    const listRegex = /^(?:\*|-\s|\d+\.\s)\s*(.*)/;
-    options = lines.map(line => {
-        const match = line.trim().match(listRegex);
-        return match ? match[1].trim() : null;
-    }).filter(Boolean);
-    if (options.length > 0) {
-        logger.log('使用列表格式解析器成功。');
-        return options;
-    }
-    logger.log('所有解析器都未能找到选项。');
-    return [];
 }
 
 function showGeneratingUI(message, duration = null) {
@@ -173,7 +113,6 @@ async function displayOptionsStreaming(content) {
     // 如果还没有容器，创建容器
     let container = document.getElementById('ti-options-container');
     if (!container) {
-        hideGeneratingUI();
         const oldContainer = document.getElementById('ti-options-container');
         if (oldContainer) oldContainer.remove();
         const sendForm = document.getElementById('send_form');
@@ -182,6 +121,11 @@ async function displayOptionsStreaming(content) {
         container = document.createElement('div');
         container.id = 'ti-options-container';
         sendForm.insertAdjacentElement('beforebegin', container);
+        
+        // 只有在有有效选项时才隐藏思考提示
+        if (suggestions.length > 0) {
+            hideGeneratingUI();
+        }
     }
     
     // 获取当前发送模式
@@ -354,10 +298,6 @@ function assembleDynamicPrompt(analysisResult) {
     prompt = prompt.replace(/{{user_mood}}/g, analysisResult.user_mood || '未知');
     prompt = prompt.replace(/{{narrative_focus}}/g, analysisResult.narrative_focus || '未知');
     prompt = prompt.replace(/{{learned_style}}/g, settings.learnedStyle || '无特定偏好');
-    // 注入用户画像
-    if (settings.userProfile && settings.userProfile.summary) {
-        prompt += `\n# 用户画像：${settings.userProfile.summary}`;
-    }
     return prompt;
 }
 
@@ -374,7 +314,7 @@ async function logChoice(analysisData) {
 }
 async function reflectOnChoices() {
     const settings = getSettings();
-    const reflectionPrompt = `这里是一个用户在不同叙事场景下的情境分析日志（JSON数组）。请分析这些数据，用一句话总结出该用户的核心创作偏好或“玩家风格”。你的回答必须简洁、精炼、如同一个资深编辑的评语。\n\n情境日志:\n${JSON.stringify(settings.choiceLog)}\n\n你的总结评语:`;
+    const reflectionPrompt = `这里是一个用户在不同叙事场景下的情境分析日志（JSON数组）。请分析这些数据，用一句话总结出该用户的核心创作偏好或"玩家风格"。你的回答必须简洁、精炼、如同一个资深编辑的评语。\n\n情境日志:\n${JSON.stringify(settings.choiceLog)}\n\n你的总结评语:`;
     try {
         const response = await fetch(settings.optionsBaseUrl + '/chat/completions', {
             method: 'POST',
@@ -383,7 +323,7 @@ async function reflectOnChoices() {
                 'Authorization': `Bearer ${settings.optionsApiKey}`
             },
             body: JSON.stringify({
-                model: settings.analysisModel,
+                model: settings.optionsApiModel,
                 messages: [{ role: 'user', content: reflectionPrompt }],
                 temperature: 0.5,
                 stream: false
@@ -399,174 +339,13 @@ async function reflectOnChoices() {
     }
 }
 
-// ========== 用户行为采集与分析 ========== //
-
-function logUserAction(actionType, detail) {
-    const settings = getSettings();
-    const log = {
-        type: actionType,
-        detail,
-        timestamp: Date.now()
-    };
-    settings.userBehaviorLog.push(log);
-    // 限制日志长度，防止无限增长
-    if (settings.userBehaviorLog.length > 100) settings.userBehaviorLog.shift();
-    if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
-}
-
-async function analyzeUserBehavior() {
-    const settings = getSettings();
-    const logs = settings.userBehaviorLog;
-    if (!logs.length) {
-        logger.log('用户行为日志为空，跳过分析');
-        return;
-    }
-    
-    logger.log(`开始分析用户画像，日志数量: ${logs.length}`);
-    console.log('当前用户行为日志:', logs);
-    
-    // 简单统计：
-    const sceneCount = {};
-    const moodCount = {};
-    const focusCount = {};
-    const keywordCount = {};
-    let validLogs = 0;
-    
-    logs.forEach((log, index) => {
-        console.log(`处理第 ${index + 1} 条日志:`, log);
-        
-        if (log.type === 'select_suggestion' && log.detail) {
-            const { scene_type, user_mood, narrative_focus, keywords } = log.detail;
-            if (scene_type) sceneCount[scene_type] = (sceneCount[scene_type] || 0) + 1;
-            if (user_mood) moodCount[user_mood] = (moodCount[user_mood] || 0) + 1;
-            if (narrative_focus) focusCount[narrative_focus] = (focusCount[narrative_focus] || 0) + 1;
-            if (Array.isArray(keywords)) keywords.forEach(k => keywordCount[k] = (keywordCount[k] || 0) + 1);
-            
-            console.log(`处理建议选择日志:`, { scene_type, user_mood, narrative_focus });
-            validLogs++;
-        } else if (log.type === 'manual_input' && log.detail && log.detail.inputText) {
-            // 从手动输入中提取关键词
-            const text = log.detail.inputText.toLowerCase();
-            const keywords = text.split(/[\s,，。！？；：""''（）【】]/).filter(word => word.length > 1);
-            keywords.forEach(k => keywordCount[k] = (keywordCount[k] || 0) + 1);
-            
-            console.log(`处理手动输入日志:`, { inputText: log.detail.inputText.substring(0, 50) + '...' });
-            validLogs++;
-        }
-    });
-    
-    console.log(`有效日志数量: ${validLogs}`);
-    console.log('场景统计:', sceneCount);
-    console.log('情绪统计:', moodCount);
-    console.log('焦点统计:', focusCount);
-    console.log('关键词统计:', keywordCount);
-    
-    // 取出现最多的
-    function getTop(obj) {
-        return Object.entries(obj).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
-    }
-    
-    const favoriteScene = getTop(sceneCount);
-    const favoriteMood = getTop(moodCount);
-    const preferedFocus = getTop(focusCount);
-    const customKeywords = Object.entries(keywordCount).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
-    
-    // 生成简单总结
-    const summary = `偏好场景：${favoriteScene || '未知'}，情绪：${favoriteMood || '未知'}，叙事焦点：${preferedFocus || '未知'}，关键词：${customKeywords.join('、') || '无'}`;
-    
-    // 更新用户画像
-    settings.userProfile = {
-        favoriteScene: favoriteScene,
-        favoriteMood: favoriteMood,
-        preferedFocus: preferedFocus,
-        customKeywords: customKeywords,
-        summary: summary
-    };
-    
-    console.log('用户画像分析完成:', settings.userProfile);
-    
-    // 使用 SillyTavern 的变量保存机制
-    if (typeof window.setvar === 'function') {
-        // 保存到 SillyTavern 变量系统
-        window.setvar('userProfile_favoriteScene', favoriteScene);
-        window.setvar('userProfile_favoriteMood', favoriteMood);
-        window.setvar('userProfile_preferedFocus', preferedFocus);
-        window.setvar('userProfile_customKeywords', customKeywords.join(','));
-        window.setvar('userProfile_summary', summary);
-        console.log('已保存到 SillyTavern 变量系统');
-    } else if (typeof window.setGlobalVar === 'function') {
-        // 尝试使用 setGlobalVar
-        window.setGlobalVar('userProfile_favoriteScene', favoriteScene);
-        window.setGlobalVar('userProfile_favoriteMood', favoriteMood);
-        window.setGlobalVar('userProfile_preferedFocus', preferedFocus);
-        window.setGlobalVar('userProfile_customKeywords', customKeywords.join(','));
-        window.setGlobalVar('userProfile_summary', summary);
-        console.log('已保存到 SillyTavern 全局变量系统');
-    } else if (typeof window.TavernHelper !== 'undefined' && typeof window.TavernHelper.updateVariablesWith === 'function') {
-        // 使用 TavernHelper 保存变量
-        try {
-            await window.TavernHelper.updateVariablesWith(vars => {
-                vars.userProfile_favoriteScene = favoriteScene;
-                vars.userProfile_favoriteMood = favoriteMood;
-                vars.userProfile_preferedFocus = preferedFocus;
-                vars.userProfile_customKeywords = customKeywords.join(',');
-                vars.userProfile_summary = summary;
-                return vars;
-            }, { type: 'global' });
-            console.log('已保存到 TavernHelper 全局变量系统');
-        } catch (error) {
-            console.error('TavernHelper 保存变量失败:', error);
-        }
-    } else {
-        console.log('SillyTavern 变量系统不可用，仅保存到设置');
-    }
-    
-    // 保存到设置
-    if (typeof saveSettingsDebounced === 'function') {
-        saveSettingsDebounced();
-        console.log('已保存到设置系统');
-    }
-    
-    // 触发UI更新
-    if (typeof window.eventSource !== 'undefined' && window.eventSource.emit) {
-        window.eventSource.emit('userProfileUpdated', settings.userProfile);
-        console.log('已触发UI更新事件');
-    }
-}
-
-function tryAnalyzeUserProfile() {
-    const settings = getSettings();
-    const logCount = settings.userBehaviorLog.length;
-    
-    console.log(`尝试分析用户画像，当前日志数量: ${logCount}`);
-    console.log('当前用户画像:', settings.userProfile);
-    
-    // 降低触发频率：每3次行为分析一次，或者第一次有数据时
-    if (logCount > 0 && (logCount % 3 === 0 || !settings.userProfile.summary)) {
-        console.log(`开始分析用户画像，当前日志数量: ${logCount}`);
-        analyzeUserBehavior();
-    } else {
-        console.log('跳过分析，条件不满足');
-    }
-}
-
 // ========== 修改建议点击、输入等行为 ========== //
 // 在 handleSuggestionClick 处埋点
 async function handleSuggestionClick(text, analysisData, isAuto = false) {
-    logUserAction('select_suggestion', {
-        suggestionText: text,
-        ...(analysisData || {})
-    });
-    tryAnalyzeUserProfile();
-    
     // 发送建议内容
     await sendSuggestion(text, isAuto);
 }
 async function sendSuggestion(text, isAuto = false) {
-    if (!isAuto) {
-        logUserAction('manual_input', { inputText: text });
-    }
-    tryAnalyzeUserProfile();
     // 兼容自动/手动发送
     const textarea = document.querySelector('#send_textarea, .send_textarea');
     const sendButton = document.querySelector('#send_but, .send_but, button[onclick*="send"], button[onclick*="Send"]');
@@ -848,27 +627,23 @@ async function testApiConnection() {
     }
 }
 
-export const OptionsGenerator = {
-    isGenerating: false,
-    isManuallyStopped: false,
-    getUserInput,
-    getCharacterCard,
-    getWorldInfo,
-    getContextForAPI,
-    transformMessagesForGemini,
-    parseOptions,
-    showGeneratingUI,
-    hideGeneratingUI,
-    displayOptions,
-    displayOptionsStreaming, // 暴露新的流式显示函数
-    generateOptions,
-    testApiConnection,
-    analyzeUserBehavior,
-    tryAnalyzeUserProfile
-};
+export class OptionsGenerator {
+    static isManuallyStopped = false;
+    static isGenerating = false;
+    
+    // 静态方法引用
+    static getContextForAPI = getContextForAPI;
+    static parseOptions = parseOptions;
+    static showGeneratingUI = showGeneratingUI;
+    static hideGeneratingUI = hideGeneratingUI;
+    static displayOptions = displayOptions;
+    static displayOptionsStreaming = displayOptionsStreaming;
+    static generateOptions = generateOptions;
+    static testApiConnection = testApiConnection;
+}
 
 // 暴露到全局，方便UI调用
 if (typeof window !== 'undefined') {
-    window.analyzeUserBehavior = analyzeUserBehavior;
-    window.tryAnalyzeUserProfile = tryAnalyzeUserProfile;
+    window.analyzeUserBehavior = null; // 移除旧的分析函数
+    window.tryAnalyzeUserProfile = null; // 移除旧的分析函数
 }

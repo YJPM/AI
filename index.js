@@ -4,10 +4,8 @@ import { defaultSettings, getSettings } from './settings.js';
 import { logger } from './logger.js';
 import { OptionsGenerator } from './optionsGenerator.js';
 import { applyBasicStyle, injectGlobalStyles, addExtensionSettings } from './ui.js';
-import { showTypingIndicator, hideTypingIndicator, isLastMessageFromAI } from './typingIndicator.js';
 
 const MODULE = 'typing_indicator';
-const legacyIndicatorTemplate = document.getElementById('typing_indicator_template');
 
 function initializeTypingIndicator() {
     injectGlobalStyles();
@@ -25,10 +23,6 @@ function initializeTypingIndicator() {
         OptionsGenerator.hideGeneratingUI();
     }
     
-    const showIndicatorEvents = [event_types.GENERATION_AFTER_COMMANDS];
-    const hideIndicatorEvents = [event_types.GENERATION_STOPPED, event_types.GENERATION_ENDED, event_types.CHAT_CHANGED];
-    showIndicatorEvents.forEach(e => eventSource.on(e, showTypingIndicator));
-    
     // 用户发送消息时清除选项
     eventSource.on(event_types.MESSAGE_SENT, () => {
         logger.log('MESSAGE_SENT event triggered. 清除选项，等待AI回复。');
@@ -45,7 +39,7 @@ function initializeTypingIndicator() {
         logger.log('GENERATION_STOPPED event triggered. 设置 isManuallyStopped 为 true。');
         OptionsGenerator.isManuallyStopped = true;
     });
-    hideIndicatorEvents.forEach(e => eventSource.on(e, hideTypingIndicator));
+    
     eventSource.on(event_types.GENERATION_ENDED, () => {
         logger.log('GENERATION_ENDED event triggered.', { isManuallyStopped: OptionsGenerator.isManuallyStopped, optionsGenEnabled: getSettings().optionsGenEnabled });
         if (getSettings().optionsGenEnabled && !OptionsGenerator.isManuallyStopped) {
@@ -56,11 +50,10 @@ function initializeTypingIndicator() {
         }
         OptionsGenerator.isManuallyStopped = false;
     });
+    
     eventSource.on(event_types.CHAT_CHANGED, () => {
         logger.log('CHAT_CHANGED event triggered.');
-        hideTypingIndicator();
         clearOptions();
-        // 删除CHAT_CHANGED中的自动生成逻辑，只在AI回复后生成
     });
 }
 

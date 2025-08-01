@@ -23,13 +23,6 @@ export function applyBasicStyle() {
 
 export function injectGlobalStyles() {
     const css = `
-        #typing_indicator.typing_indicator {
-            opacity: 1 !important;
-            background-color: transparent !important;
-        }
-        .typing_indicator {
-            background-color: transparent !important;
-        }
         #ti-loading-container {
             display: flex !important;
             justify-content: center !important;
@@ -96,9 +89,11 @@ export function injectGlobalStyles() {
 export function addExtensionSettings(settings) {
     const settingsContainer = document.getElementById('typing_indicator_container') ?? document.getElementById('extensions_settings');
     if (!settingsContainer) return;
+    
     const inlineDrawer = document.createElement('div');
     inlineDrawer.classList.add('inline-drawer');
     settingsContainer.append(inlineDrawer);
+    
     const inlineDrawerToggle = document.createElement('div');
     inlineDrawerToggle.classList.add('inline-drawer-toggle', 'inline-drawer-header');
     inlineDrawerToggle.style.display = 'flex';
@@ -108,12 +103,12 @@ export function addExtensionSettings(settings) {
     const titleContainer = document.createElement('div');
     titleContainer.style.display = 'flex';
     titleContainer.style.alignItems = 'center';
-    titleContainer.style.gap = '10px'; // 添加间距
+    titleContainer.style.gap = '10px';
     
     const extensionName = document.createElement('b');
-    extensionName.textContent = 'AI助手';
+    extensionName.textContent = 'AI智能助手';
     
-    // 创建重置按钮并放在标题紧挨着的右边
+    // 创建重置按钮
     const resetButton = document.createElement('button');
     resetButton.className = 'menu_button';
     resetButton.style.padding = '2px';
@@ -130,7 +125,6 @@ export function addExtensionSettings(settings) {
     resetButton.style.transition = 'all 0.2s ease';
     resetButton.title = '重置设置';
     
-    // 添加悬停效果
     resetButton.addEventListener('mouseover', () => {
         resetButton.style.backgroundColor = 'var(--SmartThemeBlurple)';
         resetButton.style.color = 'white';
@@ -140,17 +134,16 @@ export function addExtensionSettings(settings) {
         resetButton.style.color = 'var(--SmartThemeBodyColor)';
     });
     
-    // 使用图标而不是文本
     const resetIcon = document.createElement('i');
-    resetIcon.classList.add('fa-solid', 'fa-rotate-left'); // 使用刷新/重置图标
+    resetIcon.classList.add('fa-solid', 'fa-rotate-left');
     resetIcon.style.fontSize = '14px';
     resetButton.appendChild(resetIcon);
     
-    // 展开/折叠图标放在最右边
     const inlineDrawerIcon = document.createElement('div');
     inlineDrawerIcon.classList.add('inline-drawer-icon', 'fa-solid', 'fa-circle-chevron-down', 'down');
+    
     resetButton.addEventListener('click', (e) => {
-        e.stopPropagation(); // 防止触发折叠面板
+        e.stopPropagation();
         if (confirm('确定要将所有设置重置为默认值吗？此操作不可撤销。')) {
             Object.assign(settings, structuredClone(defaultSettings));
             
@@ -161,17 +154,10 @@ export function addExtensionSettings(settings) {
             apiKeyInput.value = settings.optionsApiKey;
             modelInput.value = settings.optionsApiModel;
             baseUrlInput.value = settings.optionsBaseUrl;
-            
-            // 更新发送模式选择器
-            const sendModeSelect = document.getElementById('options-send-mode');
-            if (sendModeSelect) sendModeSelect.value = settings.sendMode;
-            
-            // 更新用户画像相关字段
-            summaryInput.value = settings.userProfile.summary || '';
-            sceneInput.value = settings.userProfile.favoriteScene || '';
-            moodInput.value = settings.userProfile.favoriteMood || '';
-            focusInput.value = settings.userProfile.preferedFocus || '';
-            keywordsInput.value = (settings.userProfile.customKeywords || []).join(',');
+            sendModeSelect.value = settings.sendMode;
+            streamCheckbox.checked = settings.streamOptions;
+            animationCheckbox.checked = settings.animationEnabled;
+            customTextInput.value = settings.customText;
             
             // 更新显示状态
             optionsSettingsContainer.style.display = settings.optionsGenEnabled ? 'block' : 'none';
@@ -183,22 +169,24 @@ export function addExtensionSettings(settings) {
         }
     });
     
-    // 标题容器只包含标题文本和重置按钮
     titleContainer.append(extensionName, resetButton);
-    // 将标题容器和展开图标添加到抽屉切换器
     inlineDrawerToggle.append(titleContainer, inlineDrawerIcon);
+    
     const inlineDrawerContent = document.createElement('div');
     inlineDrawerContent.classList.add('inline-drawer-content');
     inlineDrawer.append(inlineDrawerToggle, inlineDrawerContent);
+    
     // 选项生成设置
     const optionsContainer = document.createElement('div');
     optionsContainer.style.marginTop = '20px';
     optionsContainer.style.borderTop = '1px solid var(--border_color)';
     optionsContainer.style.paddingTop = '15px';
+    
     const optionsHeader = document.createElement('h4');
-    optionsHeader.textContent = '回复选项生成';
+    optionsHeader.textContent = '智能选项生成';
     optionsHeader.style.margin = '0 0 10px 0';
     optionsContainer.appendChild(optionsHeader);
+    
     // 启用选项生成
     const optionsEnabledLabel = document.createElement('label');
     optionsEnabledLabel.classList.add('checkbox_label');
@@ -211,9 +199,10 @@ export function addExtensionSettings(settings) {
         saveSettingsDebounced();
     });
     const optionsEnabledText = document.createElement('span');
-    optionsEnabledText.textContent = '启用回复选项生成';
+    optionsEnabledText.textContent = '启用智能选项生成';
     optionsEnabledLabel.append(optionsEnabledCheckbox, optionsEnabledText);
     optionsContainer.appendChild(optionsEnabledLabel);
+    
     // 调试模式
     const debugLabel = document.createElement('label');
     debugLabel.classList.add('checkbox_label');
@@ -229,6 +218,7 @@ export function addExtensionSettings(settings) {
     debugText.textContent = '启用调试日志';
     debugLabel.append(debugCheckbox, debugText);
     optionsContainer.appendChild(debugLabel);
+    
     // 选项设置容器
     const optionsSettingsContainer = document.createElement('div');
     optionsSettingsContainer.style.marginTop = '10px';
@@ -241,7 +231,6 @@ export function addExtensionSettings(settings) {
     sendModeLabel.style.marginTop = '10px';
     const sendModeSelect = document.createElement('select');
     sendModeSelect.id = 'options-send-mode';
-    sendModeSelect.dataset.setting = 'sendMode';
     sendModeSelect.style.width = '100%';
     sendModeSelect.innerHTML = `
         <option value="manual">手动模式 - 点击选项后需手动发送</option>
@@ -254,6 +243,7 @@ export function addExtensionSettings(settings) {
     });
     optionsSettingsContainer.appendChild(sendModeLabel);
     optionsSettingsContainer.appendChild(sendModeSelect);
+    
     // API Type
     const apiTypeLabel = document.createElement('label');
     apiTypeLabel.textContent = 'API 类型:';
@@ -270,26 +260,17 @@ export function addExtensionSettings(settings) {
     apiTypeSelect.addEventListener('change', () => {
         settings.optionsApiType = apiTypeSelect.value;
         saveSettingsDebounced();
-        
-        // 切换API类型时重置模型选择界面
-        modelSelect.style.display = 'none';
-        modelInput.style.display = 'block';
-        modelSelect.innerHTML = '';
-        connectionStatusDiv.style.display = 'none';
-        actualModelDiv.style.display = 'none';
-        
-        // 清除实际模型名称
-        delete settings.actualModelName;
+        baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
     });
     optionsSettingsContainer.appendChild(apiTypeLabel);
     optionsSettingsContainer.appendChild(apiTypeSelect);
+    
     // API Key
     const apiKeyLabel = document.createElement('label');
     apiKeyLabel.textContent = 'API密钥:';
     apiKeyLabel.style.display = 'block';
     apiKeyLabel.style.marginTop = '10px';
     
-    // 创建API密钥输入框和测试按钮的容器
     const apiKeyContainer = document.createElement('div');
     apiKeyContainer.style.display = 'flex';
     apiKeyContainer.style.gap = '10px';
@@ -305,7 +286,6 @@ export function addExtensionSettings(settings) {
         saveSettingsDebounced();
     });
     
-    // 创建测试连接按钮
     const testConnectionButton = document.createElement('button');
     testConnectionButton.textContent = '测试连接';
     testConnectionButton.className = 'menu_button';
@@ -313,7 +293,6 @@ export function addExtensionSettings(settings) {
     testConnectionButton.style.fontSize = '12px';
     testConnectionButton.style.whiteSpace = 'nowrap';
     
-    // 创建状态显示区域
     const connectionStatusDiv = document.createElement('div');
     connectionStatusDiv.id = 'api-connection-status';
     connectionStatusDiv.style.marginTop = '5px';
@@ -322,259 +301,58 @@ export function addExtensionSettings(settings) {
     connectionStatusDiv.style.borderRadius = '4px';
     connectionStatusDiv.style.display = 'none';
     
-    // 测试连接按钮点击事件
     testConnectionButton.addEventListener('click', async () => {
-        // 显示加载状态
         connectionStatusDiv.style.display = 'block';
         connectionStatusDiv.style.backgroundColor = 'var(--SmartThemeBlurpleTransparent)';
         connectionStatusDiv.textContent = '正在测试连接...';
         
         try {
-            // 导入OptionsGenerator
             const { OptionsGenerator } = await import('./optionsGenerator.js');
-            
-            // 调用测试连接函数
             const result = await OptionsGenerator.testApiConnection();
             
-            // 显示结果
             if (result.success) {
                 connectionStatusDiv.style.backgroundColor = 'rgba(0, 128, 0, 0.1)';
                 connectionStatusDiv.style.color = 'var(--SmartThemeBodyColor)';
-                connectionStatusDiv.textContent = `${result.message} 已获取${result.models?.length || 0}个模型`;
-                
-                // 更新实际模型显示
-                if (result.actualModelName) {
-                    settings.actualModelName = result.actualModelName;
-                    actualModelDiv.textContent = `实际使用模型: ${result.actualModelName}`;
-                    actualModelDiv.style.display = 'block';
-                }
-                
-                // 如果有可用模型列表，更新下拉菜单
-                if (result.models && result.models.length > 0) {
-                    // 清空现有选项
-                    modelSelect.innerHTML = '';
-                    
-                    // 添加模型选项
-                    if (settings.optionsApiType === 'gemini') {
-                        // Gemini API 模型格式
-                        result.models.forEach(model => {
-                            const option = document.createElement('option');
-                            option.value = model.name;
-                            option.textContent = model.displayName || model.name;
-                            modelSelect.appendChild(option);
-                        });
-                    } else {
-                        // OpenAI 兼容API模型格式
-                        result.models.forEach(model => {
-                            const option = document.createElement('option');
-                            option.value = model.id;
-                            option.textContent = model.id;
-                            modelSelect.appendChild(option);
-                        });
-                    }
-                    
-                    // 设置当前选中的模型
-                    if (result.currentModel) {
-                        modelSelect.value = result.currentModel;
-                        settings.optionsApiModel = result.currentModel;
-                        modelInput.value = result.currentModel;
-                        
-                        // 保存实际使用的模型名称，用于显示
-                        if (result.actualModelName) {
-                            settings.actualModelName = result.actualModelName;
-                        }
-                        
-                        saveSettingsDebounced();
-                    } else {
-                        modelSelect.value = settings.optionsApiModel;
-                    }
-                    
-                    // 显示下拉菜单，隐藏输入框
-                    modelSelect.style.display = 'block';
-                    modelInput.style.display = 'none';
-                    
-                    // 如果当前选择行容器中没有下拉菜单，添加它
-                    if (!modelSelectRow.contains(modelSelect)) {
-                        modelSelectRow.insertBefore(modelSelect, modelInput);
-                    }
-                    
-                    // 添加下拉菜单变更事件
-                    modelSelect.addEventListener('change', () => {
-                        settings.optionsApiModel = modelSelect.value;
-                        modelInput.value = modelSelect.value; // 同步更新输入框
-                        saveSettingsDebounced();
-                    });
-                }
+                connectionStatusDiv.textContent = result.message;
             } else {
                 connectionStatusDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
                 connectionStatusDiv.style.color = 'var(--SmartThemeBodyColor)';
                 connectionStatusDiv.textContent = result.message;
-                
-                // 连接失败时显示输入框
-                modelSelect.style.display = 'none';
-                modelInput.style.display = 'block';
             }
         } catch (error) {
             connectionStatusDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
             connectionStatusDiv.style.color = 'var(--SmartThemeBodyColor)';
             connectionStatusDiv.textContent = `测试失败: ${error.message}`;
             console.error('测试API连接时出错:', error);
-            
-            // 错误时显示输入框
-            modelSelect.style.display = 'none';
-            modelInput.style.display = 'block';
         }
     });
     
-    // 将元素添加到容器中
     apiKeyContainer.appendChild(apiKeyInput);
     apiKeyContainer.appendChild(testConnectionButton);
     
     optionsSettingsContainer.appendChild(apiKeyLabel);
     optionsSettingsContainer.appendChild(apiKeyContainer);
     optionsSettingsContainer.appendChild(connectionStatusDiv);
+    
     // 模型选择
     const modelLabel = document.createElement('label');
     modelLabel.textContent = '模型:';
     modelLabel.style.display = 'block';
     modelLabel.style.marginTop = '10px';
     
-    // 创建模型选择容器
-    const modelContainer = document.createElement('div');
-    modelContainer.style.display = 'flex';
-    modelContainer.style.flexDirection = 'column';
-    modelContainer.style.gap = '5px';
-    
-    // 创建模型选择行容器
-    const modelSelectRow = document.createElement('div');
-    modelSelectRow.style.display = 'flex';
-    modelSelectRow.style.gap = '10px';
-    modelSelectRow.style.alignItems = 'center';
-    modelSelectRow.style.width = '100%';
-    modelContainer.appendChild(modelSelectRow);
-    
-    // 创建实际模型显示区域
-    const actualModelDiv = document.createElement('div');
-    actualModelDiv.id = 'actual-model-display';
-    actualModelDiv.style.fontSize = '12px';
-    actualModelDiv.style.color = 'var(--SmartThemeBodyColor)';
-    actualModelDiv.style.marginTop = '2px';
-    actualModelDiv.style.display = 'none';
-    modelContainer.appendChild(actualModelDiv);
-    
-    // 如果已经有实际模型名称，显示它
-    if (settings.actualModelName) {
-        actualModelDiv.textContent = `实际使用模型: ${settings.actualModelName}`;
-        actualModelDiv.style.display = 'block';
-    }
-    
-    // 创建模型下拉选择框
-    const modelSelect = document.createElement('select');
-    modelSelect.id = 'options-api-model-select';
-    modelSelect.style.flex = '1';
-    modelSelect.style.display = 'none'; // 默认隐藏，只有在有可用模型时显示
-    
-    // 创建模型输入框
     const modelInput = document.createElement('input');
-    modelInput.id = 'options-api-model-input';
     modelInput.type = 'text';
     modelInput.value = settings.optionsApiModel;
     modelInput.placeholder = '输入模型名称';
-    modelInput.style.flex = '1';
+    modelInput.style.width = '100%';
     modelInput.addEventListener('input', () => {
         settings.optionsApiModel = modelInput.value;
         saveSettingsDebounced();
     });
     
-    // 将模型输入元素添加到选择行容器
-    modelSelectRow.appendChild(modelInput);
-    
-    // 更新测试连接按钮点击事件，添加模型列表处理
-    testConnectionButton.addEventListener('click', async () => {
-        // 显示加载状态
-        connectionStatusDiv.style.display = 'block';
-        connectionStatusDiv.style.backgroundColor = 'var(--SmartThemeBlurpleTransparent)';
-        connectionStatusDiv.textContent = '正在测试连接...';
-        
-        try {
-            // 导入OptionsGenerator
-            const { OptionsGenerator } = await import('./optionsGenerator.js');
-            
-            // 调用测试连接函数
-            const result = await OptionsGenerator.testApiConnection();
-            
-            // 显示结果
-            if (result.success) {
-                connectionStatusDiv.style.backgroundColor = 'rgba(0, 128, 0, 0.1)';
-                connectionStatusDiv.style.color = 'var(--SmartThemeBodyColor)';
-                connectionStatusDiv.textContent = result.message;
-                
-                // 如果有可用模型列表，更新下拉菜单
-                if (result.models && result.models.length > 0) {
-                    // 清空现有选项
-                    modelSelect.innerHTML = '';
-                    
-                    // 添加模型选项
-                    if (settings.optionsApiType === 'gemini') {
-                        // Gemini API 模型格式
-                        result.models.forEach(model => {
-                            const option = document.createElement('option');
-                            option.value = model.name;
-                            option.textContent = model.displayName || model.name;
-                            modelSelect.appendChild(option);
-                        });
-                    } else {
-                        // OpenAI 兼容API模型格式
-                        result.models.forEach(model => {
-                            const option = document.createElement('option');
-                            option.value = model.id;
-                            option.textContent = model.id;
-                            modelSelect.appendChild(option);
-                        });
-                    }
-                    
-                    // 设置当前选中的模型
-                    modelSelect.value = settings.optionsApiModel;
-                    
-                    // 显示下拉菜单，隐藏输入框
-                    modelSelect.style.display = 'block';
-                    modelInput.style.display = 'none';
-                    
-                    // 如果当前容器中没有下拉菜单，添加它
-                    if (!modelContainer.contains(modelSelect)) {
-                        modelContainer.insertBefore(modelSelect, modelInput);
-                    }
-                    
-                    // 添加下拉菜单变更事件
-                    modelSelect.addEventListener('change', () => {
-                        settings.optionsApiModel = modelSelect.value;
-                        modelInput.value = modelSelect.value; // 同步更新输入框
-                        saveSettingsDebounced();
-                    });
-                }
-            } else {
-                connectionStatusDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
-                connectionStatusDiv.style.color = 'var(--SmartThemeBodyColor)';
-                connectionStatusDiv.textContent = result.message;
-                
-                // 连接失败时显示输入框
-                modelSelect.style.display = 'none';
-                modelInput.style.display = 'block';
-            }
-        } catch (error) {
-            connectionStatusDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
-            connectionStatusDiv.style.color = 'var(--SmartThemeBodyColor)';
-            connectionStatusDiv.textContent = `测试失败: ${error.message}`;
-            console.error('测试API连接时出错:', error);
-            
-            // 错误时显示输入框
-            modelSelect.style.display = 'none';
-            modelInput.style.display = 'block';
-        }
-    });
-    
     optionsSettingsContainer.appendChild(modelLabel);
-    optionsSettingsContainer.appendChild(modelContainer);
+    optionsSettingsContainer.appendChild(modelInput);
+    
     // 基础URL
     const baseUrlGroup = document.createElement('div');
     baseUrlGroup.id = 'options-base-url-group';
@@ -611,273 +389,56 @@ export function addExtensionSettings(settings) {
     streamLabel.append(streamCheckbox, streamText);
     optionsSettingsContainer.appendChild(streamLabel);
     
+    // 提示样式设置
+    const styleContainer = document.createElement('div');
+    styleContainer.style.marginTop = '20px';
+    styleContainer.style.borderTop = '1px solid var(--border_color)';
+    styleContainer.style.paddingTop = '15px';
+    
+    const styleHeader = document.createElement('h4');
+    styleHeader.textContent = '提示样式设置';
+    styleHeader.style.margin = '0 0 10px 0';
+    styleContainer.appendChild(styleHeader);
+    
+    // 动画效果
+    const animationLabel = document.createElement('label');
+    animationLabel.classList.add('checkbox_label');
+    const animationCheckbox = document.createElement('input');
+    animationCheckbox.type = 'checkbox';
+    animationCheckbox.checked = settings.animationEnabled;
+    animationCheckbox.addEventListener('change', () => {
+        settings.animationEnabled = animationCheckbox.checked;
+        saveSettingsDebounced();
+    });
+    const animationText = document.createElement('span');
+    animationText.textContent = '启用动画效果';
+    animationLabel.append(animationCheckbox, animationText);
+    styleContainer.appendChild(animationLabel);
+    
+    // 自定义提示文本
+    const customTextLabel = document.createElement('label');
+    customTextLabel.textContent = '提示文本:';
+    customTextLabel.style.display = 'block';
+    customTextLabel.style.marginTop = '10px';
+    const customTextInput = document.createElement('input');
+    customTextInput.type = 'text';
+    customTextInput.value = settings.customText;
+    customTextInput.placeholder = '输入提示文本';
+    customTextInput.style.width = '100%';
+    customTextInput.addEventListener('input', () => {
+        settings.customText = customTextInput.value;
+        saveSettingsDebounced();
+    });
+    styleContainer.appendChild(customTextLabel);
+    styleContainer.appendChild(customTextInput);
+    
     apiTypeSelect.addEventListener('change', () => {
         settings.optionsApiType = apiTypeSelect.value;
         baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
         saveSettingsDebounced();
     });
     baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
+    
     optionsContainer.appendChild(optionsSettingsContainer);
-
-    inlineDrawerContent.append(optionsContainer);
-
-    // ========== 用户画像查看与编辑 ========== //
-    const profileContainer = document.createElement('div');
-    profileContainer.style.marginTop = '20px';
-    profileContainer.style.borderTop = '1px solid var(--border_color)';
-    profileContainer.style.paddingTop = '15px';
-    const profileHeader = document.createElement('h4');
-    profileHeader.textContent = '用户画像（可手动编辑）';
-    profileHeader.style.margin = '0 0 10px 0';
-    profileContainer.appendChild(profileHeader);
-    // summary
-    const summaryLabel = document.createElement('label');
-    summaryLabel.textContent = '画像总结：';
-    summaryLabel.style.display = 'block';
-    const summaryInput = document.createElement('textarea');
-    summaryInput.value = settings.userProfile.summary || '';
-    summaryInput.style.width = '100%';
-    summaryInput.style.minHeight = '40px';
-    summaryInput.addEventListener('input', () => {
-        settings.userProfile.summary = summaryInput.value;
-        saveSettingsDebounced();
-    });
-    profileContainer.appendChild(summaryLabel);
-    profileContainer.appendChild(summaryInput);
-    // favoriteScene
-    const sceneLabel = document.createElement('label');
-    sceneLabel.textContent = '偏好场景类型：';
-    sceneLabel.style.display = 'block';
-    const sceneInput = document.createElement('input');
-    sceneInput.type = 'text';
-    sceneInput.value = settings.userProfile.favoriteScene || '';
-    sceneInput.style.width = '100%';
-    sceneInput.addEventListener('input', () => {
-        settings.userProfile.favoriteScene = sceneInput.value;
-        saveSettingsDebounced();
-    });
-    profileContainer.appendChild(sceneLabel);
-    profileContainer.appendChild(sceneInput);
-    // favoriteMood
-    const moodLabel = document.createElement('label');
-    moodLabel.textContent = '偏好情绪：';
-    moodLabel.style.display = 'block';
-    const moodInput = document.createElement('input');
-    moodInput.type = 'text';
-    moodInput.value = settings.userProfile.favoriteMood || '';
-    moodInput.style.width = '100%';
-    moodInput.addEventListener('input', () => {
-        settings.userProfile.favoriteMood = moodInput.value;
-        saveSettingsDebounced();
-    });
-    profileContainer.appendChild(moodLabel);
-    profileContainer.appendChild(moodInput);
-    // preferedFocus
-    const focusLabel = document.createElement('label');
-    focusLabel.textContent = '偏好叙事焦点：';
-    focusLabel.style.display = 'block';
-    const focusInput = document.createElement('input');
-    focusInput.type = 'text';
-    focusInput.value = settings.userProfile.preferedFocus || '';
-    focusInput.style.width = '100%';
-    focusInput.addEventListener('input', () => {
-        settings.userProfile.preferedFocus = focusInput.value;
-        saveSettingsDebounced();
-    });
-    profileContainer.appendChild(focusLabel);
-    profileContainer.appendChild(focusInput);
-    // customKeywords
-    const keywordsLabel = document.createElement('label');
-    keywordsLabel.textContent = '关键词（逗号分隔）：';
-    keywordsLabel.style.display = 'block';
-    const keywordsInput = document.createElement('input');
-    keywordsInput.type = 'text';
-    keywordsInput.value = (settings.userProfile.customKeywords || []).join(',');
-    keywordsInput.style.width = '100%';
-    keywordsInput.addEventListener('input', () => {
-        settings.userProfile.customKeywords = keywordsInput.value.split(',').map(s => s.trim()).filter(Boolean);
-        saveSettingsDebounced();
-    });
-    profileContainer.appendChild(keywordsLabel);
-    profileContainer.appendChild(keywordsInput);
-    // 添加到面板
-    inlineDrawerContent.appendChild(profileContainer);
-    
-    // 添加手动分析按钮
-    const analyzeContainer = document.createElement('div');
-    analyzeContainer.style.marginTop = '10px';
-    analyzeContainer.style.borderTop = '1px solid var(--border_color)';
-    analyzeContainer.style.paddingTop = '10px';
-    const analyzeHeader = document.createElement('h4');
-    analyzeHeader.textContent = '调试工具';
-    analyzeHeader.style.margin = '0 0 10px 0';
-    analyzeContainer.appendChild(analyzeHeader);
-    
-    // 添加刷新按钮
-    const refreshButton = document.createElement('button');
-    refreshButton.textContent = '刷新用户画像';
-    refreshButton.className = 'menu_button';
-    refreshButton.style.width = '100%';
-    refreshButton.style.padding = '8px 12px';
-    refreshButton.style.backgroundColor = 'var(--SmartThemeBlurple)';
-    refreshButton.style.color = 'white';
-    refreshButton.style.border = 'none';
-    refreshButton.style.borderRadius = '4px';
-    refreshButton.style.cursor = 'pointer';
-    refreshButton.style.marginBottom = '5px';
-    refreshButton.addEventListener('click', () => {
-        // 从 SillyTavern 变量系统获取数据
-        let favoriteScene = '', favoriteMood = '', preferedFocus = '', customKeywords = '', summary = '';
-        
-        // 尝试多种获取方式
-        if (typeof window.getvar === 'function') {
-            favoriteScene = window.getvar('userProfile_favoriteScene') || '';
-            favoriteMood = window.getvar('userProfile_favoriteMood') || '';
-            preferedFocus = window.getvar('userProfile_preferedFocus') || '';
-            customKeywords = window.getvar('userProfile_customKeywords') || '';
-            summary = window.getvar('userProfile_summary') || '';
-            console.log('从 getvar 获取数据');
-        } else if (typeof window.getGlobalVar === 'function') {
-            favoriteScene = window.getGlobalVar('userProfile_favoriteScene') || '';
-            favoriteMood = window.getGlobalVar('userProfile_favoriteMood') || '';
-            preferedFocus = window.getGlobalVar('userProfile_preferedFocus') || '';
-            customKeywords = window.getGlobalVar('userProfile_customKeywords') || '';
-            summary = window.getGlobalVar('userProfile_summary') || '';
-            console.log('从 getGlobalVar 获取数据');
-        } else if (typeof window.TavernHelper !== 'undefined' && typeof window.TavernHelper.getVariables === 'function') {
-            // 尝试通过 TavernHelper 获取
-            window.TavernHelper.getVariables({ type: 'global' }).then(vars => {
-                favoriteScene = vars.userProfile_favoriteScene || '';
-                favoriteMood = vars.userProfile_favoriteMood || '';
-                preferedFocus = vars.userProfile_preferedFocus || '';
-                customKeywords = vars.userProfile_customKeywords || '';
-                summary = vars.userProfile_summary || '';
-                updateUserProfileUI();
-            }).catch(err => {
-                console.error('获取变量失败:', err);
-                alert('获取变量失败，请检查控制台');
-            });
-            return; // 异步处理，直接返回
-        } else {
-            console.log('所有变量系统都不可用，使用设置中的数据');
-            // 使用当前设置中的数据
-            favoriteScene = settings.userProfile.favoriteScene || '';
-            favoriteMood = settings.userProfile.favoriteMood || '';
-            preferedFocus = settings.userProfile.preferedFocus || '';
-            customKeywords = (settings.userProfile.customKeywords || []).join(',');
-            summary = settings.userProfile.summary || '';
-        }
-        
-        updateUserProfileUI();
-        
-        function updateUserProfileUI() {
-            // 更新设置
-            settings.userProfile = {
-                favoriteScene: favoriteScene,
-                favoriteMood: favoriteMood,
-                preferedFocus: preferedFocus,
-                customKeywords: customKeywords ? customKeywords.split(',') : [],
-                summary: summary
-            };
-            
-            // 更新UI显示
-            summaryInput.value = summary;
-            sceneInput.value = favoriteScene;
-            moodInput.value = favoriteMood;
-            focusInput.value = preferedFocus;
-            keywordsInput.value = customKeywords;
-            
-            saveSettingsDebounced();
-            alert('已刷新用户画像');
-        }
-    });
-    analyzeContainer.appendChild(refreshButton);
-    
-    const analyzeButton = document.createElement('button');
-    analyzeButton.textContent = '手动分析用户画像';
-    analyzeButton.className = 'menu_button';
-    analyzeButton.style.width = '100%';
-    analyzeButton.style.padding = '8px 12px';
-    analyzeButton.style.backgroundColor = 'var(--SmartThemeBlurple)';
-    analyzeButton.style.color = 'white';
-    analyzeButton.style.border = 'none';
-    analyzeButton.style.borderRadius = '4px';
-    analyzeButton.style.cursor = 'pointer';
-    analyzeButton.style.marginBottom = '5px';
-    analyzeButton.addEventListener('click', () => {
-        // 直接调用全局函数
-        if (typeof window.analyzeUserBehavior === 'function') {
-            window.analyzeUserBehavior();
-            alert('用户画像分析完成，请查看控制台日志');
-        } else {
-            // 尝试通过 OptionsGenerator 调用
-            if (typeof OptionsGenerator !== 'undefined' && typeof OptionsGenerator.analyzeUserBehavior === 'function') {
-                OptionsGenerator.analyzeUserBehavior();
-                alert('用户画像分析完成，请查看控制台日志');
-            } else {
-                alert('分析功能不可用，请检查控制台错误');
-                console.error('analyzeUserBehavior 函数未找到');
-            }
-        }
-    });
-    analyzeContainer.appendChild(analyzeButton);
-    
-    // 添加调试按钮
-    const debugButton = document.createElement('button');
-    debugButton.textContent = '检查变量系统';
-    debugButton.className = 'menu_button';
-    debugButton.style.width = '100%';
-    debugButton.style.padding = '8px 12px';
-    debugButton.style.backgroundColor = '#ffa500';
-    debugButton.style.color = 'white';
-    debugButton.style.border = 'none';
-    debugButton.style.borderRadius = '4px';
-    debugButton.style.cursor = 'pointer';
-    debugButton.style.marginBottom = '5px';
-    debugButton.addEventListener('click', () => {
-        const availableSystems = [];
-        
-        if (typeof window.setvar === 'function') availableSystems.push('setvar/getvar');
-        if (typeof window.setGlobalVar === 'function') availableSystems.push('setGlobalVar/getGlobalVar');
-        if (typeof window.TavernHelper !== 'undefined') availableSystems.push('TavernHelper');
-        if (typeof window.eventSource !== 'undefined') availableSystems.push('eventSource');
-        
-        console.log('可用的变量系统:', availableSystems);
-        console.log('window.setvar:', typeof window.setvar);
-        console.log('window.setGlobalVar:', typeof window.setGlobalVar);
-        console.log('window.TavernHelper:', typeof window.TavernHelper);
-        console.log('window.eventSource:', typeof window.eventSource);
-        
-        alert(`可用的变量系统: ${availableSystems.join(', ') || '无'}\n请查看控制台获取详细信息`);
-    });
-    analyzeContainer.appendChild(debugButton);
-    
-    const clearLogButton = document.createElement('button');
-    clearLogButton.textContent = '清空行为日志';
-    clearLogButton.className = 'menu_button';
-    clearLogButton.style.width = '100%';
-    clearLogButton.style.padding = '8px 12px';
-    clearLogButton.style.backgroundColor = '#f08080';
-    clearLogButton.style.color = 'white';
-    clearLogButton.style.border = 'none';
-    clearLogButton.style.borderRadius = '4px';
-    clearLogButton.style.cursor = 'pointer';
-    clearLogButton.style.marginTop = '5px';
-    clearLogButton.addEventListener('click', () => {
-        if (confirm('确定要清空所有用户行为日志吗？')) {
-            settings.userBehaviorLog = [];
-            settings.userProfile = {
-                favoriteScene: '',
-                favoriteMood: '',
-                preferedFocus: '',
-                customKeywords: [],
-                summary: ''
-            };
-            saveSettingsDebounced();
-            alert('行为日志已清空');
-        }
-    });
-    analyzeContainer.appendChild(clearLogButton);
-    
-    inlineDrawerContent.appendChild(analyzeContainer);
+    inlineDrawerContent.append(optionsContainer, styleContainer);
 }
