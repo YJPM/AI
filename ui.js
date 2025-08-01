@@ -253,6 +253,16 @@ export function addExtensionSettings(settings) {
         <option value="gemini">Google Gemini</option>
     `;
     apiTypeSelect.value = settings.optionsApiType;
+    apiTypeSelect.addEventListener('change', () => {
+        settings.optionsApiType = apiTypeSelect.value;
+        saveSettingsDebounced();
+        
+        // 切换API类型时重置模型选择界面
+        modelSelect.style.display = 'none';
+        modelInput.style.display = 'block';
+        modelSelect.innerHTML = '';
+        connectionStatusDiv.style.display = 'none';
+    });
     optionsSettingsContainer.appendChild(apiTypeLabel);
     optionsSettingsContainer.appendChild(apiTypeSelect);
     // API Key
@@ -260,33 +270,257 @@ export function addExtensionSettings(settings) {
     apiKeyLabel.textContent = 'API密钥:';
     apiKeyLabel.style.display = 'block';
     apiKeyLabel.style.marginTop = '10px';
+    
+    // 创建API密钥输入框和测试按钮的容器
+    const apiKeyContainer = document.createElement('div');
+    apiKeyContainer.style.display = 'flex';
+    apiKeyContainer.style.gap = '10px';
+    apiKeyContainer.style.alignItems = 'center';
+    
     const apiKeyInput = document.createElement('input');
     apiKeyInput.type = 'password';
     apiKeyInput.value = settings.optionsApiKey;
     apiKeyInput.placeholder = '输入API密钥';
-    apiKeyInput.style.width = '100%';
+    apiKeyInput.style.flex = '1';
     apiKeyInput.addEventListener('input', () => {
         settings.optionsApiKey = apiKeyInput.value;
         saveSettingsDebounced();
     });
+    
+    // 创建测试连接按钮
+    const testConnectionButton = document.createElement('button');
+    testConnectionButton.textContent = '测试连接';
+    testConnectionButton.className = 'menu_button';
+    testConnectionButton.style.padding = '5px 10px';
+    testConnectionButton.style.fontSize = '12px';
+    testConnectionButton.style.whiteSpace = 'nowrap';
+    
+    // 创建状态显示区域
+    const connectionStatusDiv = document.createElement('div');
+    connectionStatusDiv.id = 'api-connection-status';
+    connectionStatusDiv.style.marginTop = '5px';
+    connectionStatusDiv.style.fontSize = '12px';
+    connectionStatusDiv.style.padding = '5px';
+    connectionStatusDiv.style.borderRadius = '4px';
+    connectionStatusDiv.style.display = 'none';
+    
+    // 测试连接按钮点击事件
+    testConnectionButton.addEventListener('click', async () => {
+        // 显示加载状态
+        connectionStatusDiv.style.display = 'block';
+        connectionStatusDiv.style.backgroundColor = 'var(--SmartThemeBlurpleTransparent)';
+        connectionStatusDiv.textContent = '正在测试连接...';
+        
+        try {
+            // 导入OptionsGenerator
+            const { OptionsGenerator } = await import('./optionsGenerator.js');
+            
+            // 调用测试连接函数
+            const result = await OptionsGenerator.testApiConnection();
+            
+            // 显示结果
+            if (result.success) {
+                connectionStatusDiv.style.backgroundColor = 'rgba(0, 128, 0, 0.1)';
+                connectionStatusDiv.style.color = 'var(--SmartThemeBodyColor)';
+                connectionStatusDiv.textContent = result.message;
+                
+                // 如果有可用模型列表，更新下拉菜单
+                if (result.models && result.models.length > 0) {
+                    // 清空现有选项
+                    modelSelect.innerHTML = '';
+                    
+                    // 添加模型选项
+                    if (settings.optionsApiType === 'gemini') {
+                        // Gemini API 模型格式
+                        result.models.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model.name;
+                            option.textContent = model.displayName || model.name;
+                            modelSelect.appendChild(option);
+                        });
+                    } else {
+                        // OpenAI 兼容API模型格式
+                        result.models.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model.id;
+                            option.textContent = model.id;
+                            modelSelect.appendChild(option);
+                        });
+                    }
+                    
+                    // 设置当前选中的模型
+                    if (result.currentModel) {
+                        modelSelect.value = result.currentModel;
+                        settings.optionsApiModel = result.currentModel;
+                        modelInput.value = result.currentModel;
+                        saveSettingsDebounced();
+                    } else {
+                        modelSelect.value = settings.optionsApiModel;
+                    }
+                    
+                    // 显示下拉菜单，隐藏输入框
+                    modelSelect.style.display = 'block';
+                    modelInput.style.display = 'none';
+                    
+                    // 如果当前容器中没有下拉菜单，添加它
+                    if (!modelContainer.contains(modelSelect)) {
+                        modelContainer.insertBefore(modelSelect, modelInput);
+                    }
+                    
+                    // 添加下拉菜单变更事件
+                    modelSelect.addEventListener('change', () => {
+                        settings.optionsApiModel = modelSelect.value;
+                        modelInput.value = modelSelect.value; // 同步更新输入框
+                        saveSettingsDebounced();
+                    });
+                }
+            } else {
+                connectionStatusDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+                connectionStatusDiv.style.color = 'var(--SmartThemeBodyColor)';
+                connectionStatusDiv.textContent = result.message;
+                
+                // 连接失败时显示输入框
+                modelSelect.style.display = 'none';
+                modelInput.style.display = 'block';
+            }
+        } catch (error) {
+            connectionStatusDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+            connectionStatusDiv.style.color = 'var(--SmartThemeBodyColor)';
+            connectionStatusDiv.textContent = `测试失败: ${error.message}`;
+            console.error('测试API连接时出错:', error);
+            
+            // 错误时显示输入框
+            modelSelect.style.display = 'none';
+            modelInput.style.display = 'block';
+        }
+    });
+    
+    // 将元素添加到容器中
+    apiKeyContainer.appendChild(apiKeyInput);
+    apiKeyContainer.appendChild(testConnectionButton);
+    
     optionsSettingsContainer.appendChild(apiKeyLabel);
-    optionsSettingsContainer.appendChild(apiKeyInput);
+    optionsSettingsContainer.appendChild(apiKeyContainer);
+    optionsSettingsContainer.appendChild(connectionStatusDiv);
     // 模型选择
     const modelLabel = document.createElement('label');
     modelLabel.textContent = '模型:';
     modelLabel.style.display = 'block';
     modelLabel.style.marginTop = '10px';
+    
+    // 创建模型选择容器
+    const modelContainer = document.createElement('div');
+    modelContainer.style.display = 'flex';
+    modelContainer.style.gap = '10px';
+    modelContainer.style.alignItems = 'center';
+    
+    // 创建模型下拉选择框
+    const modelSelect = document.createElement('select');
+    modelSelect.id = 'options-api-model-select';
+    modelSelect.style.flex = '1';
+    modelSelect.style.display = 'none'; // 默认隐藏，只有在有可用模型时显示
+    
+    // 创建模型输入框
     const modelInput = document.createElement('input');
+    modelInput.id = 'options-api-model-input';
     modelInput.type = 'text';
     modelInput.value = settings.optionsApiModel;
     modelInput.placeholder = '输入模型名称';
-    modelInput.style.width = '100%';
+    modelInput.style.flex = '1';
     modelInput.addEventListener('input', () => {
         settings.optionsApiModel = modelInput.value;
         saveSettingsDebounced();
     });
+    
+    // 将模型输入元素添加到容器
+    modelContainer.appendChild(modelInput);
+    
+    // 更新测试连接按钮点击事件，添加模型列表处理
+    testConnectionButton.addEventListener('click', async () => {
+        // 显示加载状态
+        connectionStatusDiv.style.display = 'block';
+        connectionStatusDiv.style.backgroundColor = 'var(--SmartThemeBlurpleTransparent)';
+        connectionStatusDiv.textContent = '正在测试连接...';
+        
+        try {
+            // 导入OptionsGenerator
+            const { OptionsGenerator } = await import('./optionsGenerator.js');
+            
+            // 调用测试连接函数
+            const result = await OptionsGenerator.testApiConnection();
+            
+            // 显示结果
+            if (result.success) {
+                connectionStatusDiv.style.backgroundColor = 'rgba(0, 128, 0, 0.1)';
+                connectionStatusDiv.style.color = 'var(--SmartThemeBodyColor)';
+                connectionStatusDiv.textContent = result.message;
+                
+                // 如果有可用模型列表，更新下拉菜单
+                if (result.models && result.models.length > 0) {
+                    // 清空现有选项
+                    modelSelect.innerHTML = '';
+                    
+                    // 添加模型选项
+                    if (settings.optionsApiType === 'gemini') {
+                        // Gemini API 模型格式
+                        result.models.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model.name;
+                            option.textContent = model.displayName || model.name;
+                            modelSelect.appendChild(option);
+                        });
+                    } else {
+                        // OpenAI 兼容API模型格式
+                        result.models.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model.id;
+                            option.textContent = model.id;
+                            modelSelect.appendChild(option);
+                        });
+                    }
+                    
+                    // 设置当前选中的模型
+                    modelSelect.value = settings.optionsApiModel;
+                    
+                    // 显示下拉菜单，隐藏输入框
+                    modelSelect.style.display = 'block';
+                    modelInput.style.display = 'none';
+                    
+                    // 如果当前容器中没有下拉菜单，添加它
+                    if (!modelContainer.contains(modelSelect)) {
+                        modelContainer.insertBefore(modelSelect, modelInput);
+                    }
+                    
+                    // 添加下拉菜单变更事件
+                    modelSelect.addEventListener('change', () => {
+                        settings.optionsApiModel = modelSelect.value;
+                        modelInput.value = modelSelect.value; // 同步更新输入框
+                        saveSettingsDebounced();
+                    });
+                }
+            } else {
+                connectionStatusDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+                connectionStatusDiv.style.color = 'var(--SmartThemeBodyColor)';
+                connectionStatusDiv.textContent = result.message;
+                
+                // 连接失败时显示输入框
+                modelSelect.style.display = 'none';
+                modelInput.style.display = 'block';
+            }
+        } catch (error) {
+            connectionStatusDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+            connectionStatusDiv.style.color = 'var(--SmartThemeBodyColor)';
+            connectionStatusDiv.textContent = `测试失败: ${error.message}`;
+            console.error('测试API连接时出错:', error);
+            
+            // 错误时显示输入框
+            modelSelect.style.display = 'none';
+            modelInput.style.display = 'block';
+        }
+    });
+    
     optionsSettingsContainer.appendChild(modelLabel);
-    optionsSettingsContainer.appendChild(modelInput);
+    optionsSettingsContainer.appendChild(modelContainer);
     // 基础URL
     const baseUrlGroup = document.createElement('div');
     baseUrlGroup.id = 'options-base-url-group';

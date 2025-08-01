@@ -516,6 +516,122 @@ async function generateOptions() {
     }
 }
 
+/**
+ * 测试API连接并获取模型信息
+ * @returns {Promise<Object>} 包含连接状态、错误信息和模型信息的对象
+ */
+async function testApiConnection() {
+    const settings = getSettings();
+    try {
+        // 获取当前设置
+        const apiKey = settings.optionsApiKey;
+        const apiType = settings.optionsApiType;
+        const model = settings.optionsApiModel;
+        const baseUrl = settings.optionsBaseUrl || 'https://api.openai.com/v1';
+        
+        // 验证API密钥
+        if (!apiKey) {
+            return {
+                success: false,
+                message: '请输入API密钥'
+            };
+        }
+        
+        // 根据API类型构建不同的请求
+        if (apiType === 'gemini') {
+            // Google Gemini API
+            try {
+                // 构建Gemini API URL
+                const geminiBaseUrl = 'https://generativelanguage.googleapis.com/v1';
+                
+                // 获取模型列表
+                const modelsResponse = await fetch(`${geminiBaseUrl}/models?key=${apiKey}`);
+                
+                if (!modelsResponse.ok) {
+                    const errorData = await modelsResponse.json();
+                    return {
+                        success: false,
+                        message: `连接失败: ${errorData.error?.message || '未知错误'}`
+                    };
+                }
+                
+                const modelsData = await modelsResponse.json();
+                
+                // 过滤出Gemini模型
+                const geminiModels = modelsData.models.filter(m => 
+                    m.name.includes('gemini') || 
+                    m.displayName?.includes('Gemini')
+                );
+                
+                // 查找当前设置的模型
+                const currentModel = geminiModels.find(m => m.name === model) || 
+                                    geminiModels.find(m => m.name.includes(model)) || 
+                                    geminiModels[0];
+                
+                return {
+                    success: true,
+                    message: `连接成功! 当前模型: ${currentModel?.displayName || currentModel?.name || model}`,
+                    models: geminiModels,
+                    currentModel: currentModel?.name
+                };
+            } catch (error) {
+                logger.error('Gemini API连接测试失败:', error);
+                return {
+                    success: false,
+                    message: `连接失败: ${error.message}`
+                };
+            }
+        } else {
+            // OpenAI兼容API
+            try {
+                // 构建请求URL
+                const modelsUrl = `${baseUrl}/models`;
+                
+                // 发送请求获取模型列表
+                const response = await fetch(modelsUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: { message: '未知错误' } }));
+                    return {
+                        success: false,
+                        message: `连接失败: ${errorData.error?.message || '未知错误'}`
+                    };
+                }
+                
+                const data = await response.json();
+                
+                // 查找当前设置的模型
+                const currentModel = data.data.find(m => m.id === model) || data.data[0];
+                
+                return {
+                    success: true,
+                    message: `连接成功! 当前模型: ${currentModel?.id || model}`,
+                    models: data.data,
+                    currentModel: currentModel?.id
+                };
+            } catch (error) {
+                logger.error('OpenAI API连接测试失败:', error);
+                return {
+                    success: false,
+                    message: `连接失败: ${error.message}`
+                };
+            }
+        }
+    } catch (error) {
+        logger.error('API连接测试失败:', error);
+        return {
+            success: false,
+            message: `连接失败: ${error.message}`
+        };
+    }
+}
+
 export const OptionsGenerator = {
     isGenerating: false,
     isManuallyStopped: false,
@@ -529,4 +645,5 @@ export const OptionsGenerator = {
     hideGeneratingUI,
     displayOptions,
     generateOptions,
+    testApiConnection
 };

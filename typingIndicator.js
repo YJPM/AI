@@ -10,7 +10,8 @@ export function showTypingIndicator(type, _args, dryRun) {
     if (type !== 'refresh' && (noIndicatorTypes.includes(type) || dryRun)) return;
     if (!settings.enabled) return;
     if (settings.showCharName && !window.name2 && type !== 'refresh') return;
-    if (legacyIndicatorTemplate && selected_group && !isStreamingEnabled()) return;
+    // 移除对isStreamingEnabled的检查，确保在所有情况下都能显示打字指示器
+    // if (legacyIndicatorTemplate && selected_group && !isStreamingEnabled()) return;
     const placeholder = '{char}';
     let finalText = settings.customText || defaultSettings.customText;
     if (settings.showCharName && window.name2) {
