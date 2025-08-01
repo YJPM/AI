@@ -68,6 +68,12 @@ async function displayOptionsStreaming(content) {
         
         container = document.createElement('div');
         container.id = 'ti-options-container';
+        container.style.cssText = `
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
+        `;
         sendForm.insertAdjacentElement('beforebegin', container);
         
         // 在流式生成过程中，不隐藏思考提示
@@ -86,6 +92,23 @@ async function displayOptionsStreaming(content) {
             btn = document.createElement('button');
             btn.className = 'qr--button menu_button interactable ti-options-capsule';
             btn.setAttribute('data-option-index', index);
+            btn.style.cssText = `
+                flex: 1;
+                min-width: 200px;
+                max-width: calc(50% - 4px);
+                padding: 8px 12px;
+                border: 1px solid var(--SmartThemeBorderColor, #ccc);
+                border-radius: 6px;
+                background: var(--SmartThemeBackgroundColor, #fff);
+                color: var(--SmartThemeBodyColor, #222);
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                text-align: left;
+                word-wrap: break-word;
+                white-space: normal;
+                line-height: 1.4;
+            `;
             container.appendChild(btn);
             
             // 设置点击事件
@@ -145,16 +168,41 @@ async function displayOptions(options, isStreaming = false) {
     const settings = getSettings();
     const sendMode = settings.sendMode || 'manual';
     
+    // 设置容器样式，确保按钮布局
+    container.style.cssText = `
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 10px 0;
+    `;
+    
     for (const text of options) {
         const btn = document.createElement('button');
         btn.className = 'qr--button menu_button interactable ti-options-capsule';
+        btn.style.cssText = `
+            flex: 1;
+            min-width: 200px;
+            max-width: calc(50% - 4px);
+            padding: 8px 12px;
+            border: 1px solid var(--SmartThemeBorderColor, #ccc);
+            border-radius: 6px;
+            background: var(--SmartThemeBackgroundColor, #fff);
+            color: var(--SmartThemeBodyColor, #222);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            word-wrap: break-word;
+            white-space: normal;
+            line-height: 1.4;
+        `;
         container.appendChild(btn);
         
         if (isStreaming) {
-            // 流式显示：打字机效果
+            // 流式显示：快速打字机效果
             for (let i = 0; i < text.length; i++) {
                 btn.textContent = text.substring(0, i + 1);
-                await sleep(15);
+                await sleep(5); // 从15ms减少到5ms，加快速度
             }
         } else {
             // 非流式显示：一次性显示完整文字
@@ -224,38 +272,40 @@ async function generateOptions() {
         
         if (paceMode === 'slow') {
             promptTemplate = `
-你是我的AI叙事导演。分析最近对话，为我生成3-5个深度行动建议（每条用【】包裹）。
+你是我的AI叙事导演。分析最近对话，为我生成4个深度行动建议（每条用【】包裹）。
 
 要求：
 - 始终以我的第一人称视角
 - 每条建议不超过50字
 - 深入分析我的心理状态和处境
+- 必须生成4个选项
 
 ## 最近对话
 {{context}}
 
 ## 输出格式
 - JSON格式分析（scene_type, user_mood, narrative_focus）
-- 建议列表（单行、每条用【】包裹）
+- 建议列表（单行、每条用【】包裹，必须4个）
 
 ## 开始
 `.trim();
         } else if (paceMode === 'fast') {
             promptTemplate = `
-你是我的AI叙事导演。分析最近对话，为我生成3-4个时间跨越行动建议（每条用【】包裹）。
+你是我的AI叙事导演。分析最近对话，为我生成4个时间跨越行动建议（每条用【】包裹）。
 
 要求：
 - 始终以我的第一人称视角
 - 每条建议不超过50字
 - 包含明显时间推进（任务完成、赴约、重要事件）
 - 避免当前场景细节，直接推进到下一节点
+- 必须生成4个选项
 
 ## 最近对话
 {{context}}
 
 ## 输出格式
 - JSON格式分析（scene_type, user_mood, narrative_focus）
-- 建议列表（单行、每条用【】包裹，包含时间跨越）
+- 建议列表（单行、每条用【】包裹，必须4个，包含时间跨越）
 
 ## 开始
 `.trim();
@@ -277,19 +327,20 @@ async function generateOptions() {
 
 ## 输出格式
 - JSON格式分析（scene_type, user_mood, narrative_focus）
-- 建议列表（单行、每条用【】包裹，按上述顺序）
+- 建议列表（单行、每条用【】包裹，按上述顺序，必须4个）
 
 ## 开始
 `.trim();
         } else {
             // balanced 模式
             promptTemplate = `
-你是我的AI叙事导演。分析最近对话，为我生成3-5个戏剧性行动建议（每条用【】包裹）。
+你是我的AI叙事导演。分析最近对话，为我生成4个戏剧性行动建议（每条用【】包裹）。
 
 要求：
 - 始终以我的第一人称视角
 - 每条建议不超过50字
 - 分析场景类型、我的情绪、叙事焦点
+- 必须生成4个选项
 
 ## 最近对话
 {{context}}

@@ -264,6 +264,8 @@ export function addExtensionSettings(settings) {
         input.style.boxSizing = 'border-box';
         input.style.transition = 'all 0.2s ease';
         input.style.outline = 'none';
+        input.style.borderStyle = 'solid';
+        input.style.borderWidth = '1px';
         
         // 添加聚焦效果
         input.addEventListener('focus', () => {
@@ -442,6 +444,8 @@ export function addExtensionSettings(settings) {
     });
     const streamText = document.createElement('span');
     streamText.textContent = '启用流式选项生成（实时显示生成过程）';
+    streamText.style.fontSize = '12px';
+    streamText.style.color = 'var(--SmartThemeBodyColor, #666)';
     streamLabel.append(streamCheckbox, streamText);
     optionsContainer.appendChild(streamLabel);
     
