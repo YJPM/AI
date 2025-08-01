@@ -128,6 +128,16 @@ function showGeneratingUI(message, duration = null) {
         container = document.createElement('div');
         container.id = 'ti-loading-container';
         container.classList.add('typing_indicator');
+        container.style.display = 'flex';
+        container.style.justifyContent = 'center';
+        container.style.alignItems = 'center';
+        container.style.width = '100%';
+        container.style.padding = '8px 16px';
+        container.style.margin = '8px auto';
+        container.style.maxWidth = '90%';
+        container.style.textAlign = 'center';
+        container.style.color = 'var(--text_color)';
+        container.style.backgroundColor = 'transparent';
         chat.appendChild(container);
         logger.log('showGeneratingUI: 容器已附加到 chat。');
     } else {
@@ -144,7 +154,7 @@ function showGeneratingUI(message, duration = null) {
     logger.log(`showGeneratingUI: 最终容器 display 属性: ${container.style.display}`);
     if (duration) {
         logger.log(`showGeneratingUI: 将在 ${duration}ms 后隐藏提示。`);
-        setTimeout(() => OptionsGenerator.hideGeneratingUI(), duration);
+        setTimeout(() => hideGeneratingUI(), duration);
     }
 }
 
@@ -157,7 +167,7 @@ function hideGeneratingUI() {
 }
 
 async function displayOptions(options, isStreaming = false) {
-    OptionsGenerator.hideGeneratingUI();
+    hideGeneratingUI();
     const oldContainer = document.getElementById('ti-options-container');
     if (oldContainer) oldContainer.remove();
     const sendForm = document.getElementById('send_form');

@@ -30,6 +30,20 @@ export function injectGlobalStyles() {
         .typing_indicator {
             background-color: transparent !important;
         }
+        #ti-loading-container {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            width: 100% !important;
+            padding: 8px 16px !important;
+            margin: 8px auto !important;
+            max-width: 90% !important;
+            text-align: center !important;
+            color: var(--text_color) !important;
+            background-color: transparent !important;
+            opacity: 1 !important;
+            z-index: 1000 !important;
+        }
         .typing-ellipsis::after {
             display: inline-block;
             animation: ellipsis-animation 1.4s infinite;
