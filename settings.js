@@ -9,8 +9,7 @@ export const defaultSettings = {
     optionsBaseUrl: 'https://newapi.sisuo.de/v1',
     sendMode: 'auto',
     streamOptions: false, // true=流式, false=非流式
-    paceMode: 'balanced', // 推进节奏：slow=慢速, balanced=平衡, fast=快速(时间跨越), mixed=混合
-    plotMode: 'normal', // 剧情走向：normal=正常, twist=转折, nsfw=NSFW
+    paceMode: 'normal', // 推进节奏：normal=正常, fast=快速, jump=跳跃
     
     // 调试设置
     debug: true, // 默认开启
@@ -18,31 +17,14 @@ export const defaultSettings = {
 
 // 不同推进节奏的提示模板
 const PACE_PROMPTS = {
-    slow: `
-你是我的AI叙事导演。分析最近对话，为我生成3-5个深度行动建议（每条用【】包裹，首条最优）。
+    normal: `
+你是我的AI叙事导演。分析最近对话，为我生成3-5个正常行动建议（每条用【】包裹，首条最优）。
 
 要求：
 - 始终以我的第一人称视角
 - 每条建议不超过100字
-- 深入分析我的心理状态和处境
-
-## 最近对话
-{{context}}
-
-## 输出格式
-- JSON格式分析（scene_type, user_mood, narrative_focus）
-- 建议列表（单行、每条用【】包裹）
-
-## 开始
-`.trim(),
-    
-    balanced: `
-你是我的AI叙事导演。分析最近对话，为我生成3-5个戏剧性行动建议（每条用【】包裹，首条最优）。
-
-要求：
-- 始终以我的第一人称视角
-- 每条建议不超过100字
-- 分析场景类型、我的情绪、叙事焦点
+- 描述当前正在进行的动作或状态
+- 例如："收拾东西准备回家"
 
 ## 最近对话
 {{context}}
@@ -55,107 +37,48 @@ const PACE_PROMPTS = {
 `.trim(),
     
     fast: `
-你是我的AI叙事导演。分析最近对话，为我生成3-4个时间跨越行动建议（每条用【】包裹，首条最优）。
+你是我的AI叙事导演。分析最近对话，为我生成3-4个快速行动建议（每条用【】包裹，首条最优）。
 
 要求：
 - 始终以我的第一人称视角
 - 每条建议不超过100字
-- 包含明显时间推进（任务完成、赴约、重要事件）
-- 避免当前场景细节，直接推进到下一节点
+- 描述动作的中间状态
+- 例如："在回家的路上了"
 
 ## 最近对话
 {{context}}
 
 ## 输出格式
 - JSON格式分析（scene_type, user_mood, narrative_focus）
-- 建议列表（单行、每条用【】包裹，包含时间跨越）
+- 建议列表（单行、每条用【】包裹）
 
 ## 开始
 `.trim(),
     
-    mixed: `
-你是我的AI叙事导演。分析最近对话，为我生成4个混合节奏行动建议（每条用【】包裹，首条最优）。
+    jump: `
+你是我的AI叙事导演。分析最近对话，为我生成3-4个跳跃行动建议（每条用【】包裹，首条最优）。
 
 要求：
 - 始终以我的第一人称视角
 - 每条建议不超过100字
-- 生成1个慢速深度选项 + 2个平衡标准选项 + 1个快速推进选项
+- 描述已完成的动作或结果状态
+- 例如："已经到家了"
 
 ## 最近对话
 {{context}}
 
 ## 输出格式
 - JSON格式分析（scene_type, user_mood, narrative_focus）
-- 建议列表（单行、每条用【】包裹，按慢速-平衡-平衡-快速顺序）
+- 建议列表（单行、每条用【】包裹）
 
 ## 开始
 `.trim()
 };
 
-// 剧情走向提示模板
-const PLOT_PROMPTS = {
-    normal: `
-你是我的AI叙事导演。分析最近对话，为我生成4个正常剧情行动建议（每条用【】包裹）。
+// 已移除旧的剧情走向模板定义
 
-要求：
-- 始终以我的第一人称视角
-- 每条建议不超过50字
-- 保持正常、健康的剧情发展
-- 避免极端或不当内容
-- 必须生成4个选项
 
-## 最近对话
-{{context}}
-
-## 输出格式
-- JSON格式分析（scene_type, user_mood, narrative_focus）
-- 建议列表（单行、每条用【】包裹，必须4个）
-
-## 开始
-`.trim(),
-    
-    twist: `
-你是我的AI叙事导演。分析最近对话，为我生成4个转折剧情行动建议（每条用【】包裹）。
-
-要求：
-- 始终以我的第一人称视角
-- 每条建议不超过50字
-- 包含意外转折和戏剧性变化
-- 可以是角色关系变化、环境突变、情感转折等
-- 必须生成4个选项
-
-## 最近对话
-{{context}}
-
-## 输出格式
-- JSON格式分析（scene_type, user_mood, narrative_focus）
-- 建议列表（单行、每条用【】包裹，必须4个，包含转折元素）
-
-## 开始
-`.trim(),
-    
-    nsfw: `
-你是我的AI叙事导演。分析最近对话，为我生成4个成人向剧情行动建议（每条用【】包裹）。
-
-要求：
-- 始终以我的第一人称视角
-- 每条建议不超过50字
-- 包含成人向、亲密或浪漫内容
-- 保持艺术性和品味
-- 必须生成4个选项
-
-## 最近对话
-{{context}}
-
-## 输出格式
-- JSON格式分析（scene_type, user_mood, narrative_focus）
-- 建议列表（单行、每条用【】包裹，必须4个，成人向内容）
-
-## 开始
-`.trim()
-};
-
-export const MERGED_DIRECTOR_PROMPT = PACE_PROMPTS.balanced; // 默认使用平衡模式
+export const MERGED_DIRECTOR_PROMPT = PACE_PROMPTS.normal; // 默认使用正常模式
 
 const MODULE = 'typing_indicator';
 
