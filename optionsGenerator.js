@@ -495,6 +495,16 @@ function analyzeUserBehavior() {
         window.setvar('userProfile_customKeywords', customKeywords.join(','));
         window.setvar('userProfile_summary', summary);
         console.log('已保存到 SillyTavern 变量系统');
+    } else if (typeof window.setGlobalVar === 'function') {
+        // 尝试使用 setGlobalVar
+        window.setGlobalVar('userProfile_favoriteScene', favoriteScene);
+        window.setGlobalVar('userProfile_favoriteMood', favoriteMood);
+        window.setGlobalVar('userProfile_preferedFocus', preferedFocus);
+        window.setGlobalVar('userProfile_customKeywords', customKeywords.join(','));
+        window.setGlobalVar('userProfile_summary', summary);
+        console.log('已保存到 SillyTavern 全局变量系统');
+    } else {
+        console.log('SillyTavern 变量系统不可用，仅保存到设置');
     }
     
     // 保存到设置

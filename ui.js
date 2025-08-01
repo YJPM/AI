@@ -727,13 +727,50 @@ export function addExtensionSettings(settings) {
     refreshButton.style.marginBottom = '5px';
     refreshButton.addEventListener('click', () => {
         // 从 SillyTavern 变量系统获取数据
+        let favoriteScene = '', favoriteMood = '', preferedFocus = '', customKeywords = '', summary = '';
+        
+        // 尝试多种获取方式
         if (typeof window.getvar === 'function') {
-            const favoriteScene = window.getvar('userProfile_favoriteScene') || '';
-            const favoriteMood = window.getvar('userProfile_favoriteMood') || '';
-            const preferedFocus = window.getvar('userProfile_preferedFocus') || '';
-            const customKeywords = window.getvar('userProfile_customKeywords') || '';
-            const summary = window.getvar('userProfile_summary') || '';
-            
+            favoriteScene = window.getvar('userProfile_favoriteScene') || '';
+            favoriteMood = window.getvar('userProfile_favoriteMood') || '';
+            preferedFocus = window.getvar('userProfile_preferedFocus') || '';
+            customKeywords = window.getvar('userProfile_customKeywords') || '';
+            summary = window.getvar('userProfile_summary') || '';
+            console.log('从 getvar 获取数据');
+        } else if (typeof window.getGlobalVar === 'function') {
+            favoriteScene = window.getGlobalVar('userProfile_favoriteScene') || '';
+            favoriteMood = window.getGlobalVar('userProfile_favoriteMood') || '';
+            preferedFocus = window.getGlobalVar('userProfile_preferedFocus') || '';
+            customKeywords = window.getGlobalVar('userProfile_customKeywords') || '';
+            summary = window.getGlobalVar('userProfile_summary') || '';
+            console.log('从 getGlobalVar 获取数据');
+        } else if (typeof window.TavernHelper !== 'undefined' && typeof window.TavernHelper.getVariables === 'function') {
+            // 尝试通过 TavernHelper 获取
+            window.TavernHelper.getVariables({ type: 'global' }).then(vars => {
+                favoriteScene = vars.userProfile_favoriteScene || '';
+                favoriteMood = vars.userProfile_favoriteMood || '';
+                preferedFocus = vars.userProfile_preferedFocus || '';
+                customKeywords = vars.userProfile_customKeywords || '';
+                summary = vars.userProfile_summary || '';
+                updateUserProfileUI();
+            }).catch(err => {
+                console.error('获取变量失败:', err);
+                alert('获取变量失败，请检查控制台');
+            });
+            return; // 异步处理，直接返回
+        } else {
+            console.log('所有变量系统都不可用，使用设置中的数据');
+            // 使用当前设置中的数据
+            favoriteScene = settings.userProfile.favoriteScene || '';
+            favoriteMood = settings.userProfile.favoriteMood || '';
+            preferedFocus = settings.userProfile.preferedFocus || '';
+            customKeywords = (settings.userProfile.customKeywords || []).join(',');
+            summary = settings.userProfile.summary || '';
+        }
+        
+        updateUserProfileUI();
+        
+        function updateUserProfileUI() {
             // 更新设置
             settings.userProfile = {
                 favoriteScene: favoriteScene,
@@ -751,9 +788,7 @@ export function addExtensionSettings(settings) {
             keywordsInput.value = customKeywords;
             
             saveSettingsDebounced();
-            alert('已从 SillyTavern 变量系统刷新用户画像');
-        } else {
-            alert('SillyTavern 变量系统不可用');
+            alert('已刷新用户画像');
         }
     });
     analyzeContainer.appendChild(refreshButton);
@@ -786,6 +821,36 @@ export function addExtensionSettings(settings) {
         }
     });
     analyzeContainer.appendChild(analyzeButton);
+    
+    // 添加调试按钮
+    const debugButton = document.createElement('button');
+    debugButton.textContent = '检查变量系统';
+    debugButton.className = 'menu_button';
+    debugButton.style.width = '100%';
+    debugButton.style.padding = '8px 12px';
+    debugButton.style.backgroundColor = '#ffa500';
+    debugButton.style.color = 'white';
+    debugButton.style.border = 'none';
+    debugButton.style.borderRadius = '4px';
+    debugButton.style.cursor = 'pointer';
+    debugButton.style.marginBottom = '5px';
+    debugButton.addEventListener('click', () => {
+        const availableSystems = [];
+        
+        if (typeof window.setvar === 'function') availableSystems.push('setvar/getvar');
+        if (typeof window.setGlobalVar === 'function') availableSystems.push('setGlobalVar/getGlobalVar');
+        if (typeof window.TavernHelper !== 'undefined') availableSystems.push('TavernHelper');
+        if (typeof window.eventSource !== 'undefined') availableSystems.push('eventSource');
+        
+        console.log('可用的变量系统:', availableSystems);
+        console.log('window.setvar:', typeof window.setvar);
+        console.log('window.setGlobalVar:', typeof window.setGlobalVar);
+        console.log('window.TavernHelper:', typeof window.TavernHelper);
+        console.log('window.eventSource:', typeof window.eventSource);
+        
+        alert(`可用的变量系统: ${availableSystems.join(', ') || '无'}\n请查看控制台获取详细信息`);
+    });
+    analyzeContainer.appendChild(debugButton);
     
     const clearLogButton = document.createElement('button');
     clearLogButton.textContent = '清空行为日志';
