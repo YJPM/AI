@@ -261,7 +261,9 @@ async function getContextCompatible(limit = 20) {
             'getChat',
             'getMessages',
             'getConversation',
-            'getHistory'
+            'getHistory',
+            'getChatHistory',
+            'getMessageHistory'
         ];
         
         for (const method of possibleMethods) {
@@ -282,7 +284,7 @@ async function getContextCompatible(limit = 20) {
         }
     }
     
-    // 兼容 TavernHelper 或 DOM
+    // 优先使用酒馆助手的接口
     if (typeof window.TavernHelper?.getContext === 'function') {
         console.log('[getContextCompatible] 使用 TavernHelper.getContext()');
         try {
@@ -295,7 +297,7 @@ async function getContextCompatible(limit = 20) {
             console.log('[getContextCompatible] 降级到DOM解析...');
         }
     } else {
-        console.log('[getContextCompatible] TavernHelper.getContext() 不可用，使用DOM解析');
+        console.log('[getContextCompatible] TavernHelper.getContext() 不可用，尝试其他方法...');
         
         // 尝试其他可能的接口
         if (typeof window.TavernHelper?.getChat === 'function') {
@@ -321,6 +323,18 @@ async function getContextCompatible(limit = 20) {
                 return { messages: messages.slice(-limit) };
             } catch (error) {
                 console.error('[getContextCompatible] SillyTavern.chat 解析失败:', error);
+            }
+        }
+        
+        // 尝试通过酒馆助手的其他方法获取消息
+        if (typeof window.TavernHelper?.getMessages === 'function') {
+            console.log('[getContextCompatible] 尝试使用 TavernHelper.getMessages()');
+            try {
+                const result = await window.TavernHelper.getMessages();
+                console.log('[getContextCompatible] TavernHelper.getMessages() 成功:', result);
+                return { messages: result };
+            } catch (error) {
+                console.error('[getContextCompatible] TavernHelper.getMessages() 失败:', error);
             }
         }
     }
@@ -718,7 +732,6 @@ export class OptionsGenerator {
     static isManuallyStopped = false;
     static isGenerating = false;
     
-    // 静态方法引用
     static showGeneratingUI = showGeneratingUI;
     static hideGeneratingUI = hideGeneratingUI;
     static displayOptions = displayOptions;
@@ -809,3 +822,6 @@ export class OptionsGenerator {
         console.log('=== 接口诊断完成 ===');
     }
 }
+
+// 将OptionsGenerator导出到全局作用域，以便在控制台中调用
+window.OptionsGenerator = OptionsGenerator;
