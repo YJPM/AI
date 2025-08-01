@@ -262,6 +262,10 @@ export function addExtensionSettings(settings) {
         modelInput.style.display = 'block';
         modelSelect.innerHTML = '';
         connectionStatusDiv.style.display = 'none';
+        actualModelDiv.style.display = 'none';
+        
+        // 清除实际模型名称
+        delete settings.actualModelName;
     });
     optionsSettingsContainer.appendChild(apiTypeLabel);
     optionsSettingsContainer.appendChild(apiTypeSelect);
@@ -324,6 +328,13 @@ export function addExtensionSettings(settings) {
                 connectionStatusDiv.style.color = 'var(--SmartThemeBodyColor)';
                 connectionStatusDiv.textContent = result.message;
                 
+                // 更新实际模型显示
+                if (result.actualModelName) {
+                    settings.actualModelName = result.actualModelName;
+                    actualModelDiv.textContent = `实际使用模型: ${result.actualModelName}`;
+                    actualModelDiv.style.display = 'block';
+                }
+                
                 // 如果有可用模型列表，更新下拉菜单
                 if (result.models && result.models.length > 0) {
                     // 清空现有选项
@@ -353,6 +364,12 @@ export function addExtensionSettings(settings) {
                         modelSelect.value = result.currentModel;
                         settings.optionsApiModel = result.currentModel;
                         modelInput.value = result.currentModel;
+                        
+                        // 保存实际使用的模型名称，用于显示
+                        if (result.actualModelName) {
+                            settings.actualModelName = result.actualModelName;
+                        }
+                        
                         saveSettingsDebounced();
                     } else {
                         modelSelect.value = settings.optionsApiModel;
@@ -362,9 +379,9 @@ export function addExtensionSettings(settings) {
                     modelSelect.style.display = 'block';
                     modelInput.style.display = 'none';
                     
-                    // 如果当前容器中没有下拉菜单，添加它
-                    if (!modelContainer.contains(modelSelect)) {
-                        modelContainer.insertBefore(modelSelect, modelInput);
+                    // 如果当前选择行容器中没有下拉菜单，添加它
+                    if (!modelSelectRow.contains(modelSelect)) {
+                        modelSelectRow.insertBefore(modelSelect, modelInput);
                     }
                     
                     // 添加下拉菜单变更事件
@@ -411,8 +428,31 @@ export function addExtensionSettings(settings) {
     // 创建模型选择容器
     const modelContainer = document.createElement('div');
     modelContainer.style.display = 'flex';
-    modelContainer.style.gap = '10px';
-    modelContainer.style.alignItems = 'center';
+    modelContainer.style.flexDirection = 'column';
+    modelContainer.style.gap = '5px';
+    
+    // 创建模型选择行容器
+    const modelSelectRow = document.createElement('div');
+    modelSelectRow.style.display = 'flex';
+    modelSelectRow.style.gap = '10px';
+    modelSelectRow.style.alignItems = 'center';
+    modelSelectRow.style.width = '100%';
+    modelContainer.appendChild(modelSelectRow);
+    
+    // 创建实际模型显示区域
+    const actualModelDiv = document.createElement('div');
+    actualModelDiv.id = 'actual-model-display';
+    actualModelDiv.style.fontSize = '12px';
+    actualModelDiv.style.color = 'var(--SmartThemeBodyColor)';
+    actualModelDiv.style.marginTop = '2px';
+    actualModelDiv.style.display = 'none';
+    modelContainer.appendChild(actualModelDiv);
+    
+    // 如果已经有实际模型名称，显示它
+    if (settings.actualModelName) {
+        actualModelDiv.textContent = `实际使用模型: ${settings.actualModelName}`;
+        actualModelDiv.style.display = 'block';
+    }
     
     // 创建模型下拉选择框
     const modelSelect = document.createElement('select');
@@ -432,8 +472,8 @@ export function addExtensionSettings(settings) {
         saveSettingsDebounced();
     });
     
-    // 将模型输入元素添加到容器
-    modelContainer.appendChild(modelInput);
+    // 将模型输入元素添加到选择行容器
+    modelSelectRow.appendChild(modelInput);
     
     // 更新测试连接按钮点击事件，添加模型列表处理
     testConnectionButton.addEventListener('click', async () => {

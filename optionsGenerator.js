@@ -568,11 +568,14 @@ async function testApiConnection() {
                                     geminiModels.find(m => m.name.includes(model)) || 
                                     geminiModels[0];
                 
+                // 获取API实际返回的模型名称，而不是用户设置的模型名称
+                const actualModelName = currentModel?.displayName || currentModel?.name || '未知模型';
                 return {
                     success: true,
-                    message: `连接成功! 当前模型: ${currentModel?.displayName || currentModel?.name || model}`,
+                    message: `连接成功! 当前模型: ${actualModelName}`,
                     models: geminiModels,
-                    currentModel: currentModel?.name
+                    currentModel: currentModel?.name,
+                    actualModelName: actualModelName
                 };
             } catch (error) {
                 logger.error('Gemini API连接测试失败:', error);
@@ -609,11 +612,14 @@ async function testApiConnection() {
                 // 查找当前设置的模型
                 const currentModel = data.data.find(m => m.id === model) || data.data[0];
                 
+                // 获取API实际返回的模型名称，而不是用户设置的模型名称
+                const actualModelName = currentModel?.id || '未知模型';
                 return {
                     success: true,
-                    message: `连接成功! 当前模型: ${currentModel?.id || model}`,
+                    message: `连接成功! 当前模型: ${actualModelName}`,
                     models: data.data,
-                    currentModel: currentModel?.id
+                    currentModel: currentModel?.id,
+                    actualModelName: actualModelName
                 };
             } catch (error) {
                 logger.error('OpenAI API连接测试失败:', error);

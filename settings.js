@@ -11,6 +11,7 @@ export const defaultSettings = {
     optionsApiKey: '',
     optionsApiModel: 'gemini-2.5-flash-free',
     optionsBaseUrl: 'https://newapi.sisuo.de/v1',
+    actualModelName: '', // 存储API实际返回的模型名称
     optionsTemplate: '', // 不再用
     choiceLog: [],
     learnedStyle: '',
