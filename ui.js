@@ -101,17 +101,20 @@ export function addExtensionSettings(settings) {
     
     // 创建重置按钮并放在标题紧挨着的右边
     const resetButton = document.createElement('button');
-    resetButton.textContent = '重置所有设置为默认值';
     resetButton.className = 'menu_button';
-    resetButton.style.width = '100%';
-    resetButton.style.padding = '12px 16px';
-    resetButton.style.fontSize = '14px';
+    resetButton.style.padding = '2px';
+    resetButton.style.width = '24px';
+    resetButton.style.height = '24px';
+    resetButton.style.display = 'flex';
+    resetButton.style.justifyContent = 'center';
+    resetButton.style.alignItems = 'center';
     resetButton.style.backgroundColor = 'transparent';
-    resetButton.style.color = 'var(--text_color)';
-    resetButton.style.border = '1px solid var(--border_color)';
-    resetButton.style.borderRadius = '6px';
+    resetButton.style.color = 'var(--SmartThemeBodyColor)';
+    resetButton.style.border = 'none';
+    resetButton.style.borderRadius = '4px';
     resetButton.style.cursor = 'pointer';
-    resetButton.style.marginTop = '10px';
+    resetButton.style.transition = 'all 0.2s ease';
+    resetButton.title = '重置设置';
     
     // 添加悬停效果
     resetButton.addEventListener('mouseover', () => {
@@ -120,7 +123,7 @@ export function addExtensionSettings(settings) {
     });
     resetButton.addEventListener('mouseout', () => {
         resetButton.style.backgroundColor = 'transparent';
-        resetButton.style.color = 'var(--text_color)';
+        resetButton.style.color = 'var(--SmartThemeBodyColor)';
     });
     
     // 使用图标而不是文本

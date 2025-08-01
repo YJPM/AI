@@ -41,22 +41,7 @@ function initializeTypingIndicator() {
             logger.log('隐藏已存在的选项容器。');
             oldContainer.remove();
         }
-        setTimeout(() => {
-            logger.log('开始延时检查...');
-            const settings = getSettings();
-            if (!settings.optionsGenEnabled) {
-                logger.log('选项生成已禁用，跳过检查。');
-                return;
-            }
-            const isLastFromAI = isLastMessageFromAI();
-            const optionsContainer = document.getElementById('ti-options-container');
-            if (isLastFromAI && !optionsContainer) {
-                logger.log('条件满足 (AI消息且无选项)，准备自动生成选项。');
-                OptionsGenerator.generateOptions();
-            } else {
-                logger.log('不满足自动生成条件:', { isLastFromAI, hasOptionsContainer: !!optionsContainer, isGenerating: OptionsGenerator.isGenerating });
-            }
-        }, 500);
+        // 删除CHAT_CHANGED中的自动生成逻辑，只在AI回复后生成
     });
 }
 
