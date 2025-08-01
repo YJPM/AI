@@ -93,21 +93,17 @@ async function displayOptionsStreaming(content) {
             btn.className = 'qr--button menu_button interactable ti-options-capsule';
             btn.setAttribute('data-option-index', index);
             btn.style.cssText = `
-                flex: 1;
-                min-width: 200px;
-                max-width: calc(50% - 4px);
+                flex: 0 0 calc(25% - 6px);
+                min-width: 150px;
                 padding: 8px 12px;
                 border: 1px solid var(--SmartThemeBorderColor, #ccc);
                 border-radius: 6px;
                 background: var(--SmartThemeBackgroundColor, #fff);
-                color: var(--SmartThemeBodyColor, #222);
-                font-size: 14px;
                 cursor: pointer;
-                transition: all 0.2s ease;
+                transition: none;
                 text-align: left;
                 word-wrap: break-word;
                 white-space: normal;
-                line-height: 1.4;
             `;
             container.appendChild(btn);
             
@@ -180,23 +176,41 @@ async function displayOptions(options, isStreaming = false) {
         const btn = document.createElement('button');
         btn.className = 'qr--button menu_button interactable ti-options-capsule';
         btn.style.cssText = `
-            flex: 1;
-            min-width: 200px;
-            max-width: calc(50% - 4px);
+            flex: 0 0 calc(25% - 6px);
+            min-width: 150px;
             padding: 8px 12px;
             border: 1px solid var(--SmartThemeBorderColor, #ccc);
             border-radius: 6px;
             background: var(--SmartThemeBackgroundColor, #fff);
-            color: var(--SmartThemeBodyColor, #222);
-            font-size: 14px;
             cursor: pointer;
             transition: all 0.2s ease;
             text-align: left;
             word-wrap: break-word;
             white-space: normal;
-            line-height: 1.4;
         `;
+        
+        // 添加轻微的hover效果
+        btn.addEventListener('mouseover', () => {
+            btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+            btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+        });
+        
+        btn.addEventListener('mouseout', () => {
+            btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+            btn.style.boxShadow = 'none';
+        });
         container.appendChild(btn);
+        
+        // 添加轻微的hover效果
+        btn.addEventListener('mouseover', () => {
+            btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+            btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+        });
+        
+        btn.addEventListener('mouseout', () => {
+            btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+            btn.style.boxShadow = 'none';
+        });
         
         if (isStreaming) {
             // 流式显示：快速打字机效果

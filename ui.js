@@ -258,7 +258,7 @@ export function addExtensionSettings(settings) {
         input.style.padding = '8px 12px';
         input.style.border = '1px solid var(--SmartThemeBorderColor, #ccc)';
         input.style.borderRadius = '6px';
-        input.style.fontSize = '14px';
+        input.style.fontSize = '16px';
         input.style.background = 'var(--SmartThemeBackgroundColor, #fff)';
         input.style.color = 'var(--SmartThemeBodyColor, #222)';
         input.style.boxSizing = 'border-box';
@@ -284,7 +284,7 @@ export function addExtensionSettings(settings) {
         select.style.padding = '8px 12px';
         select.style.border = '1px solid var(--SmartThemeBorderColor, #ccc)';
         select.style.borderRadius = '6px';
-        select.style.fontSize = '14px';
+        select.style.fontSize = '16px';
         select.style.background = 'var(--SmartThemeBackgroundColor, #fff)';
         select.style.color = 'var(--SmartThemeBodyColor, #222)';
         select.style.boxSizing = 'border-box';
@@ -308,7 +308,7 @@ export function addExtensionSettings(settings) {
         label.style.display = 'block';
         label.style.marginBottom = '6px';
         label.style.fontWeight = 'normal';
-        label.style.fontSize = '14px';
+        label.style.fontSize = '16px';
         label.style.color = 'var(--SmartThemeBodyColor, #222)';
     }
     
@@ -444,8 +444,8 @@ export function addExtensionSettings(settings) {
     });
     const streamText = document.createElement('span');
     streamText.textContent = '启用流式选项生成（实时显示生成过程）';
-    streamText.style.fontSize = '12px';
-    streamText.style.color = 'var(--SmartThemeBodyColor, #666)';
+    streamText.style.fontSize = '16px';
+    streamText.style.color = 'var(--SmartThemeBodyColor, #222)';
     streamLabel.append(streamCheckbox, streamText);
     optionsContainer.appendChild(streamLabel);
     
