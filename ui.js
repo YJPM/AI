@@ -433,7 +433,7 @@ export function createQuickPacePanel() {
         { value: 'mixed', text: '混合', color: '#9C27B0' }
     ];
     
-    paceModes.forEach(mode => {
+    paceModes.forEach((mode, idx) => {
         const button = document.createElement('button');
         button.textContent = mode.text;
         button.setAttribute('data-pace-mode', mode.value);
@@ -459,12 +459,18 @@ export function createQuickPacePanel() {
             // 更新所有按钮状态
             panel.querySelectorAll('button').forEach((btn, index) => {
                 const currentMode = paceModes[index];
+                console.log('[paceMode sync] index:', index, 'currentMode:', currentMode, 'btn:', btn);
+                if (!currentMode) {
+                    console.warn('[paceMode sync] paceModes[', index, '] 未定义，btn:', btn);
+                    return;
+                }
                 btn.style.background = settings.paceMode === currentMode.value ? currentMode.color : 'transparent';
                 btn.style.color = settings.paceMode === currentMode.value ? 'white' : currentMode.color;
             });
             
             // 同步更新扩展设置面板中的选择器
             const paceSelect = document.querySelector('select[data-pace-select]');
+            console.log('[paceMode sync] paceSelect:', paceSelect);
             if (paceSelect) {
                 paceSelect.value = mode.value;
             }
@@ -505,10 +511,14 @@ export function createQuickPacePanel() {
     `;
     
     refreshButton.addEventListener('click', async () => {
+        console.log('[refreshButton] 点击，准备重新获取选项...');
         // 导入并调用重新获取选项功能
         const { OptionsGenerator } = await import('./optionsGenerator.js');
         if (OptionsGenerator && typeof OptionsGenerator.generateOptions === 'function') {
+            console.log('[refreshButton] 调用 OptionsGenerator.generateOptions');
             OptionsGenerator.generateOptions();
+        } else {
+            console.warn('[refreshButton] OptionsGenerator.generateOptions 不可用', OptionsGenerator);
         }
     });
     
@@ -523,12 +533,18 @@ export function createQuickPacePanel() {
     });
     
     panel.appendChild(refreshButton);
+
+    // loading相关日志
+    window.__pacePanelDebug = window.__pacePanelDebug || {};
+    window.__pacePanelDebug.showPacePanelLoading = (...args) => { console.log('[showPacePanelLoading]', ...args); };
+    window.__pacePanelDebug.hidePacePanelLoading = (...args) => { console.log('[hidePacePanelLoading]', ...args); };
     
     return panel;
 }
 
 // 显示loading状态
 export function showPacePanelLoading() {
+    console.log('[showPacePanelLoading] called');
     const panel = document.getElementById('quick-pace-panel');
     if (!panel) return;
     
@@ -569,6 +585,7 @@ export function showPacePanelLoading() {
 
 // 隐藏loading状态
 export function hidePacePanelLoading() {
+    console.log('[hidePacePanelLoading] called');
     const panel = document.getElementById('quick-pace-panel');
     if (!panel) return;
     
