@@ -28,6 +28,8 @@ export const defaultSettings = {
     },
     // 情境分析模型
     analysisModel: 'gpt-3.5-turbo',
+    // 选项生成模式
+    streamOptions: false, // true=流式, false=非流式
 };
 export const MERGED_DIRECTOR_PROMPT = `
 你是一位顶级AI叙事导演。请按如下流程操作：

@@ -156,7 +156,7 @@ function hideGeneratingUI() {
     }
 }
 
-async function displayOptions(options) {
+async function displayOptions(options, isStreaming = false) {
     OptionsGenerator.hideGeneratingUI();
     const oldContainer = document.getElementById('ti-options-container');
     if (oldContainer) oldContainer.remove();
@@ -180,10 +180,18 @@ async function displayOptions(options) {
         const btn = document.createElement('button');
         btn.className = 'qr--button menu_button interactable ti-options-capsule';
         container.appendChild(btn);
-        for (let i = 0; i < text.length; i++) {
-            btn.textContent = text.substring(0, i + 1);
-            await sleep(15);
+        
+        if (isStreaming) {
+            // 流式显示：打字机效果
+            for (let i = 0; i < text.length; i++) {
+                btn.textContent = text.substring(0, i + 1);
+                await sleep(15);
+            }
+        } else {
+            // 非流式显示：一次性显示完整文字
+            btn.textContent = text;
         }
+        
         btn.onclick = () => {
             const textarea = document.querySelector('#send_textarea, .send_textarea');
             const sendButton = document.querySelector('#send_but, .send_but, button[onclick*="send"], button[onclick*="Send"]');
@@ -335,8 +343,10 @@ function tryAnalyzeUserProfile() {
     const settings = getSettings();
     const logCount = settings.userBehaviorLog.length;
     
-    // 降低触发频率：每5次行为分析一次，或者第一次有数据时
-    if (logCount > 0 && (logCount % 5 === 0 || settings.userProfile.summary === '')) {
+    logger.log(`尝试分析用户画像，当前日志数量: ${logCount}, 当前画像:`, settings.userProfile);
+    
+    // 降低触发频率：每3次行为分析一次，或者第一次有数据时
+    if (logCount > 0 && (logCount % 3 === 0 || settings.userProfile.summary === '')) {
         logger.log(`开始分析用户画像，当前日志数量: ${logCount}`);
         analyzeUserBehavior();
     }
@@ -357,8 +367,11 @@ function analyzeUserBehavior() {
     const moodCount = {};
     const focusCount = {};
     const keywordCount = {};
+    let validLogs = 0;
     
     logs.forEach((log, index) => {
+        logger.log(`处理第 ${index + 1} 条日志:`, log);
+        
         if (log.type === 'select_suggestion' && log.detail) {
             const { scene_type, user_mood, narrative_focus, keywords } = log.detail;
             if (scene_type) sceneCount[scene_type] = (sceneCount[scene_type] || 0) + 1;
@@ -366,9 +379,20 @@ function analyzeUserBehavior() {
             if (narrative_focus) focusCount[narrative_focus] = (focusCount[narrative_focus] || 0) + 1;
             if (Array.isArray(keywords)) keywords.forEach(k => keywordCount[k] = (keywordCount[k] || 0) + 1);
             
-            logger.log(`处理第 ${index + 1} 条建议选择日志:`, { scene_type, user_mood, narrative_focus });
+            logger.log(`处理建议选择日志:`, { scene_type, user_mood, narrative_focus });
+            validLogs++;
+        } else if (log.type === 'manual_input' && log.detail && log.detail.inputText) {
+            // 从手动输入中提取关键词
+            const text = log.detail.inputText.toLowerCase();
+            const keywords = text.split(/[\s,，。！？；：""''（）【】]/).filter(word => word.length > 1);
+            keywords.forEach(k => keywordCount[k] = (keywordCount[k] || 0) + 1);
+            
+            logger.log(`处理手动输入日志:`, { inputText: log.detail.inputText.substring(0, 50) + '...' });
+            validLogs++;
         }
     });
+    
+    logger.log(`有效日志数量: ${validLogs}, 场景统计:`, sceneCount, '情绪统计:', moodCount, '焦点统计:', focusCount, '关键词统计:', keywordCount);
     
     // 取出现最多的
     function getTop(obj) {
@@ -396,43 +420,9 @@ async function handleSuggestionClick(text, analysisData, isAuto = false) {
         ...(analysisData || {})
     });
     tryAnalyzeUserProfile();
-    // 兼容UI，支持自动/手动/全自动
-    const sendForm = document.getElementById('send_form');
-    if (!sendForm || !suggestions || suggestions.length === 0) return;
     
-    // 清理旧的建议容器
-    const oldContainer = document.getElementById('ti-options-container');
-    if (oldContainer) oldContainer.remove();
-    
-    const container = document.createElement('div');
-    container.id = 'ti-options-container';
-    container.style.marginBottom = '10px';
-    sendForm.insertAdjacentElement('beforebegin', container);
-    
-    const sleep = ms => new Promise(res => setTimeout(res, ms));
-    for (const text of suggestions) {
-        const btn = document.createElement('button');
-        btn.className = 'qr--button menu_button interactable ti-options-capsule';
-        btn.style.margin = '2px';
-        btn.style.padding = '8px 12px';
-        container.appendChild(btn);
-        
-        // 打字机效果
-        for (let i = 0; i < text.length; i++) {
-            btn.textContent = text.substring(0, i + 1);
-            await sleep(15);
-        }
-        
-        // 根据发送模式设置点击行为
-        const settings = getSettings();
-        if (settings.sendMode === 'auto') {
-            // 自动模式：点击后自动发送
-            btn.onclick = () => handleSuggestionClick(text, analysisData, true);
-        } else {
-            // 手动模式：点击后只填充文本
-            btn.onclick = () => handleSuggestionClick(text, analysisData, false);
-        }
-    }
+    // 发送建议内容
+    await sendSuggestion(text, isAuto);
 }
 async function sendSuggestion(text, isAuto = false) {
     if (!isAuto) {
@@ -489,26 +479,86 @@ async function generateOptions() {
         const finalMessages = [{ role: 'user', content: prompt }];
         let content = '';
         const apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${settings.optionsApiKey}`,
-            },
-            body: JSON.stringify({
-                model: settings.optionsApiModel,
-                messages: finalMessages,
-                temperature: 0.8,
-                stream: false,
-            }),
-        });
-        if (!response.ok) {
-            const errorText = await response.text();
-            logger.error('API 响应错误 (raw):', errorText);
-            throw new Error('API 请求失败');
+        
+        if (settings.streamOptions) {
+            // 流式生成
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${settings.optionsApiKey}`,
+                },
+                body: JSON.stringify({
+                    model: settings.optionsApiModel,
+                    messages: finalMessages,
+                    temperature: 0.8,
+                    stream: true,
+                }),
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                logger.error('API 响应错误 (raw):', errorText);
+                throw new Error('API 请求失败');
+            }
+            
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+                
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') break;
+                        
+                        try {
+                            const parsed = JSON.parse(data);
+                            const delta = parsed.choices?.[0]?.delta?.content || '';
+                            content += delta;
+                            
+                            // 实时解析并显示选项
+                            const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+                            if (suggestions.length > 0) {
+                                await displayOptions(suggestions, true); // true表示流式显示
+                            }
+                        } catch (e) {
+                            // 忽略解析错误
+                        }
+                    }
+                }
+            }
+        } else {
+            // 非流式生成
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${settings.optionsApiKey}`,
+                },
+                body: JSON.stringify({
+                    model: settings.optionsApiModel,
+                    messages: finalMessages,
+                    temperature: 0.8,
+                    stream: false,
+                }),
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                logger.error('API 响应错误 (raw):', errorText);
+                throw new Error('API 请求失败');
+            }
+            
+            const data = await response.json();
+            content = data.candidates?.[0]?.content?.parts?.[0]?.text || data.choices?.[0]?.message?.content || '';
         }
-        const data = await response.json();
-        content = data.candidates?.[0]?.content?.parts?.[0]?.text || data.choices?.[0]?.message?.content || '';
+        
         // 解析AI返回
         const jsonMatch = content.match(/\{.*\}/s);
         let analysisData = null;
@@ -525,7 +575,7 @@ async function generateOptions() {
         }
         // 解析建议
         const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
-        await displayOptions(suggestions);
+        await displayOptions(suggestions, false); // false表示非流式显示
         hideGeneratingUI();
     } catch (error) {
         logger.error('生成选项时出错:', error);
@@ -670,5 +720,7 @@ export const OptionsGenerator = {
     hideGeneratingUI,
     displayOptions,
     generateOptions,
-    testApiConnection
+    testApiConnection,
+    analyzeUserBehavior,
+    tryAnalyzeUserProfile
 };

@@ -580,6 +580,23 @@ export function addExtensionSettings(settings) {
     baseUrlGroup.appendChild(baseUrlLabel);
     baseUrlGroup.appendChild(baseUrlInput);
     optionsSettingsContainer.appendChild(baseUrlGroup);
+    
+    // 流式选项生成
+    const streamLabel = document.createElement('label');
+    streamLabel.classList.add('checkbox_label');
+    streamLabel.style.marginTop = '10px';
+    const streamCheckbox = document.createElement('input');
+    streamCheckbox.type = 'checkbox';
+    streamCheckbox.checked = settings.streamOptions;
+    streamCheckbox.addEventListener('change', () => {
+        settings.streamOptions = streamCheckbox.checked;
+        saveSettingsDebounced();
+    });
+    const streamText = document.createElement('span');
+    streamText.textContent = '启用流式选项生成（实时显示生成过程）';
+    streamLabel.append(streamCheckbox, streamText);
+    optionsSettingsContainer.appendChild(streamLabel);
+    
     apiTypeSelect.addEventListener('change', () => {
         settings.optionsApiType = apiTypeSelect.value;
         baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
@@ -671,4 +688,63 @@ export function addExtensionSettings(settings) {
     profileContainer.appendChild(keywordsInput);
     // 添加到面板
     inlineDrawerContent.appendChild(profileContainer);
+    
+    // 添加手动分析按钮
+    const analyzeContainer = document.createElement('div');
+    analyzeContainer.style.marginTop = '10px';
+    analyzeContainer.style.borderTop = '1px solid var(--border_color)';
+    analyzeContainer.style.paddingTop = '10px';
+    const analyzeHeader = document.createElement('h4');
+    analyzeHeader.textContent = '调试工具';
+    analyzeHeader.style.margin = '0 0 10px 0';
+    analyzeContainer.appendChild(analyzeHeader);
+    
+    const analyzeButton = document.createElement('button');
+    analyzeButton.textContent = '手动分析用户画像';
+    analyzeButton.className = 'menu_button';
+    analyzeButton.style.width = '100%';
+    analyzeButton.style.padding = '8px 12px';
+    analyzeButton.style.backgroundColor = 'var(--SmartThemeBlurple)';
+    analyzeButton.style.color = 'white';
+    analyzeButton.style.border = 'none';
+    analyzeButton.style.borderRadius = '4px';
+    analyzeButton.style.cursor = 'pointer';
+    analyzeButton.addEventListener('click', () => {
+        if (typeof OptionsGenerator !== 'undefined' && typeof OptionsGenerator.analyzeUserBehavior === 'function') {
+            OptionsGenerator.analyzeUserBehavior();
+            alert('用户画像分析完成，请查看控制台日志');
+        } else {
+            alert('分析功能不可用');
+        }
+    });
+    analyzeContainer.appendChild(analyzeButton);
+    
+    const clearLogButton = document.createElement('button');
+    clearLogButton.textContent = '清空行为日志';
+    clearLogButton.className = 'menu_button';
+    clearLogButton.style.width = '100%';
+    clearLogButton.style.padding = '8px 12px';
+    clearLogButton.style.backgroundColor = '#f08080';
+    clearLogButton.style.color = 'white';
+    clearLogButton.style.border = 'none';
+    clearLogButton.style.borderRadius = '4px';
+    clearLogButton.style.cursor = 'pointer';
+    clearLogButton.style.marginTop = '5px';
+    clearLogButton.addEventListener('click', () => {
+        if (confirm('确定要清空所有用户行为日志吗？')) {
+            settings.userBehaviorLog = [];
+            settings.userProfile = {
+                favoriteScene: '',
+                favoriteMood: '',
+                preferedFocus: '',
+                customKeywords: [],
+                summary: ''
+            };
+            saveSettingsDebounced();
+            alert('行为日志已清空');
+        }
+    });
+    analyzeContainer.appendChild(clearLogButton);
+    
+    inlineDrawerContent.appendChild(analyzeContainer);
 }
