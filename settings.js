@@ -1,9 +1,8 @@
 import { extension_settings } from '../../../extensions.js';
 
 export const defaultSettings = {
-    enabled: true,
     // 选项生成功能设置
-    optionsGenEnabled: false,
+    optionsGenEnabled: true, // 默认开启
     optionsApiType: 'openai',
     optionsApiKey: '',
     optionsApiModel: 'gemini-2.5-flash-free',
@@ -14,10 +13,8 @@ export const defaultSettings = {
     sendMode: 'auto',
     streamOptions: false, // true=流式, false=非流式
     
-    // 提示样式设置（继承自打字指示器）
-    animationEnabled: true,
-    customText: 'AI助手思考中',
-    debug: false,
+    // 调试设置
+    debug: true, // 默认开启
 };
 
 export const MERGED_DIRECTOR_PROMPT = `

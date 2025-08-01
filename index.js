@@ -1,5 +1,4 @@
-import { name2, eventSource, event_types, isStreamingEnabled, saveSettingsDebounced } from '../../../../script.js';
-import { selected_group } from '../../../group-chats.js';
+import { eventSource, event_types, saveSettingsDebounced } from '../../../../script.js';
 import { defaultSettings, getSettings } from './settings.js';
 import { logger } from './logger.js';
 import { OptionsGenerator } from './optionsGenerator.js';

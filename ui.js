@@ -148,19 +148,14 @@ export function addExtensionSettings(settings) {
             Object.assign(settings, structuredClone(defaultSettings));
             
             // 更新所有UI元素
-            optionsEnabledCheckbox.checked = settings.optionsGenEnabled;
-            debugCheckbox.checked = settings.debug;
             apiTypeSelect.value = settings.optionsApiType;
             apiKeyInput.value = settings.optionsApiKey;
             modelInput.value = settings.optionsApiModel;
             baseUrlInput.value = settings.optionsBaseUrl;
             sendModeSelect.value = settings.sendMode;
             streamCheckbox.checked = settings.streamOptions;
-            animationCheckbox.checked = settings.animationEnabled;
-            customTextInput.value = settings.customText;
             
             // 更新显示状态
-            optionsSettingsContainer.style.display = settings.optionsGenEnabled ? 'block' : 'none';
             baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
             
             saveSettingsDebounced();
@@ -182,48 +177,6 @@ export function addExtensionSettings(settings) {
     optionsContainer.style.borderTop = '1px solid var(--border_color)';
     optionsContainer.style.paddingTop = '15px';
     
-    const optionsHeader = document.createElement('h4');
-    optionsHeader.textContent = '智能选项生成';
-    optionsHeader.style.margin = '0 0 10px 0';
-    optionsContainer.appendChild(optionsHeader);
-    
-    // 启用选项生成
-    const optionsEnabledLabel = document.createElement('label');
-    optionsEnabledLabel.classList.add('checkbox_label');
-    const optionsEnabledCheckbox = document.createElement('input');
-    optionsEnabledCheckbox.type = 'checkbox';
-    optionsEnabledCheckbox.checked = settings.optionsGenEnabled;
-    optionsEnabledCheckbox.addEventListener('change', () => {
-        settings.optionsGenEnabled = optionsEnabledCheckbox.checked;
-        optionsSettingsContainer.style.display = settings.optionsGenEnabled ? 'block' : 'none';
-        saveSettingsDebounced();
-    });
-    const optionsEnabledText = document.createElement('span');
-    optionsEnabledText.textContent = '启用智能选项生成';
-    optionsEnabledLabel.append(optionsEnabledCheckbox, optionsEnabledText);
-    optionsContainer.appendChild(optionsEnabledLabel);
-    
-    // 调试模式
-    const debugLabel = document.createElement('label');
-    debugLabel.classList.add('checkbox_label');
-    debugLabel.style.marginLeft = '10px';
-    const debugCheckbox = document.createElement('input');
-    debugCheckbox.type = 'checkbox';
-    debugCheckbox.checked = settings.debug;
-    debugCheckbox.addEventListener('change', () => {
-        settings.debug = debugCheckbox.checked;
-        saveSettingsDebounced();
-    });
-    const debugText = document.createElement('span');
-    debugText.textContent = '启用调试日志';
-    debugLabel.append(debugCheckbox, debugText);
-    optionsContainer.appendChild(debugLabel);
-    
-    // 选项设置容器
-    const optionsSettingsContainer = document.createElement('div');
-    optionsSettingsContainer.style.marginTop = '10px';
-    optionsSettingsContainer.style.display = settings.optionsGenEnabled ? 'block' : 'none';
-    
     // 发送模式选择
     const sendModeLabel = document.createElement('label');
     sendModeLabel.textContent = '发送模式:';
@@ -241,8 +194,8 @@ export function addExtensionSettings(settings) {
         settings.sendMode = sendModeSelect.value;
         saveSettingsDebounced();
     });
-    optionsSettingsContainer.appendChild(sendModeLabel);
-    optionsSettingsContainer.appendChild(sendModeSelect);
+    optionsContainer.appendChild(sendModeLabel);
+    optionsContainer.appendChild(sendModeSelect);
     
     // API Type
     const apiTypeLabel = document.createElement('label');
@@ -262,8 +215,8 @@ export function addExtensionSettings(settings) {
         saveSettingsDebounced();
         baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
     });
-    optionsSettingsContainer.appendChild(apiTypeLabel);
-    optionsSettingsContainer.appendChild(apiTypeSelect);
+    optionsContainer.appendChild(apiTypeLabel);
+    optionsContainer.appendChild(apiTypeSelect);
     
     // API Key
     const apiKeyLabel = document.createElement('label');
@@ -330,9 +283,9 @@ export function addExtensionSettings(settings) {
     apiKeyContainer.appendChild(apiKeyInput);
     apiKeyContainer.appendChild(testConnectionButton);
     
-    optionsSettingsContainer.appendChild(apiKeyLabel);
-    optionsSettingsContainer.appendChild(apiKeyContainer);
-    optionsSettingsContainer.appendChild(connectionStatusDiv);
+    optionsContainer.appendChild(apiKeyLabel);
+    optionsContainer.appendChild(apiKeyContainer);
+    optionsContainer.appendChild(connectionStatusDiv);
     
     // 模型选择
     const modelLabel = document.createElement('label');
@@ -350,8 +303,8 @@ export function addExtensionSettings(settings) {
         saveSettingsDebounced();
     });
     
-    optionsSettingsContainer.appendChild(modelLabel);
-    optionsSettingsContainer.appendChild(modelInput);
+    optionsContainer.appendChild(modelLabel);
+    optionsContainer.appendChild(modelInput);
     
     // 基础URL
     const baseUrlGroup = document.createElement('div');
@@ -371,7 +324,7 @@ export function addExtensionSettings(settings) {
     });
     baseUrlGroup.appendChild(baseUrlLabel);
     baseUrlGroup.appendChild(baseUrlInput);
-    optionsSettingsContainer.appendChild(baseUrlGroup);
+    optionsContainer.appendChild(baseUrlGroup);
     
     // 流式选项生成
     const streamLabel = document.createElement('label');
@@ -387,50 +340,7 @@ export function addExtensionSettings(settings) {
     const streamText = document.createElement('span');
     streamText.textContent = '启用流式选项生成（实时显示生成过程）';
     streamLabel.append(streamCheckbox, streamText);
-    optionsSettingsContainer.appendChild(streamLabel);
-    
-    // 提示样式设置
-    const styleContainer = document.createElement('div');
-    styleContainer.style.marginTop = '20px';
-    styleContainer.style.borderTop = '1px solid var(--border_color)';
-    styleContainer.style.paddingTop = '15px';
-    
-    const styleHeader = document.createElement('h4');
-    styleHeader.textContent = '提示样式设置';
-    styleHeader.style.margin = '0 0 10px 0';
-    styleContainer.appendChild(styleHeader);
-    
-    // 动画效果
-    const animationLabel = document.createElement('label');
-    animationLabel.classList.add('checkbox_label');
-    const animationCheckbox = document.createElement('input');
-    animationCheckbox.type = 'checkbox';
-    animationCheckbox.checked = settings.animationEnabled;
-    animationCheckbox.addEventListener('change', () => {
-        settings.animationEnabled = animationCheckbox.checked;
-        saveSettingsDebounced();
-    });
-    const animationText = document.createElement('span');
-    animationText.textContent = '启用动画效果';
-    animationLabel.append(animationCheckbox, animationText);
-    styleContainer.appendChild(animationLabel);
-    
-    // 自定义提示文本
-    const customTextLabel = document.createElement('label');
-    customTextLabel.textContent = '提示文本:';
-    customTextLabel.style.display = 'block';
-    customTextLabel.style.marginTop = '10px';
-    const customTextInput = document.createElement('input');
-    customTextInput.type = 'text';
-    customTextInput.value = settings.customText;
-    customTextInput.placeholder = '输入提示文本';
-    customTextInput.style.width = '100%';
-    customTextInput.addEventListener('input', () => {
-        settings.customText = customTextInput.value;
-        saveSettingsDebounced();
-    });
-    styleContainer.appendChild(customTextLabel);
-    styleContainer.appendChild(customTextInput);
+    optionsContainer.appendChild(streamLabel);
     
     apiTypeSelect.addEventListener('change', () => {
         settings.optionsApiType = apiTypeSelect.value;
@@ -439,6 +349,5 @@ export function addExtensionSettings(settings) {
     });
     baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
     
-    optionsContainer.appendChild(optionsSettingsContainer);
-    inlineDrawerContent.append(optionsContainer, styleContainer);
+    inlineDrawerContent.append(optionsContainer);
 }

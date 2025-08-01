@@ -24,37 +24,6 @@ function parseOptions(content) {
     return [];
 }
 
-function getContextForAPI() {
-    // 迁移自 index.js 的 DOM 提取逻辑
-    try {
-        const messageElements = document.querySelectorAll('#chat .mes');
-        const messages = [];
-        messageElements.forEach((el) => {
-            const contentEl = el.querySelector('.mes_text');
-            if (contentEl) {
-                let role = 'system';
-                const isUserAttr = el.getAttribute('is_user');
-                if (isUserAttr === 'true') {
-                    role = 'user';
-                } else if (isUserAttr === 'false') {
-                    role = 'assistant';
-                }
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = contentEl.innerHTML.replace(/<br\s*\/?>/gi, '\n');
-                const content = (tempDiv.textContent || tempDiv.innerText || '').trim();
-                if (content && (role === 'user' || role === 'assistant')) {
-                    messages.push({ role, content });
-                }
-            }
-        });
-        // 只取最后20条
-        return messages.slice(-20);
-    } catch (error) {
-        logger.error('getContextForAPI 解析失败:', error);
-        return [];
-    }
-}
-
 function showGeneratingUI(message, duration = null) {
     logger.log(`showGeneratingUI: 尝试显示提示: "${message}"`);
     let container = document.getElementById('ti-loading-container');
@@ -83,7 +52,9 @@ function showGeneratingUI(message, duration = null) {
     } else {
         logger.log('showGeneratingUI: 找到现有容器，更新内容并尝试显示。');
     }
-    const animationHtml = getSettings().animationEnabled ? '<div class="typing-ellipsis"></div>' : '';
+    
+    // 始终显示动画效果
+    const animationHtml = '<div class="typing-ellipsis"></div>';
     container.innerHTML = `
         <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
             <div class="typing-indicator-text">${message}</div>
@@ -99,14 +70,13 @@ function showGeneratingUI(message, duration = null) {
 }
 
 function hideGeneratingUI() {
-    const loadingContainer = document.getElementById('ti-loading-container');
-    if (loadingContainer) {
+    const container = document.getElementById('ti-loading-container');
+    if (container) {
+        container.remove();
         logger.log('hideGeneratingUI: 隐藏提示。');
-        loadingContainer.style.display = 'none';
     }
 }
 
-// 新增：流式显示选项的函数
 async function displayOptionsStreaming(content) {
     const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
     
@@ -182,7 +152,11 @@ async function displayOptions(options, isStreaming = false) {
     const sendForm = document.getElementById('send_form');
     if (!sendForm || !options || options.length === 0) {
         if (!options || options.length === 0) {
-            showGeneratingUI('未能生成有效选项', 3000);
+            // 只有在没有其他提示时才显示错误提示
+            const loadingContainer = document.getElementById('ti-loading-container');
+            if (!loadingContainer) {
+                showGeneratingUI('未能生成有效选项', 3000);
+            }
         }
         return;
     }
@@ -230,7 +204,7 @@ async function displayOptions(options, isStreaming = false) {
     }
 }
 
-// 1. 兼容型上下文提取
+// 兼容型上下文提取
 async function getContextCompatible(limit = 20) {
     // 兼容 TavernHelper 或 DOM
     if (typeof window.TavernHelper?.getContext === 'function') {
@@ -256,127 +230,6 @@ async function getContextCompatible(limit = 20) {
         });
         return { messages: messages.slice(-limit) };
     }
-}
-
-// 2. 情境分析
-async function analyzeContext() {
-    const settings = getSettings();
-    const context = await getContextCompatible(5);
-    if (!context || !context.messages.length) return null;
-    const analysisPrompt = `分析以下最新的对话片段，严格以JSON格式返回当前情境。JSON必须包含 scene_type(场景类型), user_mood(我的情绪), narrative_focus(当前叙事焦点) 三个键。\n\n对话片段:\n${JSON.stringify(context.messages)}\n\n你的JSON输出:`;
-    try {
-        // 用 analysisModel 调用 OpenAI 兼容API
-        const response = await fetch(settings.optionsBaseUrl + '/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${settings.optionsApiKey}`
-            },
-            body: JSON.stringify({
-                model: settings.analysisModel,
-                messages: [{ role: 'user', content: analysisPrompt }],
-                temperature: 0.2,
-                stream: false
-            })
-        });
-        const data = await response.json();
-        const text = data.choices?.[0]?.message?.content || '';
-        const jsonMatch = text.match(/\{.*\}/s);
-        if (!jsonMatch) return null;
-        return JSON.parse(jsonMatch[0]);
-    } catch (e) {
-        logger.error('analyzeContext 失败:', e);
-        return null;
-    }
-}
-
-// 3. 动态prompt组装
-function assembleDynamicPrompt(analysisResult) {
-    const settings = getSettings();
-    let prompt = MERGED_DIRECTOR_PROMPT;
-    prompt = prompt.replace(/{{scene_type}}/g, analysisResult.scene_type || '未知');
-    prompt = prompt.replace(/{{user_mood}}/g, analysisResult.user_mood || '未知');
-    prompt = prompt.replace(/{{narrative_focus}}/g, analysisResult.narrative_focus || '未知');
-    prompt = prompt.replace(/{{learned_style}}/g, settings.learnedStyle || '无特定偏好');
-    return prompt;
-}
-
-// 4. 长期记忆/自我进化
-async function logChoice(analysisData) {
-    const settings = getSettings();
-    if (!analysisData) return;
-    settings.choiceLog.push(analysisData);
-    if (settings.choiceLog.length >= settings.logTriggerCount) {
-        await reflectOnChoices();
-    }
-    // 这里假设有 saveSettingsDebounced
-    if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
-}
-async function reflectOnChoices() {
-    const settings = getSettings();
-    const reflectionPrompt = `这里是一个用户在不同叙事场景下的情境分析日志（JSON数组）。请分析这些数据，用一句话总结出该用户的核心创作偏好或"玩家风格"。你的回答必须简洁、精炼、如同一个资深编辑的评语。\n\n情境日志:\n${JSON.stringify(settings.choiceLog)}\n\n你的总结评语:`;
-    try {
-        const response = await fetch(settings.optionsBaseUrl + '/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${settings.optionsApiKey}`
-            },
-            body: JSON.stringify({
-                model: settings.optionsApiModel,
-                messages: [{ role: 'user', content: reflectionPrompt }],
-                temperature: 0.5,
-                stream: false
-            })
-        });
-        const data = await response.json();
-        const text = data.choices?.[0]?.message?.content || '';
-        settings.learnedStyle = text.trim();
-        settings.choiceLog = [];
-        if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
-    } catch (e) {
-        logger.error('reflectOnChoices 失败:', e);
-    }
-}
-
-// ========== 修改建议点击、输入等行为 ========== //
-// 在 handleSuggestionClick 处埋点
-async function handleSuggestionClick(text, analysisData, isAuto = false) {
-    // 发送建议内容
-    await sendSuggestion(text, isAuto);
-}
-async function sendSuggestion(text, isAuto = false) {
-    // 兼容自动/手动发送
-    const textarea = document.querySelector('#send_textarea, .send_textarea');
-    const sendButton = document.querySelector('#send_but, .send_but, button[onclick*="send"], button[onclick*="Send"]');
-    
-    if (textarea) {
-        textarea.value = text;
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-        textarea.focus();
-        
-        // 根据发送模式处理
-        if (isAuto || getSettings().sendMode === 'auto' || getSettings().sendMode === 'stream_auto_send') {
-            // 自动发送：模拟点击发送按钮
-            if (sendButton) {
-                sendButton.click();
-            } else {
-                // 尝试触发回车键事件
-                textarea.dispatchEvent(new KeyboardEvent('keydown', {
-                    key: 'Enter',
-                    code: 'Enter',
-                    keyCode: 13,
-                    which: 13,
-                    bubbles: true
-                }));
-            }
-        }
-        // manual 模式只填充文本，不自动发送
-    }
-    
-    // 清理建议UI
-    const oldContainer = document.getElementById('ti-options-container');
-    if (oldContainer) oldContainer.remove();
 }
 
 // 在建议生成/选择后定期分析
@@ -486,7 +339,7 @@ async function generateOptions() {
         if (analysisData) {
             settings.choiceLog.push(analysisData);
             if (settings.choiceLog.length >= settings.logTriggerCount) {
-                await reflectOnChoices();
+                // 这里可以添加自我反思逻辑，暂时跳过
             }
             if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
         }
@@ -632,7 +485,6 @@ export class OptionsGenerator {
     static isGenerating = false;
     
     // 静态方法引用
-    static getContextForAPI = getContextForAPI;
     static parseOptions = parseOptions;
     static showGeneratingUI = showGeneratingUI;
     static hideGeneratingUI = hideGeneratingUI;
@@ -640,10 +492,4 @@ export class OptionsGenerator {
     static displayOptionsStreaming = displayOptionsStreaming;
     static generateOptions = generateOptions;
     static testApiConnection = testApiConnection;
-}
-
-// 暴露到全局，方便UI调用
-if (typeof window !== 'undefined') {
-    window.analyzeUserBehavior = null; // 移除旧的分析函数
-    window.tryAnalyzeUserProfile = null; // 移除旧的分析函数
 }
