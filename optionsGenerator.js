@@ -266,7 +266,7 @@ async function analyzeContext() {
 // 3. 动态prompt组装
 function assembleDynamicPrompt(analysisResult) {
     const settings = getSettings();
-    let prompt = DYNAMIC_DIRECTOR_TEMPLATE;
+    let prompt = MERGED_DIRECTOR_PROMPT;
     prompt = prompt.replace(/{{scene_type}}/g, analysisResult.scene_type || '未知');
     prompt = prompt.replace(/{{user_mood}}/g, analysisResult.user_mood || '未知');
     prompt = prompt.replace(/{{narrative_focus}}/g, analysisResult.narrative_focus || '未知');
@@ -331,34 +331,60 @@ function logUserAction(actionType, detail) {
     if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
 }
 
+function tryAnalyzeUserProfile() {
+    const settings = getSettings();
+    const logCount = settings.userBehaviorLog.length;
+    
+    // 降低触发频率：每5次行为分析一次，或者第一次有数据时
+    if (logCount > 0 && (logCount % 5 === 0 || settings.userProfile.summary === '')) {
+        logger.log(`开始分析用户画像，当前日志数量: ${logCount}`);
+        analyzeUserBehavior();
+    }
+}
+
 function analyzeUserBehavior() {
     const settings = getSettings();
     const logs = settings.userBehaviorLog;
-    if (!logs.length) return;
+    if (!logs.length) {
+        logger.log('用户行为日志为空，跳过分析');
+        return;
+    }
+    
+    logger.log(`分析 ${logs.length} 条用户行为日志...`);
+    
     // 简单统计：
     const sceneCount = {};
     const moodCount = {};
     const focusCount = {};
     const keywordCount = {};
-    logs.forEach(log => {
+    
+    logs.forEach((log, index) => {
         if (log.type === 'select_suggestion' && log.detail) {
             const { scene_type, user_mood, narrative_focus, keywords } = log.detail;
             if (scene_type) sceneCount[scene_type] = (sceneCount[scene_type] || 0) + 1;
             if (user_mood) moodCount[user_mood] = (moodCount[user_mood] || 0) + 1;
             if (narrative_focus) focusCount[narrative_focus] = (focusCount[narrative_focus] || 0) + 1;
             if (Array.isArray(keywords)) keywords.forEach(k => keywordCount[k] = (keywordCount[k] || 0) + 1);
+            
+            logger.log(`处理第 ${index + 1} 条建议选择日志:`, { scene_type, user_mood, narrative_focus });
         }
     });
+    
     // 取出现最多的
     function getTop(obj) {
         return Object.entries(obj).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
     }
+    
     settings.userProfile.favoriteScene = getTop(sceneCount);
     settings.userProfile.favoriteMood = getTop(moodCount);
     settings.userProfile.preferedFocus = getTop(focusCount);
     settings.userProfile.customKeywords = Object.entries(keywordCount).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
+    
     // 生成简单总结
-    settings.userProfile.summary = `偏好场景：${settings.userProfile.favoriteScene}，情绪：${settings.userProfile.favoriteMood}，叙事焦点：${settings.userProfile.preferedFocus}，关键词：${settings.userProfile.customKeywords.join('、')}`;
+    settings.userProfile.summary = `偏好场景：${settings.userProfile.favoriteScene || '未知'}，情绪：${settings.userProfile.favoriteMood || '未知'}，叙事焦点：${settings.userProfile.preferedFocus || '未知'}，关键词：${settings.userProfile.customKeywords.join('、') || '无'}`;
+    
+    logger.log('用户画像分析完成:', settings.userProfile);
+    
     if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
 }
 
@@ -447,13 +473,6 @@ async function sendSuggestion(text, isAuto = false) {
 }
 
 // 在建议生成/选择后定期分析
-function tryAnalyzeUserProfile() {
-    const settings = getSettings();
-    if (settings.userBehaviorLog.length % 20 === 0) {
-        analyzeUserBehavior();
-    }
-}
-
 async function generateOptions() {
     const settings = getSettings();
     if (OptionsGenerator.isGenerating) return;
@@ -517,8 +536,8 @@ async function generateOptions() {
 }
 
 /**
- * 测试API连接并获取模型信息
- * @returns {Promise<Object>} 包含连接状态、错误信息和模型信息的对象
+ * 测试API连接并获取模型列表
+ * @returns {Promise<Object>} 包含连接状态、错误信息和模型列表的对象
  */
 async function testApiConnection() {
     const settings = getSettings();
@@ -572,7 +591,7 @@ async function testApiConnection() {
                 const actualModelName = currentModel?.displayName || currentModel?.name || '未知模型';
                 return {
                     success: true,
-                    message: `连接成功! 当前模型: ${actualModelName}`,
+                    message: '连接成功!',
                     models: geminiModels,
                     currentModel: currentModel?.name,
                     actualModelName: actualModelName
@@ -616,7 +635,7 @@ async function testApiConnection() {
                 const actualModelName = currentModel?.id || '未知模型';
                 return {
                     success: true,
-                    message: `连接成功! 当前模型: ${actualModelName}`,
+                    message: '连接成功!',
                     models: data.data,
                     currentModel: currentModel?.id,
                     actualModelName: actualModelName

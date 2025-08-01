@@ -26,6 +26,8 @@ export const defaultSettings = {
         customKeywords: [],
         summary: '' // 画像总结
     },
+    // 情境分析模型
+    analysisModel: 'gpt-3.5-turbo',
 };
 export const MERGED_DIRECTOR_PROMPT = `
 你是一位顶级AI叙事导演。请按如下流程操作：
