@@ -10,6 +10,7 @@ export const defaultSettings = {
     sendMode: 'auto',
     streamOptions: false, // true=流式, false=非流式
     paceMode: 'normal', // 推进节奏：normal=正常, fast=快速, jump=跳跃
+    autoGenMode: 'auto', // 选项生成模式：auto=自动生成, manual=手动生成
     
     // 调试设置
     debug: true, // 默认开启

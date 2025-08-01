@@ -41,9 +41,20 @@ function initializeTypingIndicator() {
     });
     
     eventSource.on(event_types.GENERATION_ENDED, async () => {
-        logger.log('GENERATION_ENDED event triggered.', { isManuallyStopped: OptionsGenerator.isManuallyStopped, optionsGenEnabled: getSettings().optionsGenEnabled });
-        if (getSettings().optionsGenEnabled && !OptionsGenerator.isManuallyStopped) {
-            logger.log('GENERATION_ENDED: 条件满足，触发选项生成。');
+        const settings = getSettings();
+        logger.log('GENERATION_ENDED event triggered.', { 
+            isManuallyStopped: OptionsGenerator.isManuallyStopped, 
+            optionsGenEnabled: settings.optionsGenEnabled,
+            autoGenMode: settings.autoGenMode
+        });
+        
+        // 检查是否满足自动生成条件
+        const shouldAutoGenerate = settings.optionsGenEnabled && 
+            !OptionsGenerator.isManuallyStopped && 
+            settings.autoGenMode === 'auto';
+            
+        if (shouldAutoGenerate) {
+            logger.log('GENERATION_ENDED: 自动生成模式，触发选项生成。');
             // 立即显示loading状态
             const { showPacePanelLoading } = await import('./ui.js');
             showPacePanelLoading();
@@ -52,7 +63,7 @@ function initializeTypingIndicator() {
                 OptionsGenerator.generateOptions();
             }, 100);
         } else {
-            logger.log('GENERATION_ENDED: 不满足选项生成条件，跳过。');
+            logger.log('GENERATION_ENDED: 手动生成模式或不满足生成条件，跳过。');
         }
         OptionsGenerator.isManuallyStopped = false;
     });

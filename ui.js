@@ -132,6 +132,7 @@ export function addExtensionSettings(settings) {
             sendModeSelect.value = settings.sendMode;
             streamCheckbox.checked = settings.streamOptions;
             paceSelect.value = settings.paceMode;
+            autoGenSelect.value = settings.autoGenMode;
             
             // 更新快捷面板
             updateQuickPanelFromSettings();
@@ -189,6 +190,38 @@ export function addExtensionSettings(settings) {
     sendModeContainer.appendChild(sendModeLabel);
     sendModeContainer.appendChild(sendModeSelect);
     optionsContainer.appendChild(sendModeContainer);
+
+    // 自动生成模式设置
+    const autoGenContainer = document.createElement('div');
+    autoGenContainer.style.marginTop = '8px';
+    
+    const autoGenLabel = document.createElement('label');
+    autoGenLabel.textContent = '生成模式:';
+    applyUnifiedLabelStyle(autoGenLabel);
+    
+    const autoGenSelect = document.createElement('select');
+    
+    const autoGenOptions = [
+        { value: 'auto', text: 'AI回复后自动生成' },
+        { value: 'manual', text: '手动点击生成' }
+    ];
+    
+    autoGenOptions.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option.value;
+        optionElement.textContent = option.text;
+        autoGenSelect.appendChild(optionElement);
+    });
+    
+    autoGenSelect.value = settings.autoGenMode || 'auto';
+    autoGenSelect.addEventListener('change', (e) => {
+        settings.autoGenMode = e.target.value;
+        saveSettingsDebounced();
+    });
+    
+    autoGenContainer.appendChild(autoGenLabel);
+    autoGenContainer.appendChild(autoGenSelect);
+    optionsContainer.appendChild(autoGenContainer);
     
     // 推进节奏设置
     const paceContainer = document.createElement('div');
