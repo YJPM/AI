@@ -414,7 +414,7 @@ function logUserAction(actionType, detail) {
     if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
 }
 
-function analyzeUserBehavior() {
+async function analyzeUserBehavior() {
     const settings = getSettings();
     const logs = settings.userBehaviorLog;
     if (!logs.length) {
@@ -502,6 +502,21 @@ function analyzeUserBehavior() {
         window.setGlobalVar('userProfile_customKeywords', customKeywords.join(','));
         window.setGlobalVar('userProfile_summary', summary);
         console.log('已保存到 SillyTavern 全局变量系统');
+    } else if (typeof window.TavernHelper !== 'undefined' && typeof window.TavernHelper.updateVariablesWith === 'function') {
+        // 使用 TavernHelper 保存变量
+        try {
+            await window.TavernHelper.updateVariablesWith(vars => {
+                vars.userProfile_favoriteScene = favoriteScene;
+                vars.userProfile_favoriteMood = favoriteMood;
+                vars.userProfile_preferedFocus = preferedFocus;
+                vars.userProfile_customKeywords = customKeywords.join(',');
+                vars.userProfile_summary = summary;
+                return vars;
+            }, { type: 'global' });
+            console.log('已保存到 TavernHelper 全局变量系统');
+        } catch (error) {
+            console.error('TavernHelper 保存变量失败:', error);
+        }
     } else {
         console.log('SillyTavern 变量系统不可用，仅保存到设置');
     }
