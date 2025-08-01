@@ -37,29 +37,6 @@ export function injectGlobalStyles() {
             opacity: 1 !important;
             z-index: 1000 !important;
         }
-        .typing-ellipsis::after {
-            display: inline-block;
-            animation: ellipsis-animation 1.4s infinite;
-            content: '.';
-            width: 1.2em;
-            text-align: left;
-            vertical-align: bottom;
-        }
-        @keyframes ellipsis-animation {
-            0% { content: '.'; }
-            33% { content: '..'; }
-            66%, 100% { content: '...'; }
-        }
-        .typing-indicator-text {
-            font-weight: normal;
-            background: none;
-            -webkit-background-clip: unset;
-            background-clip: unset;
-            -webkit-text-fill-color: unset;
-            display: inline;
-            animation: none;
-            color: var(--text_color);
-        }
         #ti-options-container {
             width: 100%;
             padding: 8px 0;
@@ -234,7 +211,8 @@ export function addExtensionSettings(settings) {
     const paceOptions = [
         { value: 'fast', text: '快速 (3-4个选项，有明显时间跨越)' },
         { value: 'balanced', text: '平衡 (3-5个选项，标准推进)' },
-        { value: 'slow', text: '慢速 (3-5个选项，深度推进)' }
+        { value: 'slow', text: '慢速 (3-5个选项，深度推进)' },
+        { value: 'mixed', text: '混合 (4个选项，1慢速+2平衡+1快速)' }
     ];
     
     paceOptions.forEach(option => {
@@ -275,7 +253,44 @@ export function addExtensionSettings(settings) {
     optionsContainer.appendChild(apiTypeLabel);
     optionsContainer.appendChild(apiTypeSelect);
     
-    // API Key
+    // 基础URL
+    const baseUrlGroup = document.createElement('div');
+    baseUrlGroup.id = 'options-base-url-group';
+    const baseUrlLabel = document.createElement('label');
+    baseUrlLabel.textContent = '基础URL:';
+    baseUrlLabel.style.display = 'block';
+    baseUrlLabel.style.marginTop = '8px';
+    const baseUrlInput = document.createElement('input');
+    baseUrlInput.type = 'text';
+    baseUrlInput.value = settings.optionsBaseUrl;
+    baseUrlInput.placeholder = '输入API基础URL';
+    baseUrlInput.style.width = '100%';
+    baseUrlInput.addEventListener('input', () => {
+        settings.optionsBaseUrl = baseUrlInput.value;
+        saveSettingsDebounced();
+    });
+    baseUrlGroup.appendChild(baseUrlLabel);
+    baseUrlGroup.appendChild(baseUrlInput);
+    optionsContainer.appendChild(baseUrlGroup);
+
+    // 模型选择
+    const modelLabel = document.createElement('label');
+    modelLabel.textContent = '模型:';
+    modelLabel.style.display = 'block';
+    modelLabel.style.marginTop = '8px';
+    const modelInput = document.createElement('input');
+    modelInput.type = 'text';
+    modelInput.value = settings.optionsApiModel;
+    modelInput.placeholder = '输入模型名称';
+    modelInput.style.width = '100%';
+    modelInput.addEventListener('input', () => {
+        settings.optionsApiModel = modelInput.value;
+        saveSettingsDebounced();
+    });
+    optionsContainer.appendChild(modelLabel);
+    optionsContainer.appendChild(modelInput);
+
+    // API密钥
     const apiKeyLabel = document.createElement('label');
     apiKeyLabel.textContent = 'API密钥:';
     apiKeyLabel.style.display = 'block';
@@ -344,45 +359,6 @@ export function addExtensionSettings(settings) {
     optionsContainer.appendChild(apiKeyContainer);
     optionsContainer.appendChild(connectionStatusDiv);
     
-    // 模型选择
-    const modelLabel = document.createElement('label');
-    modelLabel.textContent = '模型:';
-    modelLabel.style.display = 'block';
-    modelLabel.style.marginTop = '8px';
-    
-    const modelInput = document.createElement('input');
-    modelInput.type = 'text';
-    modelInput.value = settings.optionsApiModel;
-    modelInput.placeholder = '输入模型名称';
-    modelInput.style.width = '100%';
-    modelInput.addEventListener('input', () => {
-        settings.optionsApiModel = modelInput.value;
-        saveSettingsDebounced();
-    });
-    
-    optionsContainer.appendChild(modelLabel);
-    optionsContainer.appendChild(modelInput);
-    
-    // 基础URL
-    const baseUrlGroup = document.createElement('div');
-    baseUrlGroup.id = 'options-base-url-group';
-    const baseUrlLabel = document.createElement('label');
-    baseUrlLabel.textContent = '基础URL:';
-    baseUrlLabel.style.display = 'block';
-    baseUrlLabel.style.marginTop = '8px';
-    const baseUrlInput = document.createElement('input');
-    baseUrlInput.type = 'text';
-    baseUrlInput.value = settings.optionsBaseUrl;
-    baseUrlInput.placeholder = '输入API基础URL';
-    baseUrlInput.style.width = '100%';
-    baseUrlInput.addEventListener('input', () => {
-        settings.optionsBaseUrl = baseUrlInput.value;
-        saveSettingsDebounced();
-    });
-    baseUrlGroup.appendChild(baseUrlLabel);
-    baseUrlGroup.appendChild(baseUrlInput);
-    optionsContainer.appendChild(baseUrlGroup);
-    
     // 流式选项生成
     const streamLabel = document.createElement('label');
     streamLabel.classList.add('checkbox_label');
@@ -424,7 +400,7 @@ export function createQuickPacePanel() {
     panel.id = 'quick-pace-panel';
     panel.style.cssText = `
         position: absolute;
-        top: -40px;
+        top: -50px;
         right: 10px;
         background: var(--SmartThemeBlurColor, rgba(255, 255, 255, 0.9));
         border: 1px solid var(--SmartThemeBorderColor, #ddd);
@@ -442,12 +418,14 @@ export function createQuickPacePanel() {
     const paceModes = [
         { value: 'fast', text: '快速', color: '#4CAF50' },
         { value: 'balanced', text: '平衡', color: '#2196F3' },
-        { value: 'slow', text: '慢速', color: '#FF9800' }
+        { value: 'slow', text: '慢速', color: '#FF9800' },
+        { value: 'mixed', text: '混合', color: '#9C27B0' }
     ];
     
     paceModes.forEach(mode => {
         const button = document.createElement('button');
         button.textContent = mode.text;
+        button.setAttribute('data-pace-mode', mode.value);
         button.style.cssText = `
             padding: 3px 6px;
             border: 1px solid ${mode.color};
@@ -496,54 +474,74 @@ export function createQuickPacePanel() {
     return panel;
 }
 
-// 显示快捷操作提示
-function showQuickPaceNotification(modeText) {
-    // 移除现有提示
-    const existingNotification = document.getElementById('quick-pace-notification');
-    if (existingNotification) {
-        existingNotification.remove();
+// 显示loading状态
+export function showPacePanelLoading() {
+    const panel = document.getElementById('quick-pace-panel');
+    if (!panel) return;
+    
+    const settings = getSettings();
+    const currentButton = panel.querySelector(`[data-pace-mode="${settings.paceMode}"]`);
+    if (!currentButton) return;
+    
+    // 保存原始文本
+    currentButton.setAttribute('data-original-text', currentButton.textContent);
+    
+    // 创建loading图标
+    const loadingIcon = document.createElement('div');
+    loadingIcon.innerHTML = '⟳';
+    loadingIcon.style.cssText = `
+        display: inline-block;
+        animation: spin 1s linear infinite;
+        font-size: 12px;
+        font-weight: bold;
+    `;
+    
+    // 添加旋转动画样式
+    if (!document.getElementById('pace-loading-style')) {
+        const style = document.createElement('style');
+        style.id = 'pace-loading-style';
+        style.textContent = `
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
     }
     
-    // 创建提示
-    const notification = document.createElement('div');
-    notification.id = 'quick-pace-notification';
-    notification.textContent = `已切换到${modeText}模式`;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: var(--SmartThemeBlurColor, rgba(255, 255, 255, 0.95));
-        border: 1px solid var(--SmartThemeBorderColor, #ddd);
-        border-radius: 6px;
-        padding: 8px 12px;
-        color: var(--text_color, #333);
-        font-size: 13px;
-        font-weight: 500;
-        z-index: 10000;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        animation: slideIn 0.3s ease-out;
-        font-family: inherit;
-    `;
+    // 替换文本为loading图标
+    currentButton.textContent = '';
+    currentButton.appendChild(loadingIcon);
+}
+
+// 隐藏loading状态
+export function hidePacePanelLoading() {
+    const panel = document.getElementById('quick-pace-panel');
+    if (!panel) return;
     
-    // 添加动画样式
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-    `;
-    document.head.appendChild(style);
+    const settings = getSettings();
+    const currentButton = panel.querySelector(`[data-pace-mode="${settings.paceMode}"]`);
+    if (!currentButton) return;
     
-    document.body.appendChild(notification);
-    
-    // 3秒后自动移除
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.remove();
-        }
-    }, 3000);
+    // 恢复原始文本
+    const originalText = currentButton.getAttribute('data-original-text');
+    if (originalText) {
+        currentButton.textContent = originalText;
+        currentButton.removeAttribute('data-original-text');
+    }
+}
+
+// 显示快捷操作提示
+function showQuickPaceNotification(modeText) {
+    // 使用酒馆自带的Message消息提示
+    if (typeof toastr !== 'undefined') {
+        toastr.success(`已切换到${modeText}模式`);
+    } else if (typeof toast !== 'undefined') {
+        toast(`${modeText}模式`, 'success');
+    } else {
+        // 备用方案：使用简单的alert
+        console.log(`已切换到${modeText}模式`);
+    }
 }
 
 // 初始化快捷操作面板

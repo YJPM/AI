@@ -1,6 +1,7 @@
 import { getSettings, MERGED_DIRECTOR_PROMPT } from './settings.js';
 import { logger } from './logger.js';
 import { saveSettingsDebounced } from '../../../../script.js';
+import { showPacePanelLoading, hidePacePanelLoading } from './ui.js';
 
 function showGeneratingUI(message, duration = null) {
     logger.log(`showGeneratingUI: 尝试显示提示: "${message}"`);
@@ -31,19 +32,18 @@ function showGeneratingUI(message, duration = null) {
         logger.log('showGeneratingUI: 找到现有容器，更新内容并尝试显示。');
     }
     
-    // 始终显示动画效果
-    const animationHtml = '<div class="typing-ellipsis"></div>';
     container.innerHTML = `
         <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
-            <div class="typing-indicator-text">${message}</div>
-            ${animationHtml}
+            <div>${message}</div>
         </div>
     `;
     container.style.display = 'flex';
     logger.log(`showGeneratingUI: 最终容器 display 属性: ${container.style.display}`);
     if (duration) {
-        logger.log(`showGeneratingUI: 将在 ${duration}ms 后隐藏提示。`);
-        setTimeout(() => hideGeneratingUI(), duration);
+        logger.log(`showGeneratingUI: 将在 ${duration}ms 后隐藏。`);
+        setTimeout(() => {
+            hideGeneratingUI();
+        }, duration);
     }
 }
 
@@ -214,8 +214,11 @@ async function generateOptions() {
     if (OptionsGenerator.isGenerating) return;
     OptionsGenerator.isManuallyStopped = false;
     if (!settings.optionsGenEnabled || !settings.optionsApiKey) return;
-    showGeneratingUI('AI助手思考中');
+    
+    // 显示loading状态
+    showPacePanelLoading();
     OptionsGenerator.isGenerating = true;
+    
     try {
         // 根据推进节奏选择提示模板
         const paceMode = settings.paceMode || 'balanced';
@@ -258,6 +261,24 @@ async function generateOptions() {
 
 ## 开始
 `.trim();
+        } else if (paceMode === 'mixed') {
+            promptTemplate = `
+你是我的AI叙事导演。分析最近对话，为我生成4个混合节奏行动建议（每条用【】包裹，首条最优）。
+
+要求：
+- 始终以我的第一人称视角
+- 每条建议不超过100字
+- 生成1个慢速深度选项 + 2个平衡标准选项 + 1个快速推进选项
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- JSON格式分析（scene_type, user_mood, narrative_focus）
+- 建议列表（单行、每条用【】包裹，按慢速-平衡-平衡-快速顺序）
+
+## 开始
+`.trim();
         } else {
             // balanced 模式
             promptTemplate = `
@@ -286,6 +307,9 @@ async function generateOptions() {
         const finalMessages = [{ role: 'user', content: prompt }];
         let content = '';
         const apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
+        
+        // 隐藏loading状态，开始显示选项
+        hidePacePanelLoading();
         
         if (settings.streamOptions) {
             // 流式生成
@@ -338,8 +362,7 @@ async function generateOptions() {
                 }
             }
             
-            // 流式生成完成后，立即隐藏思考提示
-            hideGeneratingUI();
+            // 流式生成完成
         } else {
             // 非流式生成
             const response = await fetch(apiUrl, {
@@ -369,15 +392,12 @@ async function generateOptions() {
         // 解析建议
         const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
         
-        // 在选项解析完成后立即隐藏思考提示
-        hideGeneratingUI();
-        
         await displayOptions(suggestions, false); // false表示非流式显示
     } catch (error) {
         logger.error('生成选项时出错:', error);
-        showGeneratingUI(`生成失败: ${error.message}`, 5000);
     } finally {
         OptionsGenerator.isGenerating = false;
+        hidePacePanelLoading(); // 隐藏loading状态
     }
 }
 

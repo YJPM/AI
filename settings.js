@@ -9,7 +9,7 @@ export const defaultSettings = {
     optionsBaseUrl: 'https://newapi.sisuo.de/v1',
     sendMode: 'auto',
     streamOptions: false, // true=流式, false=非流式
-    paceMode: 'balanced', // 推进节奏：slow=慢速, balanced=平衡, fast=快速(时间跨越)
+    paceMode: 'balanced', // 推进节奏：slow=慢速, balanced=平衡, fast=快速(时间跨越), mixed=混合
     
     // 调试设置
     debug: true, // 默认开启
@@ -68,6 +68,24 @@ const PACE_PROMPTS = {
 ## 输出格式
 - JSON格式分析（scene_type, user_mood, narrative_focus）
 - 建议列表（单行、每条用【】包裹，包含时间跨越）
+
+## 开始
+`.trim(),
+    
+    mixed: `
+你是我的AI叙事导演。分析最近对话，为我生成4个混合节奏行动建议（每条用【】包裹，首条最优）。
+
+要求：
+- 始终以我的第一人称视角
+- 每条建议不超过100字
+- 生成1个慢速深度选项 + 2个平衡标准选项 + 1个快速推进选项
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- JSON格式分析（scene_type, user_mood, narrative_focus）
+- 建议列表（单行、每条用【】包裹，按慢速-平衡-平衡-快速顺序）
 
 ## 开始
 `.trim()
