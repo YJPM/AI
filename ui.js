@@ -408,3 +408,180 @@ export function addExtensionSettings(settings) {
     
     inlineDrawerContent.append(optionsContainer);
 }
+
+// 创建快捷操作面板
+export function createQuickPacePanel() {
+    const settings = getSettings();
+    
+    // 检查是否已存在面板
+    let panel = document.getElementById('quick-pace-panel');
+    if (panel) {
+        panel.remove();
+    }
+    
+    // 创建面板容器
+    panel = document.createElement('div');
+    panel.id = 'quick-pace-panel';
+    panel.style.cssText = `
+        position: absolute;
+        top: -40px;
+        right: 10px;
+        background: var(--SmartThemeBlurColor, rgba(255, 255, 255, 0.9));
+        border: 1px solid var(--SmartThemeBorderColor, #ddd);
+        border-radius: 8px;
+        padding: 6px;
+        display: flex;
+        gap: 3px;
+        z-index: 1000;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        font-family: inherit;
+    `;
+    
+    // 创建模式按钮
+    const paceModes = [
+        { value: 'fast', text: '快速', color: '#4CAF50' },
+        { value: 'balanced', text: '平衡', color: '#2196F3' },
+        { value: 'slow', text: '慢速', color: '#FF9800' }
+    ];
+    
+    paceModes.forEach(mode => {
+        const button = document.createElement('button');
+        button.textContent = mode.text;
+        button.style.cssText = `
+            padding: 3px 6px;
+            border: 1px solid ${mode.color};
+            border-radius: 4px;
+            background: ${settings.paceMode === mode.value ? mode.color : 'transparent'};
+            color: ${settings.paceMode === mode.value ? 'white' : mode.color};
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.2s;
+            min-width: 36px;
+            text-align: center;
+            line-height: 1.2;
+        `;
+        
+        button.addEventListener('click', () => {
+            settings.paceMode = mode.value;
+            saveSettingsDebounced();
+            
+            // 更新所有按钮状态
+            panel.querySelectorAll('button').forEach((btn, index) => {
+                const currentMode = paceModes[index];
+                btn.style.background = settings.paceMode === currentMode.value ? currentMode.color : 'transparent';
+                btn.style.color = settings.paceMode === currentMode.value ? 'white' : currentMode.color;
+            });
+            
+            // 显示提示
+            showQuickPaceNotification(mode.text);
+        });
+        
+        button.addEventListener('mouseenter', () => {
+            if (settings.paceMode !== mode.value) {
+                button.style.background = mode.color + '20';
+            }
+        });
+        
+        button.addEventListener('mouseleave', () => {
+            if (settings.paceMode !== mode.value) {
+                button.style.background = 'transparent';
+            }
+        });
+        
+        panel.appendChild(button);
+    });
+    
+    return panel;
+}
+
+// 显示快捷操作提示
+function showQuickPaceNotification(modeText) {
+    // 移除现有提示
+    const existingNotification = document.getElementById('quick-pace-notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    // 创建提示
+    const notification = document.createElement('div');
+    notification.id = 'quick-pace-notification';
+    notification.textContent = `已切换到${modeText}模式`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--SmartThemeBlurColor, rgba(255, 255, 255, 0.95));
+        border: 1px solid var(--SmartThemeBorderColor, #ddd);
+        border-radius: 6px;
+        padding: 8px 12px;
+        color: var(--text_color, #333);
+        font-size: 13px;
+        font-weight: 500;
+        z-index: 10000;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        animation: slideIn 0.3s ease-out;
+        font-family: inherit;
+    `;
+    
+    // 添加动画样式
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(notification);
+    
+    // 3秒后自动移除
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 3000);
+}
+
+// 初始化快捷操作面板
+export function initQuickPacePanel() {
+    // 监听输入框变化
+    const observer = new MutationObserver(() => {
+        const textarea = document.querySelector('#send_textarea, .send_textarea');
+        if (textarea) {
+            const textareaContainer = textarea.closest('.chat-input-container') || textarea.parentElement;
+            if (textareaContainer) {
+                // 检查是否已有面板
+                let existingPanel = textareaContainer.querySelector('#quick-pace-panel');
+                if (!existingPanel) {
+                    // 设置容器为相对定位
+                    textareaContainer.style.position = 'relative';
+                    
+                    // 创建并添加面板
+                    const panel = createQuickPacePanel();
+                    textareaContainer.appendChild(panel);
+                }
+            }
+        }
+    });
+    
+    // 开始观察
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+    
+    // 立即检查一次
+    const textarea = document.querySelector('#send_textarea, .send_textarea');
+    if (textarea) {
+        const textareaContainer = textarea.closest('.chat-input-container') || textarea.parentElement;
+        if (textareaContainer) {
+            textareaContainer.style.position = 'relative';
+            const panel = createQuickPacePanel();
+            textareaContainer.appendChild(panel);
+        }
+    }
+}

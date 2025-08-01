@@ -2,7 +2,7 @@ import { eventSource, event_types, saveSettingsDebounced } from '../../../../scr
 import { defaultSettings, getSettings } from './settings.js';
 import { logger } from './logger.js';
 import { OptionsGenerator } from './optionsGenerator.js';
-import { applyBasicStyle, injectGlobalStyles, addExtensionSettings } from './ui.js';
+import { applyBasicStyle, injectGlobalStyles, addExtensionSettings, initQuickPacePanel } from './ui.js';
 
 const MODULE = 'typing_indicator';
 
@@ -11,6 +11,7 @@ function initializeTypingIndicator() {
     const settings = getSettings();
     addExtensionSettings(settings);
     applyBasicStyle();
+    initQuickPacePanel(); // 初始化快捷操作面板
     
     // 清除选项的函数
     function clearOptions() {
