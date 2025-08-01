@@ -166,6 +166,72 @@ function hideGeneratingUI() {
     }
 }
 
+// 新增：流式显示选项的函数
+async function displayOptionsStreaming(content) {
+    const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+    
+    // 如果还没有容器，创建容器
+    let container = document.getElementById('ti-options-container');
+    if (!container) {
+        hideGeneratingUI();
+        const oldContainer = document.getElementById('ti-options-container');
+        if (oldContainer) oldContainer.remove();
+        const sendForm = document.getElementById('send_form');
+        if (!sendForm) return;
+        
+        container = document.createElement('div');
+        container.id = 'ti-options-container';
+        sendForm.insertAdjacentElement('beforebegin', container);
+    }
+    
+    // 获取当前发送模式
+    const settings = getSettings();
+    const sendMode = settings.sendMode || 'manual';
+    
+    // 更新或创建按钮
+    suggestions.forEach((text, index) => {
+        let btn = container.querySelector(`[data-option-index="${index}"]`);
+        if (!btn) {
+            // 创建新按钮
+            btn = document.createElement('button');
+            btn.className = 'qr--button menu_button interactable ti-options-capsule';
+            btn.setAttribute('data-option-index', index);
+            container.appendChild(btn);
+            
+            // 设置点击事件
+            btn.onclick = () => {
+                const textarea = document.querySelector('#send_textarea, .send_textarea');
+                const sendButton = document.querySelector('#send_but, .send_but, button[onclick*="send"], button[onclick*="Send"]');
+                
+                if (textarea) {
+                    textarea.value = text;
+                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    textarea.focus();
+                    
+                    // 根据发送模式决定是否自动发送
+                    if (sendMode === 'auto' && sendButton) {
+                        sendButton.click();
+                    }
+                }
+                container.remove();
+            };
+        }
+        
+        // 更新按钮文字（只在文字变化时更新，避免跳动）
+        if (btn.textContent !== text) {
+            btn.textContent = text;
+        }
+    });
+    
+    // 移除多余的按钮
+    const existingButtons = container.querySelectorAll('[data-option-index]');
+    existingButtons.forEach((btn, index) => {
+        if (index >= suggestions.length) {
+            btn.remove();
+        }
+    });
+}
+
 async function displayOptions(options, isStreaming = false) {
     hideGeneratingUI();
     const oldContainer = document.getElementById('ti-options-container');
@@ -349,19 +415,6 @@ function logUserAction(actionType, detail) {
     if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
 }
 
-function tryAnalyzeUserProfile() {
-    const settings = getSettings();
-    const logCount = settings.userBehaviorLog.length;
-    
-    logger.log(`尝试分析用户画像，当前日志数量: ${logCount}, 当前画像:`, settings.userProfile);
-    
-    // 降低触发频率：每3次行为分析一次，或者第一次有数据时
-    if (logCount > 0 && (logCount % 3 === 0 || settings.userProfile.summary === '')) {
-        logger.log(`开始分析用户画像，当前日志数量: ${logCount}`);
-        analyzeUserBehavior();
-    }
-}
-
 function analyzeUserBehavior() {
     const settings = getSettings();
     const logs = settings.userBehaviorLog;
@@ -370,7 +423,8 @@ function analyzeUserBehavior() {
         return;
     }
     
-    logger.log(`分析 ${logs.length} 条用户行为日志...`);
+    logger.log(`开始分析用户画像，日志数量: ${logs.length}`);
+    console.log('当前用户行为日志:', logs);
     
     // 简单统计：
     const sceneCount = {};
@@ -380,7 +434,7 @@ function analyzeUserBehavior() {
     let validLogs = 0;
     
     logs.forEach((log, index) => {
-        logger.log(`处理第 ${index + 1} 条日志:`, log);
+        console.log(`处理第 ${index + 1} 条日志:`, log);
         
         if (log.type === 'select_suggestion' && log.detail) {
             const { scene_type, user_mood, narrative_focus, keywords } = log.detail;
@@ -389,7 +443,7 @@ function analyzeUserBehavior() {
             if (narrative_focus) focusCount[narrative_focus] = (focusCount[narrative_focus] || 0) + 1;
             if (Array.isArray(keywords)) keywords.forEach(k => keywordCount[k] = (keywordCount[k] || 0) + 1);
             
-            logger.log(`处理建议选择日志:`, { scene_type, user_mood, narrative_focus });
+            console.log(`处理建议选择日志:`, { scene_type, user_mood, narrative_focus });
             validLogs++;
         } else if (log.type === 'manual_input' && log.detail && log.detail.inputText) {
             // 从手动输入中提取关键词
@@ -397,29 +451,79 @@ function analyzeUserBehavior() {
             const keywords = text.split(/[\s,，。！？；：""''（）【】]/).filter(word => word.length > 1);
             keywords.forEach(k => keywordCount[k] = (keywordCount[k] || 0) + 1);
             
-            logger.log(`处理手动输入日志:`, { inputText: log.detail.inputText.substring(0, 50) + '...' });
+            console.log(`处理手动输入日志:`, { inputText: log.detail.inputText.substring(0, 50) + '...' });
             validLogs++;
         }
     });
     
-    logger.log(`有效日志数量: ${validLogs}, 场景统计:`, sceneCount, '情绪统计:', moodCount, '焦点统计:', focusCount, '关键词统计:', keywordCount);
+    console.log(`有效日志数量: ${validLogs}`);
+    console.log('场景统计:', sceneCount);
+    console.log('情绪统计:', moodCount);
+    console.log('焦点统计:', focusCount);
+    console.log('关键词统计:', keywordCount);
     
     // 取出现最多的
     function getTop(obj) {
         return Object.entries(obj).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
     }
     
-    settings.userProfile.favoriteScene = getTop(sceneCount);
-    settings.userProfile.favoriteMood = getTop(moodCount);
-    settings.userProfile.preferedFocus = getTop(focusCount);
-    settings.userProfile.customKeywords = Object.entries(keywordCount).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
+    const favoriteScene = getTop(sceneCount);
+    const favoriteMood = getTop(moodCount);
+    const preferedFocus = getTop(focusCount);
+    const customKeywords = Object.entries(keywordCount).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
     
     // 生成简单总结
-    settings.userProfile.summary = `偏好场景：${settings.userProfile.favoriteScene || '未知'}，情绪：${settings.userProfile.favoriteMood || '未知'}，叙事焦点：${settings.userProfile.preferedFocus || '未知'}，关键词：${settings.userProfile.customKeywords.join('、') || '无'}`;
+    const summary = `偏好场景：${favoriteScene || '未知'}，情绪：${favoriteMood || '未知'}，叙事焦点：${preferedFocus || '未知'}，关键词：${customKeywords.join('、') || '无'}`;
     
-    logger.log('用户画像分析完成:', settings.userProfile);
+    // 更新用户画像
+    settings.userProfile = {
+        favoriteScene: favoriteScene,
+        favoriteMood: favoriteMood,
+        preferedFocus: preferedFocus,
+        customKeywords: customKeywords,
+        summary: summary
+    };
     
-    if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
+    console.log('用户画像分析完成:', settings.userProfile);
+    
+    // 使用 SillyTavern 的变量保存机制
+    if (typeof window.setvar === 'function') {
+        // 保存到 SillyTavern 变量系统
+        window.setvar('userProfile_favoriteScene', favoriteScene);
+        window.setvar('userProfile_favoriteMood', favoriteMood);
+        window.setvar('userProfile_preferedFocus', preferedFocus);
+        window.setvar('userProfile_customKeywords', customKeywords.join(','));
+        window.setvar('userProfile_summary', summary);
+        console.log('已保存到 SillyTavern 变量系统');
+    }
+    
+    // 保存到设置
+    if (typeof saveSettingsDebounced === 'function') {
+        saveSettingsDebounced();
+        console.log('已保存到设置系统');
+    }
+    
+    // 触发UI更新
+    if (typeof window.eventSource !== 'undefined' && window.eventSource.emit) {
+        window.eventSource.emit('userProfileUpdated', settings.userProfile);
+        console.log('已触发UI更新事件');
+    }
+}
+
+function tryAnalyzeUserProfile() {
+    const settings = getSettings();
+    const logCount = settings.userBehaviorLog.length;
+    
+    console.log(`尝试分析用户画像，当前日志数量: ${logCount}`);
+    console.log('当前用户画像:', settings.userProfile);
+    
+    // 降低触发频率：每3次行为分析一次，或者第一次有数据时
+    if (logCount > 0 && (logCount % 3 === 0 || !settings.userProfile.summary)) {
+        console.log(`开始分析用户画像，当前日志数量: ${logCount}`);
+        analyzeUserBehavior();
+    } else {
+        console.log('跳过分析，条件不满足');
+    }
 }
 
 // ========== 修改建议点击、输入等行为 ========== //
@@ -532,11 +636,8 @@ async function generateOptions() {
                             const delta = parsed.choices?.[0]?.delta?.content || '';
                             content += delta;
                             
-                            // 实时解析并显示选项
-                            const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
-                            if (suggestions.length > 0) {
-                                await displayOptions(suggestions, true); // true表示流式显示
-                            }
+                            // 实时更新选项显示
+                            await displayOptionsStreaming(content);
                         } catch (e) {
                             // 忽略解析错误
                         }
@@ -729,6 +830,7 @@ export const OptionsGenerator = {
     showGeneratingUI,
     hideGeneratingUI,
     displayOptions,
+    displayOptionsStreaming, // 暴露新的流式显示函数
     generateOptions,
     testApiConnection,
     analyzeUserBehavior,

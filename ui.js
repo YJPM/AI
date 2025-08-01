@@ -713,6 +713,51 @@ export function addExtensionSettings(settings) {
     analyzeHeader.style.margin = '0 0 10px 0';
     analyzeContainer.appendChild(analyzeHeader);
     
+    // 添加刷新按钮
+    const refreshButton = document.createElement('button');
+    refreshButton.textContent = '刷新用户画像';
+    refreshButton.className = 'menu_button';
+    refreshButton.style.width = '100%';
+    refreshButton.style.padding = '8px 12px';
+    refreshButton.style.backgroundColor = 'var(--SmartThemeBlurple)';
+    refreshButton.style.color = 'white';
+    refreshButton.style.border = 'none';
+    refreshButton.style.borderRadius = '4px';
+    refreshButton.style.cursor = 'pointer';
+    refreshButton.style.marginBottom = '5px';
+    refreshButton.addEventListener('click', () => {
+        // 从 SillyTavern 变量系统获取数据
+        if (typeof window.getvar === 'function') {
+            const favoriteScene = window.getvar('userProfile_favoriteScene') || '';
+            const favoriteMood = window.getvar('userProfile_favoriteMood') || '';
+            const preferedFocus = window.getvar('userProfile_preferedFocus') || '';
+            const customKeywords = window.getvar('userProfile_customKeywords') || '';
+            const summary = window.getvar('userProfile_summary') || '';
+            
+            // 更新设置
+            settings.userProfile = {
+                favoriteScene: favoriteScene,
+                favoriteMood: favoriteMood,
+                preferedFocus: preferedFocus,
+                customKeywords: customKeywords ? customKeywords.split(',') : [],
+                summary: summary
+            };
+            
+            // 更新UI显示
+            summaryInput.value = summary;
+            sceneInput.value = favoriteScene;
+            moodInput.value = favoriteMood;
+            focusInput.value = preferedFocus;
+            keywordsInput.value = customKeywords;
+            
+            saveSettingsDebounced();
+            alert('已从 SillyTavern 变量系统刷新用户画像');
+        } else {
+            alert('SillyTavern 变量系统不可用');
+        }
+    });
+    analyzeContainer.appendChild(refreshButton);
+    
     const analyzeButton = document.createElement('button');
     analyzeButton.textContent = '手动分析用户画像';
     analyzeButton.className = 'menu_button';
@@ -723,6 +768,7 @@ export function addExtensionSettings(settings) {
     analyzeButton.style.border = 'none';
     analyzeButton.style.borderRadius = '4px';
     analyzeButton.style.cursor = 'pointer';
+    analyzeButton.style.marginBottom = '5px';
     analyzeButton.addEventListener('click', () => {
         // 直接调用全局函数
         if (typeof window.analyzeUserBehavior === 'function') {
