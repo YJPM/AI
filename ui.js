@@ -256,6 +256,21 @@ export function addExtensionSettings(settings) {
     optionsContainer.appendChild(apiTypeLabel);
     optionsContainer.appendChild(apiTypeSelect);
     
+    // 统一下拉框样式
+    function applyUnifiedSelectStyle(select) {
+        select.style.width = '100%';
+        select.style.padding = '5px';
+        select.style.border = '1px solid #ccc';
+        select.style.borderRadius = '3px';
+        select.style.fontSize = '14px';
+        select.style.background = '#fff';
+        select.style.color = '#222';
+        select.style.boxSizing = 'border-box';
+    }
+    applyUnifiedSelectStyle(sendModeSelect);
+    applyUnifiedSelectStyle(paceSelect);
+    applyUnifiedSelectStyle(apiTypeSelect);
+    
     // 基础URL
     const baseUrlGroup = document.createElement('div');
     baseUrlGroup.id = 'options-base-url-group';
@@ -624,18 +639,3 @@ export function initQuickPacePanel() {
         }
     }
 }
-
-    // 统一下拉框样式
-    function applyUnifiedSelectStyle(select) {
-        select.style.width = '100%';
-        select.style.padding = '5px';
-        select.style.border = '1px solid #ccc';
-        select.style.borderRadius = '3px';
-        select.style.fontSize = '14px';
-        select.style.background = '#fff';
-        select.style.color = '#222';
-        select.style.boxSizing = 'border-box';
-    }
-    applyUnifiedSelectStyle(sendModeSelect);
-    applyUnifiedSelectStyle(paceSelect);
-    applyUnifiedSelectStyle(apiTypeSelect);
