@@ -248,6 +248,40 @@ async function getContextCompatible(limit = 20) {
     console.log('[getContextCompatible] window.TavernHelper:', window.TavernHelper);
     console.log('[getContextCompatible] window.SillyTavern:', window.SillyTavern);
     
+    // 详细检查TavernHelper的所有属性
+    if (window.TavernHelper) {
+        console.log('[getContextCompatible] TavernHelper 对象存在，检查其属性:');
+        console.log('[getContextCompatible] TavernHelper 类型:', typeof window.TavernHelper);
+        console.log('[getContextCompatible] TavernHelper 所有属性:', Object.keys(window.TavernHelper));
+        
+        // 检查所有可能的方法名
+        const possibleMethods = [
+            'getContext',
+            'getContextCompatible',
+            'getChat',
+            'getMessages',
+            'getConversation',
+            'getHistory'
+        ];
+        
+        for (const method of possibleMethods) {
+            if (typeof window.TavernHelper[method] === 'function') {
+                console.log(`[getContextCompatible] 找到可用方法: TavernHelper.${method}`);
+            }
+        }
+    }
+    
+    // 检查SillyTavern原生接口
+    if (window.SillyTavern) {
+        console.log('[getContextCompatible] SillyTavern 对象存在，检查其属性:');
+        console.log('[getContextCompatible] SillyTavern 类型:', typeof window.SillyTavern);
+        console.log('[getContextCompatible] SillyTavern 所有属性:', Object.keys(window.SillyTavern));
+        
+        if (window.SillyTavern.chat) {
+            console.log('[getContextCompatible] SillyTavern.chat 存在，长度:', window.SillyTavern.chat.length);
+        }
+    }
+    
     // 兼容 TavernHelper 或 DOM
     if (typeof window.TavernHelper?.getContext === 'function') {
         console.log('[getContextCompatible] 使用 TavernHelper.getContext()');
@@ -262,6 +296,33 @@ async function getContextCompatible(limit = 20) {
         }
     } else {
         console.log('[getContextCompatible] TavernHelper.getContext() 不可用，使用DOM解析');
+        
+        // 尝试其他可能的接口
+        if (typeof window.TavernHelper?.getChat === 'function') {
+            console.log('[getContextCompatible] 尝试使用 TavernHelper.getChat()');
+            try {
+                const result = await window.TavernHelper.getChat();
+                console.log('[getContextCompatible] TavernHelper.getChat() 成功:', result);
+                return { messages: result };
+            } catch (error) {
+                console.error('[getContextCompatible] TavernHelper.getChat() 失败:', error);
+            }
+        }
+        
+        // 尝试SillyTavern原生接口
+        if (window.SillyTavern?.chat) {
+            console.log('[getContextCompatible] 尝试使用 SillyTavern.chat');
+            try {
+                const messages = window.SillyTavern.chat.map(msg => ({
+                    role: msg.is_user ? 'user' : 'assistant',
+                    content: msg.mes
+                }));
+                console.log('[getContextCompatible] SillyTavern.chat 解析成功:', messages);
+                return { messages: messages.slice(-limit) };
+            } catch (error) {
+                console.error('[getContextCompatible] SillyTavern.chat 解析失败:', error);
+            }
+        }
     }
     
     // DOM fallback
@@ -705,5 +766,46 @@ export class OptionsGenerator {
         }
         
         console.log('=== TavernHelper接口测试完成 ===');
+    }
+    
+    // 详细诊断接口问题
+    static async diagnoseInterfaces() {
+        console.log('=== 开始诊断接口问题 ===');
+        
+        // 检查所有可能的全局对象
+        const globalObjects = [
+            'TavernHelper',
+            'SillyTavern',
+            'window.TavernHelper',
+            'window.SillyTavern'
+        ];
+        
+        for (const objName of globalObjects) {
+            try {
+                const obj = eval(objName);
+                console.log(`${objName}:`, obj);
+                if (obj && typeof obj === 'object') {
+                    console.log(`${objName} 属性:`, Object.keys(obj));
+                }
+            } catch (error) {
+                console.log(`${objName}: 未定义`);
+            }
+        }
+        
+        // 检查页面上的脚本标签
+        const scripts = document.querySelectorAll('script');
+        console.log('页面上的脚本数量:', scripts.length);
+        for (let i = 0; i < Math.min(scripts.length, 10); i++) {
+            const script = scripts[i];
+            if (script.src) {
+                console.log(`脚本 ${i}:`, script.src);
+            }
+        }
+        
+        // 检查扩展相关的元素
+        const extensionElements = document.querySelectorAll('[id*="tavern"], [class*="tavern"], [id*="helper"], [class*="helper"]');
+        console.log('可能的扩展元素:', extensionElements.length);
+        
+        console.log('=== 接口诊断完成 ===');
     }
 }
