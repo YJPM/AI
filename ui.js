@@ -160,9 +160,7 @@ export function addExtensionSettings(settings) {
     
     const sendModeLabel = document.createElement('label');
     sendModeLabel.textContent = '发送模式:';
-    sendModeLabel.style.display = 'block';
-    sendModeLabel.style.marginBottom = '5px';
-    sendModeLabel.style.fontWeight = 'bold';
+    applyUnifiedLabelStyle(sendModeLabel);
     
     const sendModeSelect = document.createElement('select');
     
@@ -194,9 +192,7 @@ export function addExtensionSettings(settings) {
     
     const paceLabel = document.createElement('label');
     paceLabel.textContent = '推进节奏:';
-    paceLabel.style.display = 'block';
-    paceLabel.style.marginBottom = '5px';
-    paceLabel.style.fontWeight = 'bold';
+    applyUnifiedLabelStyle(paceLabel);
     
     const paceSelect = document.createElement('select');
     
@@ -238,8 +234,8 @@ export function addExtensionSettings(settings) {
     // API Type
     const apiTypeLabel = document.createElement('label');
     apiTypeLabel.textContent = 'API 类型:';
-    apiTypeLabel.style.display = 'block';
     apiTypeLabel.style.marginTop = '8px';
+    applyUnifiedLabelStyle(apiTypeLabel);
     const apiTypeSelect = document.createElement('select');
     apiTypeSelect.id = 'options-api-type';
     
@@ -256,17 +252,65 @@ export function addExtensionSettings(settings) {
     optionsContainer.appendChild(apiTypeLabel);
     optionsContainer.appendChild(apiTypeSelect);
     
-    // 统一下拉框样式
+    // 统一UI元素样式
+    function applyUnifiedInputStyle(input) {
+        input.style.width = '100%';
+        input.style.padding = '8px 12px';
+        input.style.border = '1px solid var(--SmartThemeBorderColor, #ccc)';
+        input.style.borderRadius = '6px';
+        input.style.fontSize = '14px';
+        input.style.background = 'var(--SmartThemeBackgroundColor, #fff)';
+        input.style.color = 'var(--SmartThemeBodyColor, #222)';
+        input.style.boxSizing = 'border-box';
+        input.style.transition = 'all 0.2s ease';
+        input.style.outline = 'none';
+        
+        // 添加聚焦效果
+        input.addEventListener('focus', () => {
+            input.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+            input.style.boxShadow = '0 0 0 2px rgba(0, 123, 255, 0.1)';
+        });
+        
+        input.addEventListener('blur', () => {
+            input.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+            input.style.boxShadow = 'none';
+        });
+    }
+    
     function applyUnifiedSelectStyle(select) {
         select.style.width = '100%';
-        select.style.padding = '5px';
-        select.style.border = '1px solid #ccc';
-        select.style.borderRadius = '3px';
+        select.style.padding = '8px 12px';
+        select.style.border = '1px solid var(--SmartThemeBorderColor, #ccc)';
+        select.style.borderRadius = '6px';
         select.style.fontSize = '14px';
-        select.style.background = '#fff';
-        select.style.color = '#222';
+        select.style.background = 'var(--SmartThemeBackgroundColor, #fff)';
+        select.style.color = 'var(--SmartThemeBodyColor, #222)';
         select.style.boxSizing = 'border-box';
+        select.style.transition = 'all 0.2s ease';
+        select.style.outline = 'none';
+        select.style.cursor = 'pointer';
+        
+        // 添加聚焦效果
+        select.addEventListener('focus', () => {
+            select.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+            select.style.boxShadow = '0 0 0 2px rgba(0, 123, 255, 0.1)';
+        });
+        
+        select.addEventListener('blur', () => {
+            select.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+            select.style.boxShadow = 'none';
+        });
     }
+    
+    function applyUnifiedLabelStyle(label) {
+        label.style.display = 'block';
+        label.style.marginBottom = '6px';
+        label.style.fontWeight = 'normal';
+        label.style.fontSize = '14px';
+        label.style.color = 'var(--SmartThemeBodyColor, #222)';
+    }
+    
+    // 应用统一样式
     applyUnifiedSelectStyle(sendModeSelect);
     applyUnifiedSelectStyle(paceSelect);
     applyUnifiedSelectStyle(apiTypeSelect);
@@ -276,13 +320,13 @@ export function addExtensionSettings(settings) {
     baseUrlGroup.id = 'options-base-url-group';
     const baseUrlLabel = document.createElement('label');
     baseUrlLabel.textContent = '基础URL:';
-    baseUrlLabel.style.display = 'block';
     baseUrlLabel.style.marginTop = '8px';
+    applyUnifiedLabelStyle(baseUrlLabel);
     const baseUrlInput = document.createElement('input');
     baseUrlInput.type = 'text';
     baseUrlInput.value = settings.optionsBaseUrl;
     baseUrlInput.placeholder = '输入API基础URL';
-    baseUrlInput.style.width = '100%';
+    applyUnifiedInputStyle(baseUrlInput);
     baseUrlInput.addEventListener('input', () => {
         settings.optionsBaseUrl = baseUrlInput.value;
         saveSettingsDebounced();
@@ -294,13 +338,13 @@ export function addExtensionSettings(settings) {
     // 模型选择
     const modelLabel = document.createElement('label');
     modelLabel.textContent = '模型:';
-    modelLabel.style.display = 'block';
     modelLabel.style.marginTop = '8px';
+    applyUnifiedLabelStyle(modelLabel);
     const modelInput = document.createElement('input');
     modelInput.type = 'text';
     modelInput.value = settings.optionsApiModel;
     modelInput.placeholder = '输入模型名称';
-    modelInput.style.width = '100%';
+    applyUnifiedInputStyle(modelInput);
     modelInput.addEventListener('input', () => {
         settings.optionsApiModel = modelInput.value;
         saveSettingsDebounced();
@@ -311,8 +355,8 @@ export function addExtensionSettings(settings) {
     // API密钥
     const apiKeyLabel = document.createElement('label');
     apiKeyLabel.textContent = 'API密钥:';
-    apiKeyLabel.style.display = 'block';
     apiKeyLabel.style.marginTop = '8px';
+    applyUnifiedLabelStyle(apiKeyLabel);
     
     const apiKeyContainer = document.createElement('div');
     apiKeyContainer.style.display = 'flex';
@@ -323,6 +367,7 @@ export function addExtensionSettings(settings) {
     apiKeyInput.type = 'password';
     apiKeyInput.value = settings.optionsApiKey;
     apiKeyInput.placeholder = '输入API密钥';
+    applyUnifiedInputStyle(apiKeyInput);
     apiKeyInput.style.flex = '1';
     apiKeyInput.addEventListener('input', () => {
         settings.optionsApiKey = apiKeyInput.value;
@@ -332,17 +377,24 @@ export function addExtensionSettings(settings) {
     const testConnectionButton = document.createElement('button');
     testConnectionButton.textContent = '测试连接';
     testConnectionButton.className = 'menu_button';
-    testConnectionButton.style.padding = '5px 10px';
-    testConnectionButton.style.fontSize = '12px';
+    testConnectionButton.style.padding = '8px 16px';
+    testConnectionButton.style.fontSize = '14px';
     testConnectionButton.style.whiteSpace = 'nowrap';
+    testConnectionButton.style.borderRadius = '6px';
+    testConnectionButton.style.border = '1px solid var(--SmartThemeBorderColor, #ccc)';
+    testConnectionButton.style.background = 'var(--SmartThemeBackgroundColor, #fff)';
+    testConnectionButton.style.color = 'var(--SmartThemeBodyColor, #222)';
+    testConnectionButton.style.cursor = 'pointer';
     
     const connectionStatusDiv = document.createElement('div');
     connectionStatusDiv.id = 'api-connection-status';
-    connectionStatusDiv.style.marginTop = '5px';
-    connectionStatusDiv.style.fontSize = '12px';
-    connectionStatusDiv.style.padding = '5px';
-    connectionStatusDiv.style.borderRadius = '4px';
+    connectionStatusDiv.style.marginTop = '8px';
+    connectionStatusDiv.style.fontSize = '14px';
+    connectionStatusDiv.style.padding = '8px 12px';
+    connectionStatusDiv.style.borderRadius = '6px';
     connectionStatusDiv.style.display = 'none';
+    connectionStatusDiv.style.border = '1px solid var(--SmartThemeBorderColor, #ccc)';
+    connectionStatusDiv.style.transition = 'all 0.2s ease';
     
     testConnectionButton.addEventListener('click', async () => {
         connectionStatusDiv.style.display = 'block';

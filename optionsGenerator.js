@@ -310,9 +310,6 @@ async function generateOptions() {
         let content = '';
         const apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
         
-        // 隐藏loading状态，开始显示选项
-        hidePacePanelLoading();
-        
         if (settings.streamOptions) {
             // 流式生成
             const response = await fetch(apiUrl, {
@@ -365,6 +362,12 @@ async function generateOptions() {
             }
             
             // 流式生成完成
+            // 解析建议
+            const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+            
+            // 等待选项完全显示后再隐藏loading
+            await displayOptions(suggestions, true); // true表示流式显示
+            hidePacePanelLoading();
         } else {
             // 非流式生成
             const response = await fetch(apiUrl, {
@@ -389,13 +392,14 @@ async function generateOptions() {
             
             const data = await response.json();
             content = data.candidates?.[0]?.content?.parts?.[0]?.text || data.choices?.[0]?.message?.content || '';
+            
+            // 解析建议
+            const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+            
+            // 等待选项完全显示后再隐藏loading
+            await displayOptions(suggestions, false); // false表示非流式显示
+            hidePacePanelLoading();
         }
-        
-        // 解析建议
-        const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
-        
-        await displayOptions(suggestions, false); // false表示非流式显示
-        hidePacePanelLoading();
     } catch (error) {
         logger.error('生成选项时出错:', error);
         hidePacePanelLoading();
