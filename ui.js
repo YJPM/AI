@@ -177,25 +177,82 @@ export function addExtensionSettings(settings) {
     optionsContainer.style.borderTop = '1px solid var(--border_color)';
     optionsContainer.style.paddingTop = '0px';
     
-    // 发送模式选择
+    // 发送模式设置
+    const sendModeContainer = document.createElement('div');
+    sendModeContainer.style.marginTop = '8px';
+    
     const sendModeLabel = document.createElement('label');
     sendModeLabel.textContent = '发送模式:';
     sendModeLabel.style.display = 'block';
-    sendModeLabel.style.marginTop = '0px';
+    sendModeLabel.style.marginBottom = '5px';
+    sendModeLabel.style.fontWeight = 'bold';
+    
     const sendModeSelect = document.createElement('select');
-    sendModeSelect.id = 'options-send-mode';
     sendModeSelect.style.width = '100%';
-    sendModeSelect.innerHTML = `
-        <option value="manual">手动模式 - 点击选项后需手动发送</option>
-        <option value="auto">自动模式 - 点击选项后自动发送</option>
-    `;
-    sendModeSelect.value = settings.sendMode;
-    sendModeSelect.addEventListener('change', () => {
-        settings.sendMode = sendModeSelect.value;
+    sendModeSelect.style.padding = '5px';
+    sendModeSelect.style.border = '1px solid #ccc';
+    sendModeSelect.style.borderRadius = '3px';
+    
+    const sendModeOptions = [
+        { value: 'auto', text: '自动' },
+        { value: 'manual', text: '手动' }
+    ];
+    
+    sendModeOptions.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option.value;
+        optionElement.textContent = option.text;
+        sendModeSelect.appendChild(optionElement);
+    });
+    
+    sendModeSelect.value = settings.sendMode || 'auto';
+    sendModeSelect.addEventListener('change', (e) => {
+        settings.sendMode = e.target.value;
         saveSettingsDebounced();
     });
-    optionsContainer.appendChild(sendModeLabel);
-    optionsContainer.appendChild(sendModeSelect);
+    
+    sendModeContainer.appendChild(sendModeLabel);
+    sendModeContainer.appendChild(sendModeSelect);
+    optionsContainer.appendChild(sendModeContainer);
+    
+    // 推进节奏设置
+    const paceContainer = document.createElement('div');
+    paceContainer.style.marginTop = '8px';
+    
+    const paceLabel = document.createElement('label');
+    paceLabel.textContent = '推进节奏:';
+    paceLabel.style.display = 'block';
+    paceLabel.style.marginBottom = '5px';
+    paceLabel.style.fontWeight = 'bold';
+    
+    const paceSelect = document.createElement('select');
+    paceSelect.style.width = '100%';
+    paceSelect.style.padding = '5px';
+    paceSelect.style.border = '1px solid #ccc';
+    paceSelect.style.borderRadius = '3px';
+    
+    const paceOptions = [
+        { value: 'fast', text: '快速 (3-4个选项，有明显时间跨越)' },
+        { value: 'balanced', text: '平衡 (3-5个选项，标准推进)' },
+        { value: 'slow', text: '慢速 (3-5个选项，深度推进)' }
+    ];
+    
+    paceOptions.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option.value;
+        optionElement.textContent = option.text;
+        paceSelect.appendChild(optionElement);
+    });
+    
+    paceSelect.value = settings.paceMode || 'balanced';
+    paceSelect.addEventListener('change', (e) => {
+        settings.paceMode = e.target.value;
+        saveSettingsDebounced();
+    });
+    
+    paceContainer.appendChild(paceLabel);
+    paceContainer.appendChild(paceSelect);
+    optionsContainer.appendChild(paceContainer);
     
     // API Type
     const apiTypeLabel = document.createElement('label');

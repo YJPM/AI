@@ -217,9 +217,65 @@ async function generateOptions() {
     showGeneratingUI('AI助手思考中');
     OptionsGenerator.isGenerating = true;
     try {
+        // 根据推进节奏选择提示模板
+        const paceMode = settings.paceMode || 'balanced';
+        let promptTemplate;
+        
+        if (paceMode === 'slow') {
+            promptTemplate = `
+你是一位深思熟虑的AI叙事导演。请仔细分析最近对话，为"我"生成3-5个富有深度的行动/事件建议（每条用【】包裹，首条为最优选项）。
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- 先输出JSON格式的情境分析（scene_type, user_mood, narrative_focus）
+- 再输出建议列表（单行、每条用【】包裹）
+
+## 开始
+`.trim();
+        } else if (paceMode === 'fast') {
+            promptTemplate = `
+你是一位高效的AI叙事导演。请深入分析最近对话，为"我"生成3-4个具有明显时间跨越的行动/事件建议（每条用【】包裹，首条为最优选项）。
+
+要求：
+- 提供深入的情境分析和角色心理洞察
+- 选项应包含明显的时间推进，如：任务完成后、赴约时间、重要事件发生等
+- 避免停留在当前场景的细节讨论，直接推进到下一个重要节点
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- 先输出JSON格式的情境分析（scene_type, user_mood, narrative_focus）
+- 再输出建议列表（单行、每条用【】包裹，包含时间跨越）
+
+## 开始
+`.trim();
+        } else {
+            // balanced 模式
+            promptTemplate = `
+你是一位AI叙事导演。请按如下流程操作：
+1. 先分析最近对话，提取：
+   - 场景类型
+   - 用户情绪
+   - 当前叙事焦点
+2. 再基于分析结果，为"我"生成3-5个最具戏剧性的行动/事件建议（每条用【】包裹，首条为最优选项）。
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- 先输出JSON格式的情境分析（scene_type, user_mood, narrative_focus）
+- 再输出建议列表（单行、每条用【】包裹）
+
+## 开始
+`.trim();
+        }
+        
         // 组装合并prompt
         const context = await getContextCompatible();
-        const prompt = MERGED_DIRECTOR_PROMPT
+        const prompt = promptTemplate
             .replace(/{{context}}/g, context.messages.map(m => `[${m.role}] ${m.content}`).join('\n'));
         const finalMessages = [{ role: 'user', content: prompt }];
         let content = '';
