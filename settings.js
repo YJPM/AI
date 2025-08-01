@@ -7,9 +7,6 @@ export const defaultSettings = {
     optionsApiKey: '',
     optionsApiModel: 'gemini-2.5-flash-free',
     optionsBaseUrl: 'https://newapi.sisuo.de/v1',
-    choiceLog: [],
-    learnedStyle: '',
-    logTriggerCount: 20,
     sendMode: 'auto',
     streamOptions: false, // true=流式, false=非流式
     
@@ -23,13 +20,10 @@ export const MERGED_DIRECTOR_PROMPT = `
    - 场景类型
    - 用户情绪
    - 当前叙事焦点
-2. 再基于分析结果、用户历史风格，为"我"生成3-5个最具戏剧性的行动/事件建议（每条用【】包裹，首条为最优选项）。
+2. 再基于分析结果，为"我"生成3-5个最具戏剧性的行动/事件建议（每条用【】包裹，首条为最优选项）。
 
 ## 最近对话
 {{context}}
-
-## 用户历史风格
-{{learned_style}}
 
 ## 输出格式
 - 先输出JSON格式的情境分析（scene_type, user_mood, narrative_focus）

@@ -6,9 +6,3 @@
     text-shadow: 0px 0px calc(var(--shadowWidth) * 1px) var(--SmartThemeShadowColor);
     order: 9999;
 }
-
-.typing_indicator .svg_dots {
-    display: inline-block;
-    vertical-align: middle;
-    margin-left: 4px;
-}

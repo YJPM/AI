@@ -2,28 +2,6 @@ import { getSettings, MERGED_DIRECTOR_PROMPT } from './settings.js';
 import { logger } from './logger.js';
 import { saveSettingsDebounced } from '../../../../script.js';
 
-function parseOptions(content) {
-    // 1. 优先尝试解析【...】格式
-    let options = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim());
-    if (options.length > 0) {
-        logger.log('使用【】格式解析器成功。');
-        return options.filter(Boolean);
-    }
-    // 2. 如果失败，尝试解析列表格式 (e.g., "- ...", "1. ...")
-    const lines = content.split('\n').filter(line => line.trim() !== '');
-    const listRegex = /^(?:\*|-\s|\d+\.\s)\s*(.*)/;
-    options = lines.map(line => {
-        const match = line.trim().match(listRegex);
-        return match ? match[1].trim() : null;
-    }).filter(Boolean);
-    if (options.length > 0) {
-        logger.log('使用列表格式解析器成功。');
-        return options;
-    }
-    logger.log('所有解析器都未能找到选项。');
-    return [];
-}
-
 function showGeneratingUI(message, duration = null) {
     logger.log(`showGeneratingUI: 尝试显示提示: "${message}"`);
     let container = document.getElementById('ti-loading-container');
@@ -92,10 +70,8 @@ async function displayOptionsStreaming(content) {
         container.id = 'ti-options-container';
         sendForm.insertAdjacentElement('beforebegin', container);
         
-        // 只有在有有效选项时才隐藏思考提示
-        if (suggestions.length > 0) {
-            hideGeneratingUI();
-        }
+        // 在流式生成过程中，不隐藏思考提示
+        // 只有在流式生成完成后才隐藏
     }
     
     // 获取当前发送模式
@@ -244,8 +220,7 @@ async function generateOptions() {
         // 组装合并prompt
         const context = await getContextCompatible();
         const prompt = MERGED_DIRECTOR_PROMPT
-            .replace(/{{context}}/g, context.messages.map(m => `[${m.role}] ${m.content}`).join('\n'))
-            .replace(/{{learned_style}}/g, settings.learnedStyle || '无');
+            .replace(/{{context}}/g, context.messages.map(m => `[${m.role}] ${m.content}`).join('\n'));
         const finalMessages = [{ role: 'user', content: prompt }];
         let content = '';
         const apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
@@ -329,20 +304,6 @@ async function generateOptions() {
             content = data.candidates?.[0]?.content?.parts?.[0]?.text || data.choices?.[0]?.message?.content || '';
         }
         
-        // 解析AI返回
-        const jsonMatch = content.match(/\{.*\}/s);
-        let analysisData = null;
-        if (jsonMatch) {
-            try { analysisData = JSON.parse(jsonMatch[0]); } catch {}
-        }
-        // 记录情境分析到choiceLog
-        if (analysisData) {
-            settings.choiceLog.push(analysisData);
-            if (settings.choiceLog.length >= settings.logTriggerCount) {
-                // 这里可以添加自我反思逻辑，暂时跳过
-            }
-            if (typeof saveSettingsDebounced === 'function') saveSettingsDebounced();
-        }
         // 解析建议
         const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
         
@@ -485,7 +446,6 @@ export class OptionsGenerator {
     static isGenerating = false;
     
     // 静态方法引用
-    static parseOptions = parseOptions;
     static showGeneratingUI = showGeneratingUI;
     static hideGeneratingUI = hideGeneratingUI;
     static displayOptions = displayOptions;

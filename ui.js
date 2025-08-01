@@ -173,15 +173,15 @@ export function addExtensionSettings(settings) {
     
     // 选项生成设置
     const optionsContainer = document.createElement('div');
-    optionsContainer.style.marginTop = '20px';
+    optionsContainer.style.marginTop = '10px';
     optionsContainer.style.borderTop = '1px solid var(--border_color)';
-    optionsContainer.style.paddingTop = '15px';
+    optionsContainer.style.paddingTop = '0px';
     
     // 发送模式选择
     const sendModeLabel = document.createElement('label');
     sendModeLabel.textContent = '发送模式:';
     sendModeLabel.style.display = 'block';
-    sendModeLabel.style.marginTop = '10px';
+    sendModeLabel.style.marginTop = '0px';
     const sendModeSelect = document.createElement('select');
     sendModeSelect.id = 'options-send-mode';
     sendModeSelect.style.width = '100%';
@@ -201,7 +201,7 @@ export function addExtensionSettings(settings) {
     const apiTypeLabel = document.createElement('label');
     apiTypeLabel.textContent = 'API 类型:';
     apiTypeLabel.style.display = 'block';
-    apiTypeLabel.style.marginTop = '10px';
+    apiTypeLabel.style.marginTop = '8px';
     const apiTypeSelect = document.createElement('select');
     apiTypeSelect.id = 'options-api-type';
     apiTypeSelect.style.width = '100%';
@@ -222,7 +222,7 @@ export function addExtensionSettings(settings) {
     const apiKeyLabel = document.createElement('label');
     apiKeyLabel.textContent = 'API密钥:';
     apiKeyLabel.style.display = 'block';
-    apiKeyLabel.style.marginTop = '10px';
+    apiKeyLabel.style.marginTop = '8px';
     
     const apiKeyContainer = document.createElement('div');
     apiKeyContainer.style.display = 'flex';
@@ -291,7 +291,7 @@ export function addExtensionSettings(settings) {
     const modelLabel = document.createElement('label');
     modelLabel.textContent = '模型:';
     modelLabel.style.display = 'block';
-    modelLabel.style.marginTop = '10px';
+    modelLabel.style.marginTop = '8px';
     
     const modelInput = document.createElement('input');
     modelInput.type = 'text';
@@ -312,7 +312,7 @@ export function addExtensionSettings(settings) {
     const baseUrlLabel = document.createElement('label');
     baseUrlLabel.textContent = '基础URL:';
     baseUrlLabel.style.display = 'block';
-    baseUrlLabel.style.marginTop = '10px';
+    baseUrlLabel.style.marginTop = '8px';
     const baseUrlInput = document.createElement('input');
     baseUrlInput.type = 'text';
     baseUrlInput.value = settings.optionsBaseUrl;
@@ -329,7 +329,7 @@ export function addExtensionSettings(settings) {
     // 流式选项生成
     const streamLabel = document.createElement('label');
     streamLabel.classList.add('checkbox_label');
-    streamLabel.style.marginTop = '10px';
+    streamLabel.style.marginTop = '8px';
     const streamCheckbox = document.createElement('input');
     streamCheckbox.type = 'checkbox';
     streamCheckbox.checked = settings.streamOptions;
