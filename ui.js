@@ -134,6 +134,9 @@ export function addExtensionSettings(settings) {
             paceSelect.value = settings.paceMode;
             plotSelect.value = settings.plotMode;
             
+            // 更新快捷面板
+            updateQuickPanelFromSettings();
+            
             // 更新显示状态
             baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
             
@@ -218,15 +221,8 @@ export function addExtensionSettings(settings) {
         settings.paceMode = e.target.value;
         saveSettingsDebounced();
         
-        // 同步更新快捷操作面板
-        const quickPanel = document.getElementById('quick-pace-panel');
-        if (quickPanel) {
-            quickPanel.querySelectorAll('button').forEach((btn, index) => {
-                const currentMode = paceOptions[index];
-                btn.style.background = settings.paceMode === currentMode.value ? currentMode.color : 'transparent';
-                btn.style.color = settings.paceMode === currentMode.value ? 'white' : currentMode.color;
-            });
-        }
+        // 同步更新快捷面板
+        updateQuickPanelFromSettings();
     });
     
     paceContainer.appendChild(paceLabel);
@@ -260,6 +256,9 @@ export function addExtensionSettings(settings) {
     plotSelect.addEventListener('change', (e) => {
         settings.plotMode = e.target.value;
         saveSettingsDebounced();
+        
+        // 同步更新快捷面板
+        updateQuickPanelFromSettings();
     });
     
     plotContainer.appendChild(plotLabel);
@@ -490,8 +489,45 @@ export function addExtensionSettings(settings) {
         saveSettingsDebounced();
     });
     baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
-    
+
     inlineDrawerContent.append(optionsContainer);
+}
+
+// 更新快捷面板状态
+function updateQuickPanelFromSettings() {
+    const settings = getSettings();
+    const panel = document.getElementById('quick-pace-panel');
+    if (!panel) return;
+    
+    // 定义组合模式
+    const combinedModes = [
+        { plotValue: 'normal', paceValue: 'fast', color: '#4CAF50' },
+        { plotValue: 'normal', paceValue: 'balanced', color: '#4CAF50' },
+        { plotValue: 'normal', paceValue: 'slow', color: '#4CAF50' },
+        { plotValue: 'twist', paceValue: 'fast', color: '#FF5722' },
+        { plotValue: 'twist', paceValue: 'balanced', color: '#FF5722' },
+        { plotValue: 'twist', paceValue: 'slow', color: '#FF5722' },
+        { plotValue: 'nsfw', paceValue: 'fast', color: '#E91E63' },
+        { plotValue: 'nsfw', paceValue: 'balanced', color: '#E91E63' },
+        { plotValue: 'nsfw', paceValue: 'slow', color: '#E91E63' },
+        { plotValue: 'normal', paceValue: 'mixed', color: '#9C27B0' }
+    ];
+    
+    // 更新所有按钮状态
+    panel.querySelectorAll('button').forEach((btn) => {
+        const btnPlotMode = btn.getAttribute('data-plot-mode');
+        const btnPaceMode = btn.getAttribute('data-pace-mode');
+        const btnMode = combinedModes.find(m => 
+            m.plotValue === btnPlotMode && m.paceValue === btnPaceMode
+        );
+        
+        if (btnMode) {
+            const isBtnActive = settings.plotMode === btnMode.plotValue && 
+                              settings.paceMode === btnMode.paceValue;
+            btn.style.background = isBtnActive ? btnMode.color : 'transparent';
+            btn.style.color = isBtnActive ? 'white' : btnMode.color;
+        }
+    });
 }
 
 // 创建快捷操作面板
@@ -538,49 +574,94 @@ export function createQuickPacePanel() {
         { value: 'nsfw', text: 'NSFW', color: '#E91E63' }
     ];
     
-    // 创建推进节奏按钮
-    paceModes.forEach((mode, idx) => {
+    // 创建组合模式按钮
+    const combinedModes = [];
+    
+    plotModes.forEach(plotMode => {
+        paceModes.forEach(paceMode => {
+            // 跳过混合模式，因为它已经包含了多种节奏
+            if (paceMode.value === 'mixed') return;
+            
+            combinedModes.push({
+                plotValue: plotMode.value,
+                paceValue: paceMode.value,
+                text: `${plotMode.text}+${paceMode.text}`,
+                plotColor: plotMode.color,
+                paceColor: paceMode.color,
+                // 使用剧情走向的颜色作为主色调
+                color: plotMode.color
+            });
+        });
+    });
+    
+    // 添加单独的混合模式
+    combinedModes.push({
+        plotValue: 'normal',
+        paceValue: 'mixed',
+        text: '混合',
+        plotColor: '#4CAF50',
+        paceColor: '#9C27B0',
+        color: '#9C27B0'
+    });
+    
+    // 创建组合模式按钮
+    combinedModes.forEach((mode, idx) => {
         const button = document.createElement('button');
         button.textContent = mode.text;
-        button.setAttribute('data-pace-mode', mode.value);
+        button.setAttribute('data-plot-mode', mode.plotValue);
+        button.setAttribute('data-pace-mode', mode.paceValue);
+        
+        // 检查当前设置是否匹配这个组合
+        const isActive = settings.plotMode === mode.plotValue && settings.paceMode === mode.paceValue;
+        
         button.style.cssText = `
             padding: 3px 6px;
             border: 1px solid ${mode.color};
             border-radius: 4px;
-            background: ${settings.paceMode === mode.value ? mode.color : 'transparent'};
-            color: ${settings.paceMode === mode.value ? 'white' : mode.color};
+            background: ${isActive ? mode.color : 'transparent'};
+            color: ${isActive ? 'white' : mode.color};
             cursor: pointer;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 500;
             transition: all 0.2s;
-            min-width: 36px;
+            min-width: 50px;
             text-align: center;
             line-height: 1.2;
+            margin: 1px;
         `;
         
         button.addEventListener('click', () => {
-            settings.paceMode = mode.value;
+            settings.plotMode = mode.plotValue;
+            settings.paceMode = mode.paceValue;
             saveSettingsDebounced();
             
-            // 更新所有推进节奏按钮状态
-            panel.querySelectorAll('[data-pace-mode]').forEach((btn, index) => {
-                const currentMode = paceModes[index];
-                console.log('[paceMode sync] index:', index, 'currentMode:', currentMode, 'btn:', btn);
-                if (!currentMode) {
-                    console.warn('[paceMode sync] paceModes[', index, '] 未定义，btn:', btn);
-                    return;
+            // 更新所有按钮状态
+            panel.querySelectorAll('button').forEach((btn) => {
+                const btnPlotMode = btn.getAttribute('data-plot-mode');
+                const btnPaceMode = btn.getAttribute('data-pace-mode');
+                const btnMode = combinedModes.find(m => 
+                    m.plotValue === btnPlotMode && m.paceValue === btnPaceMode
+                );
+                
+                if (btnMode) {
+                    const isBtnActive = settings.plotMode === btnMode.plotValue && 
+                                      settings.paceMode === btnMode.paceValue;
+                    btn.style.background = isBtnActive ? btnMode.color : 'transparent';
+                    btn.style.color = isBtnActive ? 'white' : btnMode.color;
                 }
-                btn.style.background = settings.paceMode === currentMode.value ? currentMode.color : 'transparent';
-                btn.style.color = settings.paceMode === currentMode.value ? 'white' : currentMode.color;
             });
             
             // 同步更新设置面板
             const paceSelect = document.querySelector('[data-pace-select]');
+            const plotSelect = document.querySelector('select[value="' + settings.plotMode + '"]');
             if (paceSelect) {
                 paceSelect.value = settings.paceMode;
             }
+            if (plotSelect) {
+                plotSelect.value = settings.plotMode;
+            }
             
-            console.log('[paceMode] 已切换到:', mode.value);
+            console.log('[combinedMode] 已切换到:', mode.text, '(', mode.plotValue, '+', mode.paceValue, ')');
         });
         
         panel.appendChild(button);
@@ -594,54 +675,6 @@ export function createQuickPacePanel() {
         margin: 0 3px;
     `;
     panel.appendChild(separator);
-    
-    // 创建剧情走向按钮
-    plotModes.forEach((mode, idx) => {
-        const button = document.createElement('button');
-        button.textContent = mode.text;
-        button.setAttribute('data-plot-mode', mode.value);
-        button.style.cssText = `
-            padding: 3px 6px;
-            border: 1px solid ${mode.color};
-            border-radius: 4px;
-            background: ${settings.plotMode === mode.value ? mode.color : 'transparent'};
-            color: ${settings.plotMode === mode.value ? 'white' : mode.color};
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 500;
-            transition: all 0.2s;
-            min-width: 36px;
-            text-align: center;
-            line-height: 1.2;
-        `;
-        
-        button.addEventListener('click', () => {
-            settings.plotMode = mode.value;
-            saveSettingsDebounced();
-            
-            // 更新所有剧情走向按钮状态
-            panel.querySelectorAll('[data-plot-mode]').forEach((btn, index) => {
-                const currentMode = plotModes[index];
-                console.log('[plotMode sync] index:', index, 'currentMode:', currentMode, 'btn:', btn);
-                if (!currentMode) {
-                    console.warn('[plotMode sync] plotModes[', index, '] 未定义，btn:', btn);
-                    return;
-                }
-                btn.style.background = settings.plotMode === currentMode.value ? currentMode.color : 'transparent';
-                btn.style.color = settings.plotMode === currentMode.value ? 'white' : currentMode.color;
-            });
-            
-            // 同步更新设置面板
-            const plotSelect = document.querySelector('select[value="' + settings.plotMode + '"]');
-            if (plotSelect) {
-                plotSelect.value = settings.plotMode;
-            }
-            
-            console.log('[plotMode] 已切换到:', mode.value);
-        });
-        
-        panel.appendChild(button);
-    });
     
     // 添加重新获取选项按钮
     const refreshButton = document.createElement('button');
