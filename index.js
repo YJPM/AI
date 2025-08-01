@@ -40,11 +40,17 @@ function initializeTypingIndicator() {
         OptionsGenerator.isManuallyStopped = true;
     });
     
-    eventSource.on(event_types.GENERATION_ENDED, () => {
+    eventSource.on(event_types.GENERATION_ENDED, async () => {
         logger.log('GENERATION_ENDED event triggered.', { isManuallyStopped: OptionsGenerator.isManuallyStopped, optionsGenEnabled: getSettings().optionsGenEnabled });
         if (getSettings().optionsGenEnabled && !OptionsGenerator.isManuallyStopped) {
             logger.log('GENERATION_ENDED: 条件满足，触发选项生成。');
-            OptionsGenerator.generateOptions();
+            // 立即显示loading状态
+            const { showPacePanelLoading } = await import('./ui.js');
+            showPacePanelLoading();
+            // 延迟一点再生成选项，确保loading显示
+            setTimeout(() => {
+                OptionsGenerator.generateOptions();
+            }, 100);
         } else {
             logger.log('GENERATION_ENDED: 不满足选项生成条件，跳过。');
         }

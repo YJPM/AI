@@ -215,8 +215,6 @@ async function generateOptions() {
     OptionsGenerator.isManuallyStopped = false;
     if (!settings.optionsGenEnabled || !settings.optionsApiKey) return;
     
-    // 显示loading状态
-    showPacePanelLoading();
     OptionsGenerator.isGenerating = true;
     
     try {
@@ -268,14 +266,18 @@ async function generateOptions() {
 要求：
 - 始终以我的第一人称视角
 - 每条建议不超过100字
-- 生成1个慢速深度选项 + 2个平衡标准选项 + 1个快速推进选项
+- 生成4个选项，包含：
+  1. 第1个：慢速深度选项（深入分析心理状态和处境）
+  2. 第2个：平衡标准选项（分析场景类型、情绪、叙事焦点）
+  3. 第3个：平衡标准选项（分析场景类型、情绪、叙事焦点）
+  4. 第4个：快速推进选项（包含明显时间推进，如任务完成、赴约、重要事件）
 
 ## 最近对话
 {{context}}
 
 ## 输出格式
 - JSON格式分析（scene_type, user_mood, narrative_focus）
-- 建议列表（单行、每条用【】包裹，按慢速-平衡-平衡-快速顺序）
+- 建议列表（单行、每条用【】包裹，按上述顺序）
 
 ## 开始
 `.trim();
@@ -397,7 +399,7 @@ async function generateOptions() {
         logger.error('生成选项时出错:', error);
     } finally {
         OptionsGenerator.isGenerating = false;
-        hidePacePanelLoading(); // 隐藏loading状态
+        hidePacePanelLoading(); // 确保隐藏loading状态
     }
 }
 

@@ -223,9 +223,20 @@ export function addExtensionSettings(settings) {
     });
     
     paceSelect.value = settings.paceMode || 'balanced';
+    paceSelect.setAttribute('data-pace-select', 'true');
     paceSelect.addEventListener('change', (e) => {
         settings.paceMode = e.target.value;
         saveSettingsDebounced();
+        
+        // 同步更新快捷操作面板
+        const quickPanel = document.getElementById('quick-pace-panel');
+        if (quickPanel) {
+            quickPanel.querySelectorAll('button').forEach((btn, index) => {
+                const currentMode = paceOptions[index];
+                btn.style.background = settings.paceMode === currentMode.value ? currentMode.color : 'transparent';
+                btn.style.color = settings.paceMode === currentMode.value ? 'white' : currentMode.color;
+            });
+        }
     });
     
     paceContainer.appendChild(paceLabel);
@@ -452,8 +463,11 @@ export function createQuickPacePanel() {
                 btn.style.color = settings.paceMode === currentMode.value ? 'white' : currentMode.color;
             });
             
-            // 显示提示
-            showQuickPaceNotification(mode.text);
+            // 同步更新扩展设置面板中的选择器
+            const paceSelect = document.querySelector('select[data-pace-select]');
+            if (paceSelect) {
+                paceSelect.value = mode.value;
+            }
         });
         
         button.addEventListener('mouseenter', () => {
@@ -470,6 +484,45 @@ export function createQuickPacePanel() {
         
         panel.appendChild(button);
     });
+    
+    // 添加重新获取选项按钮
+    const refreshButton = document.createElement('button');
+    refreshButton.textContent = '🔄';
+    refreshButton.title = '重新获取选项';
+    refreshButton.style.cssText = `
+        padding: 3px 6px;
+        border: 1px solid #666;
+        border-radius: 4px;
+        background: transparent;
+        color: #666;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+        min-width: 36px;
+        text-align: center;
+        line-height: 1.2;
+        margin-left: 3px;
+    `;
+    
+    refreshButton.addEventListener('click', async () => {
+        // 导入并调用重新获取选项功能
+        const { OptionsGenerator } = await import('./optionsGenerator.js');
+        if (OptionsGenerator && typeof OptionsGenerator.generateOptions === 'function') {
+            OptionsGenerator.generateOptions();
+        }
+    });
+    
+    refreshButton.addEventListener('mouseenter', () => {
+        refreshButton.style.background = '#66620';
+        refreshButton.style.color = '#333';
+    });
+    
+    refreshButton.addEventListener('mouseleave', () => {
+        refreshButton.style.background = 'transparent';
+        refreshButton.style.color = '#666';
+    });
+    
+    panel.appendChild(refreshButton);
     
     return panel;
 }
@@ -528,19 +581,6 @@ export function hidePacePanelLoading() {
     if (originalText) {
         currentButton.textContent = originalText;
         currentButton.removeAttribute('data-original-text');
-    }
-}
-
-// 显示快捷操作提示
-function showQuickPaceNotification(modeText) {
-    // 使用酒馆自带的Message消息提示
-    if (typeof toastr !== 'undefined') {
-        toastr.success(`已切换到${modeText}模式`);
-    } else if (typeof toast !== 'undefined') {
-        toast(`${modeText}模式`, 'success');
-    } else {
-        // 备用方案：使用简单的alert
-        console.log(`已切换到${modeText}模式`);
     }
 }
 
