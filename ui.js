@@ -165,10 +165,6 @@ export function addExtensionSettings(settings) {
     sendModeLabel.style.fontWeight = 'bold';
     
     const sendModeSelect = document.createElement('select');
-    sendModeSelect.style.width = '100%';
-    sendModeSelect.style.padding = '5px';
-    sendModeSelect.style.border = '1px solid #ccc';
-    sendModeSelect.style.borderRadius = '3px';
     
     const sendModeOptions = [
         { value: 'auto', text: '自动' },
@@ -203,10 +199,6 @@ export function addExtensionSettings(settings) {
     paceLabel.style.fontWeight = 'bold';
     
     const paceSelect = document.createElement('select');
-    paceSelect.style.width = '100%';
-    paceSelect.style.padding = '5px';
-    paceSelect.style.border = '1px solid #ccc';
-    paceSelect.style.borderRadius = '3px';
     
     const paceOptions = [
         { value: 'fast', text: '快速 (3-4个选项，有明显时间跨越)' },
@@ -250,7 +242,7 @@ export function addExtensionSettings(settings) {
     apiTypeLabel.style.marginTop = '8px';
     const apiTypeSelect = document.createElement('select');
     apiTypeSelect.id = 'options-api-type';
-    apiTypeSelect.style.width = '100%';
+    
     apiTypeSelect.innerHTML = `
         <option value="openai">OpenAI-兼容</option>
         <option value="gemini">Google Gemini</option>
@@ -512,6 +504,12 @@ export function createQuickPacePanel() {
     
     refreshButton.addEventListener('click', async () => {
         console.log('[refreshButton] 点击，准备重新获取选项...');
+        // 清除页面已有选项
+        const oldContainer = document.getElementById('ti-options-container');
+        if (oldContainer) {
+            oldContainer.remove();
+            console.log('[refreshButton] 已清除旧选项容器');
+        }
         const { showPacePanelLoading } = await import('./ui.js');
         showPacePanelLoading();
         const { OptionsGenerator } = await import('./optionsGenerator.js');
@@ -548,24 +546,14 @@ export function showPacePanelLoading() {
     console.log('[showPacePanelLoading] called');
     const panel = document.getElementById('quick-pace-panel');
     if (!panel) return;
-    
-    const settings = getSettings();
-    const currentButton = panel.querySelector(`[data-pace-mode="${settings.paceMode}"]`);
-    if (!currentButton) return;
-    
-    // 保存原始文本
-    currentButton.setAttribute('data-original-text', currentButton.textContent);
-    
-    // 创建loading图标
-    const loadingIcon = document.createElement('div');
-    loadingIcon.innerHTML = '⟳';
-    loadingIcon.style.cssText = `
-        display: inline-block;
-        animation: spin 1s linear infinite;
-        font-size: 12px;
-        font-weight: bold;
-    `;
-    
+    const refreshButton = panel.querySelector('button[title="重新获取选项"]');
+    if (!refreshButton) return;
+    // 保存原始内容
+    refreshButton.setAttribute('data-original-html', refreshButton.innerHTML);
+    // 替换为loading图标
+    refreshButton.innerHTML = '<div style="display:inline-block;animation:spin 1s linear infinite;font-size:14px;font-weight:bold;">⟳</div>';
+    refreshButton.disabled = true;
+    refreshButton.style.opacity = '0.6';
     // 添加旋转动画样式
     if (!document.getElementById('pace-loading-style')) {
         const style = document.createElement('style');
@@ -578,10 +566,6 @@ export function showPacePanelLoading() {
         `;
         document.head.appendChild(style);
     }
-    
-    // 替换文本为loading图标
-    currentButton.textContent = '';
-    currentButton.appendChild(loadingIcon);
 }
 
 // 隐藏loading状态
@@ -589,17 +573,16 @@ export function hidePacePanelLoading() {
     console.log('[hidePacePanelLoading] called');
     const panel = document.getElementById('quick-pace-panel');
     if (!panel) return;
-    
-    const settings = getSettings();
-    const currentButton = panel.querySelector(`[data-pace-mode="${settings.paceMode}"]`);
-    if (!currentButton) return;
-    
-    // 恢复原始文本
-    const originalText = currentButton.getAttribute('data-original-text');
-    if (originalText) {
-        currentButton.textContent = originalText;
-        currentButton.removeAttribute('data-original-text');
+    const refreshButton = panel.querySelector('button[title="重新获取选项"]');
+    if (!refreshButton) return;
+    // 恢复原始内容
+    const originalHtml = refreshButton.getAttribute('data-original-html');
+    if (originalHtml) {
+        refreshButton.innerHTML = originalHtml;
+        refreshButton.removeAttribute('data-original-html');
     }
+    refreshButton.disabled = false;
+    refreshButton.style.opacity = '1';
 }
 
 // 初始化快捷操作面板
@@ -641,3 +624,18 @@ export function initQuickPacePanel() {
         }
     }
 }
+
+    // 统一下拉框样式
+    function applyUnifiedSelectStyle(select) {
+        select.style.width = '100%';
+        select.style.padding = '5px';
+        select.style.border = '1px solid #ccc';
+        select.style.borderRadius = '3px';
+        select.style.fontSize = '14px';
+        select.style.background = '#fff';
+        select.style.color = '#222';
+        select.style.boxSizing = 'border-box';
+    }
+    applyUnifiedSelectStyle(sendModeSelect);
+    applyUnifiedSelectStyle(paceSelect);
+    applyUnifiedSelectStyle(apiTypeSelect);

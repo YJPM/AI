@@ -395,11 +395,12 @@ async function generateOptions() {
         const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
         
         await displayOptions(suggestions, false); // false表示非流式显示
+        hidePacePanelLoading();
     } catch (error) {
         logger.error('生成选项时出错:', error);
+        hidePacePanelLoading();
     } finally {
         OptionsGenerator.isGenerating = false;
-        hidePacePanelLoading(); // 确保隐藏loading状态
     }
 }
 
