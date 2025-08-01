@@ -87,11 +87,68 @@ export function addExtensionSettings(settings) {
     settingsContainer.append(inlineDrawer);
     const inlineDrawerToggle = document.createElement('div');
     inlineDrawerToggle.classList.add('inline-drawer-toggle', 'inline-drawer-header');
+    inlineDrawerToggle.style.display = 'flex';
+    inlineDrawerToggle.style.justifyContent = 'space-between';
+    inlineDrawerToggle.style.alignItems = 'center';
+    
+    const titleContainer = document.createElement('div');
+    titleContainer.style.display = 'flex';
+    titleContainer.style.alignItems = 'center';
+    
     const extensionName = document.createElement('b');
     extensionName.textContent = 'AI助手';
+    
     const inlineDrawerIcon = document.createElement('div');
     inlineDrawerIcon.classList.add('inline-drawer-icon', 'fa-solid', 'fa-circle-chevron-down', 'down');
-    inlineDrawerToggle.append(extensionName, inlineDrawerIcon);
+    
+    // 创建重置按钮并放在标题右边
+    const resetButton = document.createElement('button');
+    resetButton.textContent = '重置';
+    resetButton.className = 'menu_button';
+    resetButton.style.padding = '2px 8px';
+    resetButton.style.marginLeft = '10px';
+    resetButton.style.fontSize = '0.8em';
+    resetButton.style.backgroundColor = 'var(--SmartThemeBlurple)';
+    resetButton.style.color = 'white';
+    resetButton.style.border = 'none';
+    resetButton.style.borderRadius = '4px';
+    resetButton.style.cursor = 'pointer';
+    resetButton.addEventListener('click', (e) => {
+        e.stopPropagation(); // 防止触发折叠面板
+        if (confirm('确定要将所有设置重置为默认值吗？此操作不可撤销。')) {
+            Object.assign(settings, structuredClone(defaultSettings));
+            
+            // 更新所有UI元素
+            optionsEnabledCheckbox.checked = settings.optionsGenEnabled;
+            debugCheckbox.checked = settings.debug;
+            apiTypeSelect.value = settings.optionsApiType;
+            apiKeyInput.value = settings.optionsApiKey;
+            modelInput.value = settings.optionsApiModel;
+            baseUrlInput.value = settings.optionsBaseUrl;
+            
+            // 更新发送模式选择器
+            const sendModeSelect = document.getElementById('options-send-mode');
+            if (sendModeSelect) sendModeSelect.value = settings.sendMode;
+            
+            // 更新用户画像相关字段
+            summaryInput.value = settings.userProfile.summary || '';
+            sceneInput.value = settings.userProfile.favoriteScene || '';
+            moodInput.value = settings.userProfile.favoriteMood || '';
+            focusInput.value = settings.userProfile.preferedFocus || '';
+            keywordsInput.value = (settings.userProfile.customKeywords || []).join(',');
+            
+            // 更新显示状态
+            optionsSettingsContainer.style.display = settings.optionsGenEnabled ? 'block' : 'none';
+            baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
+            
+            saveSettingsDebounced();
+            console.log('设置已重置为默认值');
+            alert('设置已重置为默认值');
+        }
+    });
+    
+    titleContainer.append(extensionName, inlineDrawerIcon);
+    inlineDrawerToggle.append(titleContainer, resetButton);
     const inlineDrawerContent = document.createElement('div');
     inlineDrawerContent.classList.add('inline-drawer-content');
     inlineDrawer.append(inlineDrawerToggle, inlineDrawerContent);
@@ -138,6 +195,27 @@ export function addExtensionSettings(settings) {
     const optionsSettingsContainer = document.createElement('div');
     optionsSettingsContainer.style.marginTop = '10px';
     optionsSettingsContainer.style.display = settings.optionsGenEnabled ? 'block' : 'none';
+    
+    // 发送模式选择
+    const sendModeLabel = document.createElement('label');
+    sendModeLabel.textContent = '发送模式:';
+    sendModeLabel.style.display = 'block';
+    sendModeLabel.style.marginTop = '10px';
+    const sendModeSelect = document.createElement('select');
+    sendModeSelect.id = 'options-send-mode';
+    sendModeSelect.dataset.setting = 'sendMode';
+    sendModeSelect.style.width = '100%';
+    sendModeSelect.innerHTML = `
+        <option value="manual">手动模式 - 点击选项后需手动发送</option>
+        <option value="auto">自动模式 - 点击选项后自动发送</option>
+    `;
+    sendModeSelect.value = settings.sendMode;
+    sendModeSelect.addEventListener('change', () => {
+        settings.sendMode = sendModeSelect.value;
+        saveSettingsDebounced();
+    });
+    optionsSettingsContainer.appendChild(sendModeLabel);
+    optionsSettingsContainer.appendChild(sendModeSelect);
     // API Type
     const apiTypeLabel = document.createElement('label');
     apiTypeLabel.textContent = 'API 类型:';
@@ -212,43 +290,7 @@ export function addExtensionSettings(settings) {
     baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
     optionsContainer.appendChild(optionsSettingsContainer);
 
-    // 添加重置按钮
-    const resetContainer = document.createElement('div');
-    resetContainer.style.marginTop = '20px';
-    resetContainer.style.borderTop = '1px solid var(--border_color)';
-    resetContainer.style.paddingTop = '15px';
-    const resetHeader = document.createElement('h4');
-    resetHeader.textContent = '重置设置';
-    resetHeader.style.margin = '0 0 10px 0';
-    resetContainer.appendChild(resetHeader);
-    const resetButton = document.createElement('button');
-    resetButton.textContent = '重置所有设置为默认值';
-    resetButton.className = 'menu_button';
-    resetButton.style.width = '100%';
-    resetButton.style.padding = '8px 12px';
-    resetButton.style.backgroundColor = 'var(--SmartThemeBlurple)';
-    resetButton.style.color = 'white';
-    resetButton.style.border = 'none';
-    resetButton.style.borderRadius = '4px';
-    resetButton.style.cursor = 'pointer';
-    resetButton.addEventListener('click', () => {
-        if (confirm('确定要将所有设置重置为默认值吗？此操作不可撤销。')) {
-            Object.assign(settings, structuredClone(defaultSettings));
-            optionsEnabledCheckbox.checked = settings.optionsGenEnabled;
-            debugCheckbox.checked = settings.debug;
-            apiTypeSelect.value = settings.optionsApiType;
-            apiKeyInput.value = settings.optionsApiKey;
-            modelInput.value = settings.optionsApiModel;
-            baseUrlInput.value = settings.optionsBaseUrl;
-            optionsSettingsContainer.style.display = settings.optionsGenEnabled ? 'block' : 'none';
-            baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
-            saveSettingsDebounced();
-            console.log('设置已重置为默认值');
-            alert('设置已重置为默认值');
-        }
-    });
-    resetContainer.appendChild(resetButton);
-    inlineDrawerContent.append(optionsContainer, resetContainer);
+    inlineDrawerContent.append(optionsContainer);
 
     // ========== 用户画像查看与编辑 ========== //
     const profileContainer = document.createElement('div');

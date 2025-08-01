@@ -171,6 +171,11 @@ async function displayOptions(options) {
     container.id = 'ti-options-container';
     sendForm.insertAdjacentElement('beforebegin', container);
     const sleep = ms => new Promise(res => setTimeout(res, ms));
+    
+    // 获取当前发送模式
+    const settings = getSettings();
+    const sendMode = settings.sendMode || 'manual';
+    
     for (const text of options) {
         const btn = document.createElement('button');
         btn.className = 'qr--button menu_button interactable ti-options-capsule';
@@ -181,10 +186,17 @@ async function displayOptions(options) {
         }
         btn.onclick = () => {
             const textarea = document.querySelector('#send_textarea, .send_textarea');
+            const sendButton = document.querySelector('#send_but, .send_but, button[onclick*="send"], button[onclick*="Send"]');
+            
             if (textarea) {
                 textarea.value = text;
                 textarea.dispatchEvent(new Event('input', { bubbles: true }));
                 textarea.focus();
+                
+                // 根据发送模式决定是否自动发送
+                if (sendMode === 'auto' && sendButton) {
+                    sendButton.click();
+                }
             }
             container.remove();
         };
