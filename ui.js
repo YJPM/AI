@@ -94,25 +94,47 @@ export function addExtensionSettings(settings) {
     const titleContainer = document.createElement('div');
     titleContainer.style.display = 'flex';
     titleContainer.style.alignItems = 'center';
+    titleContainer.style.gap = '10px'; // 添加间距
     
     const extensionName = document.createElement('b');
     extensionName.textContent = 'AI助手';
     
-    const inlineDrawerIcon = document.createElement('div');
-    inlineDrawerIcon.classList.add('inline-drawer-icon', 'fa-solid', 'fa-circle-chevron-down', 'down');
-    
-    // 创建重置按钮并放在标题右边
+    // 创建重置按钮并放在标题紧挨着的右边
     const resetButton = document.createElement('button');
-    resetButton.textContent = '重置';
     resetButton.className = 'menu_button';
-    resetButton.style.padding = '2px 8px';
-    resetButton.style.marginLeft = '10px';
-    resetButton.style.fontSize = '0.8em';
-    resetButton.style.backgroundColor = 'var(--SmartThemeBlurple)';
-    resetButton.style.color = 'white';
+    resetButton.style.padding = '2px';
+    resetButton.style.width = '24px';
+    resetButton.style.height = '24px';
+    resetButton.style.display = 'flex';
+    resetButton.style.justifyContent = 'center';
+    resetButton.style.alignItems = 'center';
+    resetButton.style.backgroundColor = 'transparent';
+    resetButton.style.color = 'var(--SmartThemeBodyColor)';
     resetButton.style.border = 'none';
     resetButton.style.borderRadius = '4px';
     resetButton.style.cursor = 'pointer';
+    resetButton.style.transition = 'all 0.2s ease';
+    resetButton.title = '重置设置';
+    
+    // 添加悬停效果
+    resetButton.addEventListener('mouseover', () => {
+        resetButton.style.backgroundColor = 'var(--SmartThemeBlurple)';
+        resetButton.style.color = 'white';
+    });
+    resetButton.addEventListener('mouseout', () => {
+        resetButton.style.backgroundColor = 'transparent';
+        resetButton.style.color = 'var(--SmartThemeBodyColor)';
+    });
+    
+    // 使用图标而不是文本
+    const resetIcon = document.createElement('i');
+    resetIcon.classList.add('fa-solid', 'fa-rotate-left'); // 使用刷新/重置图标
+    resetIcon.style.fontSize = '14px';
+    resetButton.appendChild(resetIcon);
+    
+    // 展开/折叠图标放在最右边
+    const inlineDrawerIcon = document.createElement('div');
+    inlineDrawerIcon.classList.add('inline-drawer-icon', 'fa-solid', 'fa-circle-chevron-down', 'down');
     resetButton.addEventListener('click', (e) => {
         e.stopPropagation(); // 防止触发折叠面板
         if (confirm('确定要将所有设置重置为默认值吗？此操作不可撤销。')) {
@@ -147,8 +169,10 @@ export function addExtensionSettings(settings) {
         }
     });
     
-    titleContainer.append(extensionName, inlineDrawerIcon);
-    inlineDrawerToggle.append(titleContainer, resetButton);
+    // 标题容器只包含标题文本和重置按钮
+    titleContainer.append(extensionName, resetButton);
+    // 将标题容器和展开图标添加到抽屉切换器
+    inlineDrawerToggle.append(titleContainer, inlineDrawerIcon);
     const inlineDrawerContent = document.createElement('div');
     inlineDrawerContent.classList.add('inline-drawer-content');
     inlineDrawer.append(inlineDrawerToggle, inlineDrawerContent);
