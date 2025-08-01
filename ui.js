@@ -411,7 +411,7 @@ export function createQuickPacePanel() {
     panel.id = 'quick-pace-panel';
     panel.style.cssText = `
         position: absolute;
-        top: -50px;
+        top: -25px;
         right: 10px;
         background: var(--SmartThemeBlurColor, rgba(255, 255, 255, 0.9));
         border: 1px solid var(--SmartThemeBorderColor, #ddd);
@@ -512,7 +512,8 @@ export function createQuickPacePanel() {
     
     refreshButton.addEventListener('click', async () => {
         console.log('[refreshButton] 点击，准备重新获取选项...');
-        // 导入并调用重新获取选项功能
+        const { showPacePanelLoading } = await import('./ui.js');
+        showPacePanelLoading();
         const { OptionsGenerator } = await import('./optionsGenerator.js');
         if (OptionsGenerator && typeof OptionsGenerator.generateOptions === 'function') {
             console.log('[refreshButton] 调用 OptionsGenerator.generateOptions');
