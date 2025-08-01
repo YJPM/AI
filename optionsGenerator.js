@@ -724,3 +724,9 @@ export const OptionsGenerator = {
     analyzeUserBehavior,
     tryAnalyzeUserProfile
 };
+
+// 暴露到全局，方便UI调用
+if (typeof window !== 'undefined') {
+    window.analyzeUserBehavior = analyzeUserBehavior;
+    window.tryAnalyzeUserProfile = tryAnalyzeUserProfile;
+}

@@ -710,11 +710,19 @@ export function addExtensionSettings(settings) {
     analyzeButton.style.borderRadius = '4px';
     analyzeButton.style.cursor = 'pointer';
     analyzeButton.addEventListener('click', () => {
-        if (typeof OptionsGenerator !== 'undefined' && typeof OptionsGenerator.analyzeUserBehavior === 'function') {
-            OptionsGenerator.analyzeUserBehavior();
+        // 直接调用全局函数
+        if (typeof window.analyzeUserBehavior === 'function') {
+            window.analyzeUserBehavior();
             alert('用户画像分析完成，请查看控制台日志');
         } else {
-            alert('分析功能不可用');
+            // 尝试通过 OptionsGenerator 调用
+            if (typeof OptionsGenerator !== 'undefined' && typeof OptionsGenerator.analyzeUserBehavior === 'function') {
+                OptionsGenerator.analyzeUserBehavior();
+                alert('用户画像分析完成，请查看控制台日志');
+            } else {
+                alert('分析功能不可用，请检查控制台错误');
+                console.error('analyzeUserBehavior 函数未找到');
+            }
         }
     });
     analyzeContainer.appendChild(analyzeButton);
