@@ -233,7 +233,6 @@ async function displayOptionsStreaming(content) {
 }
 
 async function displayOptions(options, isStreaming = false) {
-    hideGeneratingUI();
     const oldContainer = document.getElementById('ti-options-container');
     if (oldContainer) oldContainer.remove();
     const sendForm = document.getElementById('send_form');
@@ -654,6 +653,9 @@ async function generateOptions() {
                     }
                 }
             }
+            
+            // 流式生成完成后，立即隐藏思考提示
+            hideGeneratingUI();
         } else {
             // 非流式生成
             const response = await fetch(apiUrl, {
@@ -696,8 +698,11 @@ async function generateOptions() {
         }
         // 解析建议
         const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
-        await displayOptions(suggestions, false); // false表示非流式显示
+        
+        // 在选项解析完成后立即隐藏思考提示
         hideGeneratingUI();
+        
+        await displayOptions(suggestions, false); // false表示非流式显示
     } catch (error) {
         logger.error('生成选项时出错:', error);
         showGeneratingUI(`生成失败: ${error.message}`, 5000);
