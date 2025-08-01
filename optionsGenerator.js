@@ -1,4 +1,4 @@
-import { getSettings, MERGED_DIRECTOR_PROMPT, PACE_PROMPTS } from './settings.js';
+import { getSettings, MERGED_DIRECTOR_PROMPT } from './settings.js';
 import { logger } from './logger.js';
 import { saveSettingsDebounced } from '../../../../script.js';
 import { showPacePanelLoading, hidePacePanelLoading } from './ui.js';
@@ -393,12 +393,90 @@ async function generateOptions() {
         console.log('[generateOptions] 当前推进节奏:', paceMode);
         let promptTemplate;
         
-        // 从PACE_PROMPTS中选择对应的提示模板
-        if (PACE_PROMPTS[paceMode]) {
-            promptTemplate = PACE_PROMPTS[paceMode];
+        // 根据推进节奏选择模板
+        if (paceMode === 'normal') {
+            promptTemplate = `
+你是我的AI叙事导演。分析最近对话，为我生成4个戏剧性行动建议（每条用【】包裹）。
+
+要求：
+- 始终以我的第一人称视角
+- 每条建议不超过50字
+- 分析场景类型、我的情绪、叙事焦点
+- 保持正常、健康的剧情发展
+- 必须生成4个选项
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- JSON格式分析（scene_type, user_mood, narrative_focus）
+- 建议列表（单行、每条用【】包裹）
+
+## 开始
+`.trim();
+        } else if (paceMode === 'fast') {
+            promptTemplate = `
+你是我的AI叙事导演。分析最近对话，为我生成4个时间跨越行动建议（每条用【】包裹）。
+
+要求：
+- 始终以我的第一人称视角
+- 每条建议不超过50字
+- 包含明显时间推进（任务完成、赴约、重要事件）
+- 避免当前场景细节，直接推进到下一节点
+- 保持正常、健康的剧情发展
+- 必须生成4个选项
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- JSON格式分析（scene_type, user_mood, narrative_focus）
+- 建议列表（单行、每条用【】包裹，必须4个，包含时间跨越）
+
+## 开始
+`.trim();
+        } else if (paceMode === 'jump') {
+            promptTemplate = `
+你是我的AI叙事导演。分析最近对话，为我生成4个大幅度时间跳跃建议（每条用【】包裹）。
+
+要求：
+- 始终以我的第一人称视角
+- 每条建议不超过50字
+- 生成4个选项，全部包含显著的时间跳跃
+- 跳过当前场景的所有细节，直接进入新场景
+- 包含明确的时间标记（几小时后、第二天、一周后等）
+- 保持正常、健康的剧情发展
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- JSON格式分析（scene_type, user_mood, narrative_focus）
+- 建议列表（单行、每条用【】包裹，必须4个，包含明确时间跳跃）
+
+## 开始
+`.trim();
         } else {
             // 默认使用normal模式
-            promptTemplate = PACE_PROMPTS.normal;
+            promptTemplate = `
+你是我的AI叙事导演。分析最近对话，为我生成4个戏剧性行动建议（每条用【】包裹）。
+
+要求：
+- 始终以我的第一人称视角
+- 每条建议不超过50字
+- 分析场景类型、我的情绪、叙事焦点
+- 保持正常、健康的剧情发展
+- 必须生成4个选项
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- JSON格式分析（scene_type, user_mood, narrative_focus）
+- 建议列表（单行、每条用【】包裹）
+
+## 开始
+`.trim();
         }
         
         // 组装合并prompt

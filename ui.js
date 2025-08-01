@@ -132,7 +132,7 @@ export function addExtensionSettings(settings) {
             sendModeSelect.value = settings.sendMode;
             streamCheckbox.checked = settings.streamOptions;
             paceSelect.value = settings.paceMode;
-
+            
             // 更新快捷面板
             updateQuickPanelFromSettings();
             
@@ -193,36 +193,36 @@ export function addExtensionSettings(settings) {
     // 推进节奏设置
     const paceContainer = document.createElement('div');
     paceContainer.style.marginTop = '8px';
-
+    
     const paceLabel = document.createElement('label');
     paceLabel.textContent = '推进节奏:';
     applyUnifiedLabelStyle(paceLabel);
-
+    
     const paceSelect = document.createElement('select');
-
+    
     const paceOptions = [
-        { value: 'normal', text: '正常 (当前场景行动，如"收拾东西准备回家")' },
-        { value: 'fast', text: '快速 (时间推进，如"在回家的路上了")' },
-        { value: 'jump', text: '跳跃 (场景跳转，如"已经到家了")' }
+        { value: 'normal', text: '正常 (3-5个选项，标准推进)' },
+        { value: 'fast', text: '快速 (3-4个选项，有明显时间跨越)' },
+        { value: 'jump', text: '跳跃 (3-4个选项，场景直接跳转)' }
     ];
-
+    
     paceOptions.forEach(option => {
         const optionElement = document.createElement('option');
         optionElement.value = option.value;
         optionElement.textContent = option.text;
         paceSelect.appendChild(optionElement);
     });
-
+    
     paceSelect.value = settings.paceMode || 'normal';
     paceSelect.setAttribute('data-pace-select', 'true');
     paceSelect.addEventListener('change', (e) => {
         settings.paceMode = e.target.value;
         saveSettingsDebounced();
-
+        
         // 同步更新快捷面板
         updateQuickPanelFromSettings();
     });
-
+    
     paceContainer.appendChild(paceLabel);
     paceContainer.appendChild(paceSelect);
     optionsContainer.appendChild(paceContainer);
@@ -457,8 +457,28 @@ export function addExtensionSettings(settings) {
 
 // 更新快捷面板状态
 function updateQuickPanelFromSettings() {
-    // 调用更完善的updatePacePanel函数
-    updatePacePanel();
+    const settings = getSettings();
+    const panel = document.getElementById('quick-pace-panel');
+    if (!panel) return;
+    
+    // 定义推进节奏模式
+    const paceModes = [
+        { value: 'normal', color: '#2196F3' },
+        { value: 'fast', color: '#4CAF50' },
+        { value: 'jump', color: '#9C27B0' }
+    ];
+    
+    // 更新所有按钮状态
+    panel.querySelectorAll('button').forEach((btn) => {
+        const btnPaceMode = btn.getAttribute('data-pace-mode');
+        const btnMode = paceModes.find(m => m.value === btnPaceMode);
+        
+        if (btnMode) {
+            const isBtnActive = settings.paceMode === btnMode.value;
+            btn.style.background = isBtnActive ? btnMode.color : 'transparent';
+            btn.style.color = isBtnActive ? 'white' : btnMode.color;
+        }
+    });
 }
 
 // 创建快捷操作面板
@@ -490,65 +510,66 @@ export function createQuickPacePanel() {
         font-family: inherit;
     `;
     
-    // 定义推进节奏模式
-    const paceModes = [
-        { value: 'normal', text: '正常', color: '#4CAF50' },
-        { value: 'fast', text: '快速', color: '#2196F3' },
-        { value: 'jump', text: '跳跃', color: '#FF9800' }
-    ];
-
     // 创建推进节奏按钮
-    paceModes.forEach(mode => {
+    const paceModes = [
+        { value: 'normal', text: '正常', color: '#2196F3' },
+        { value: 'fast', text: '快速', color: '#4CAF50' },
+        { value: 'jump', text: '跳跃', color: '#9C27B0' }
+    ];
+    
+    // 创建推进节奏按钮
+    paceModes.forEach((mode) => {
         const button = document.createElement('button');
         button.textContent = mode.text;
         button.setAttribute('data-pace-mode', mode.value);
-
-        // 检查当前设置是否匹配
+        
+        // 检查当前设置是否匹配这个模式
         const isActive = settings.paceMode === mode.value;
-
+        
         button.style.cssText = `
-            padding: 4px 8px;
+            padding: 3px 6px;
             border: 1px solid ${mode.color};
-            border-radius: 16px;
+            border-radius: 4px;
             background: ${isActive ? mode.color : 'transparent'};
             color: ${isActive ? 'white' : mode.color};
             cursor: pointer;
-            font-size: 12px;
+            font-size: 10px;
+            font-weight: 500;
             transition: all 0.2s;
-            min-width: 60px;
+            min-width: 50px;
             text-align: center;
             line-height: 1.2;
+            margin: 1px;
         `;
-
+        
         button.addEventListener('click', () => {
-            // 更新设置
             settings.paceMode = mode.value;
             saveSettingsDebounced();
-
-            // 更新按钮状态
-            panel.querySelectorAll('button').forEach(btn => {
-                const btnMode = paceModes.find(m => 
-                    m.value === btn.getAttribute('data-pace-mode')
-                );
+            
+            // 更新所有按钮状态
+            panel.querySelectorAll('button').forEach((btn) => {
+                const btnPaceMode = btn.getAttribute('data-pace-mode');
+                const btnMode = paceModes.find(m => m.value === btnPaceMode);
+                
                 if (btnMode) {
-                    const isActive = btn.getAttribute('data-pace-mode') === mode.value;
-                    btn.style.background = isActive ? btnMode.color : 'transparent';
-                    btn.style.color = isActive ? 'white' : btnMode.color;
+                    const isBtnActive = settings.paceMode === btnMode.value;
+                    btn.style.background = isBtnActive ? btnMode.color : 'transparent';
+                    btn.style.color = isBtnActive ? 'white' : btnMode.color;
                 }
             });
-
+            
             // 同步更新设置面板
             const paceSelect = document.querySelector('[data-pace-select]');
             if (paceSelect) {
-                paceSelect.value = mode.value;
+                paceSelect.value = settings.paceMode;
             }
-
+            
             console.log('[paceMode] 已切换到:', mode.text, '(', mode.value, ')');
         });
-
+        
         panel.appendChild(button);
     });
-
+    
     // 添加分隔符
     const separator = document.createElement('div');
     separator.style.cssText = `
@@ -557,7 +578,7 @@ export function createQuickPacePanel() {
         margin: 0 3px;
     `;
     panel.appendChild(separator);
-
+    
     // 添加重新获取选项按钮
     const refreshButton = document.createElement('button');
     refreshButton.textContent = '🔄';
@@ -576,7 +597,7 @@ export function createQuickPacePanel() {
         line-height: 1.2;
         margin-left: 3px;
     `;
-
+    
     refreshButton.addEventListener('click', async () => {
         console.log('[refreshButton] 点击，准备重新获取选项...');
         // 清除页面已有选项
@@ -585,110 +606,82 @@ export function createQuickPacePanel() {
             oldContainer.remove();
             console.log('[refreshButton] 已清除旧选项容器');
         }
-        const { showPacePanelLoading } = await import('./ui.js');
+        // 直接使用当前文件中的函数显示加载状态
         showPacePanelLoading();
         const { OptionsGenerator } = await import('./optionsGenerator.js');
         if (OptionsGenerator && typeof OptionsGenerator.generateOptions === 'function') {
             console.log('[refreshButton] 调用 OptionsGenerator.generateOptions');
-            OptionsGenerator.generateOptions();
+            await OptionsGenerator.generateOptions();
+            // 完成后隐藏加载状态
+            hidePacePanelLoading();
         } else {
             console.warn('[refreshButton] OptionsGenerator.generateOptions 不可用', OptionsGenerator);
+            hidePacePanelLoading();
         }
     });
-
+    
     refreshButton.addEventListener('mouseenter', () => {
         refreshButton.style.background = '#66620';
         refreshButton.style.color = '#333';
     });
-
+    
     refreshButton.addEventListener('mouseleave', () => {
         refreshButton.style.background = 'transparent';
         refreshButton.style.color = '#666';
     });
-
+    
     panel.appendChild(refreshButton);
 
     // loading相关日志
     window.__pacePanelDebug = window.__pacePanelDebug || {};
     window.__pacePanelDebug.showPacePanelLoading = (...args) => { console.log('[showPacePanelLoading]', ...args); };
     window.__pacePanelDebug.hidePacePanelLoading = (...args) => { console.log('[hidePacePanelLoading]', ...args); };
-
+    
     return panel;
 }
 
 // 显示loading状态
-function showPacePanelLoading() {
+export function showPacePanelLoading() {
+    console.log('[showPacePanelLoading] called');
     const panel = document.getElementById('quick-pace-panel');
     if (!panel) return;
-    
-    // 查找loading元素或创建
-    let loadingEl = panel.querySelector('.pace-loading');
-    if (!loadingEl) {
-        loadingEl = document.createElement('span');
-        loadingEl.className = 'pace-loading';
-        loadingEl.textContent = '生成中...';
-        loadingEl.style.cssText = `
-            margin-left: 5px;
-            color: var(--SmartThemeBlurple);
-            font-style: italic;
-            font-size: 12px;
+    const refreshButton = panel.querySelector('button[title="重新获取选项"]');
+    if (!refreshButton) return;
+    // 保存原始内容
+    refreshButton.setAttribute('data-original-html', refreshButton.innerHTML);
+    // 替换为loading图标
+    refreshButton.innerHTML = '<div style="display:inline-block;animation:spin 1s linear infinite;font-size:14px;font-weight:bold;">⟳</div>';
+    refreshButton.disabled = true;
+    refreshButton.style.opacity = '0.6';
+    // 添加旋转动画样式
+    if (!document.getElementById('pace-loading-style')) {
+        const style = document.createElement('style');
+        style.id = 'pace-loading-style';
+        style.textContent = `
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
         `;
-        panel.appendChild(loadingEl);
+        document.head.appendChild(style);
     }
-    
-    loadingEl.style.display = 'inline';
-    window.__pacePanelDebug?.showPacePanelLoading('显示loading状态');
 }
 
 // 隐藏loading状态
-function hidePacePanelLoading() {
+export function hidePacePanelLoading() {
+    console.log('[hidePacePanelLoading] called');
     const panel = document.getElementById('quick-pace-panel');
     if (!panel) return;
-    
-    const loadingEl = panel.querySelector('.pace-loading');
-    if (loadingEl) {
-        loadingEl.style.display = 'none';
+    const refreshButton = panel.querySelector('button[title="重新获取选项"]');
+    if (!refreshButton) return;
+    // 恢复原始内容
+    const originalHtml = refreshButton.getAttribute('data-original-html');
+    if (originalHtml) {
+        refreshButton.innerHTML = originalHtml;
+        refreshButton.removeAttribute('data-original-html');
     }
-    
-    window.__pacePanelDebug?.hidePacePanelLoading('隐藏loading状态');
-}
-
-// 导出函数
-window.showPacePanelLoading = showPacePanelLoading;
-window.hidePacePanelLoading = hidePacePanelLoading;
-
-export { showPacePanelLoading, hidePacePanelLoading };
-
-// 更新快捷面板
-function updatePacePanel() {
-    const settings = getSettings();
-    const panel = document.getElementById('quick-pace-panel');
-    if (!panel) return;
-    
-    // 定义推进节奏模式
-    const paceModes = [
-        { value: 'normal', text: '正常', color: '#4CAF50' },
-        { value: 'fast', text: '快速', color: '#2196F3' },
-        { value: 'jump', text: '跳跃', color: '#FF9800' }
-    ];
-    
-    // 更新所有按钮状态
-    panel.querySelectorAll('button').forEach((btn) => {
-        const btnPaceMode = btn.getAttribute('data-pace-mode');
-        const btnMode = paceModes.find(m => m.value === btnPaceMode);
-        
-        if (btnMode) {
-            const isBtnActive = settings.paceMode === btnMode.value;
-            btn.style.background = isBtnActive ? btnMode.color : 'transparent';
-            btn.style.color = isBtnActive ? 'white' : btnMode.color;
-        }
-    });
-    
-    // 同步更新设置面板
-    const paceSelect = document.querySelector('[data-pace-select]');
-    if (paceSelect) {
-        paceSelect.value = settings.paceMode;
-    }
+    refreshButton.disabled = false;
+    refreshButton.style.opacity = '1';
 }
 
 // 初始化快捷操作面板
