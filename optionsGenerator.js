@@ -244,44 +244,78 @@ async function displayOptions(options, isStreaming = false) {
 
 // 兼容型上下文提取
 async function getContextCompatible(limit = 20) {
+    console.log('[getContextCompatible] 开始获取上下文...');
+    console.log('[getContextCompatible] window.TavernHelper:', window.TavernHelper);
+    console.log('[getContextCompatible] window.SillyTavern:', window.SillyTavern);
+    
     // 兼容 TavernHelper 或 DOM
     if (typeof window.TavernHelper?.getContext === 'function') {
-        return await window.TavernHelper.getContext({ tokenLimit: 8192 });
+        console.log('[getContextCompatible] 使用 TavernHelper.getContext()');
+        try {
+            const result = await window.TavernHelper.getContext({ tokenLimit: 8192 });
+            console.log('[getContextCompatible] TavernHelper.getContext() 成功:', result);
+            return result;
+        } catch (error) {
+            console.error('[getContextCompatible] TavernHelper.getContext() 失败:', error);
+            // 降级到DOM解析
+            console.log('[getContextCompatible] 降级到DOM解析...');
+        }
     } else {
-        // DOM fallback
-        const messageElements = document.querySelectorAll('#chat .mes');
-        const messages = [];
-        messageElements.forEach((el) => {
-            const contentEl = el.querySelector('.mes_text');
-            if (contentEl) {
-                let role = 'system';
-                const isUserAttr = el.getAttribute('is_user');
-                if (isUserAttr === 'true') role = 'user';
-                else if (isUserAttr === 'false') role = 'assistant';
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = contentEl.innerHTML.replace(/<br\s*\/?>/gi, '\n');
-                const content = (tempDiv.textContent || tempDiv.innerText || '').trim();
-                if (content && (role === 'user' || role === 'assistant')) {
-                    messages.push({ role, content });
-                }
-            }
-        });
-        return { messages: messages.slice(-limit) };
+        console.log('[getContextCompatible] TavernHelper.getContext() 不可用，使用DOM解析');
     }
+    
+    // DOM fallback
+    console.log('[getContextCompatible] 开始DOM解析...');
+    const messageElements = document.querySelectorAll('#chat .mes');
+    console.log('[getContextCompatible] 找到消息元素数量:', messageElements.length);
+    
+    const messages = [];
+    messageElements.forEach((el, index) => {
+        const contentEl = el.querySelector('.mes_text');
+        if (contentEl) {
+            let role = 'system';
+            const isUserAttr = el.getAttribute('is_user');
+            if (isUserAttr === 'true') role = 'user';
+            else if (isUserAttr === 'false') role = 'assistant';
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = contentEl.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+            const content = (tempDiv.textContent || tempDiv.innerText || '').trim();
+            
+            if (content && (role === 'user' || role === 'assistant')) {
+                messages.push({ role, content });
+                console.log(`[getContextCompatible] 解析消息 ${index}:`, { role, content: content.substring(0, 50) + '...' });
+            }
+        }
+    });
+    
+    const result = { messages: messages.slice(-limit) };
+    console.log('[getContextCompatible] DOM解析完成，消息数量:', result.messages.length);
+    console.log('[getContextCompatible] 最终结果:', result);
+    return result;
 }
 
 // 在建议生成/选择后定期分析
 async function generateOptions() {
+    console.log('[generateOptions] 开始生成选项...');
     const settings = getSettings();
-    if (OptionsGenerator.isGenerating) return;
+    if (OptionsGenerator.isGenerating) {
+        console.log('[generateOptions] 正在生成中，跳过...');
+        return;
+    }
     OptionsGenerator.isManuallyStopped = false;
-    if (!settings.optionsGenEnabled || !settings.optionsApiKey) return;
+    if (!settings.optionsGenEnabled || !settings.optionsApiKey) {
+        console.log('[generateOptions] 选项生成未启用或缺少API密钥');
+        return;
+    }
     
+    console.log('[generateOptions] 设置检查通过，开始生成...');
     OptionsGenerator.isGenerating = true;
     
     try {
         // 根据推进节奏选择提示模板
         const paceMode = settings.paceMode || 'balanced';
+        console.log('[generateOptions] 当前推进节奏:', paceMode);
         let promptTemplate;
         
         if (paceMode === 'slow') {
@@ -368,14 +402,22 @@ async function generateOptions() {
         }
         
         // 组装合并prompt
+        console.log('[generateOptions] 开始获取上下文...');
         const context = await getContextCompatible();
+        console.log('[generateOptions] 上下文获取完成，消息数量:', context.messages.length);
+        
         const prompt = promptTemplate
             .replace(/{{context}}/g, context.messages.map(m => `[${m.role}] ${m.content}`).join('\n'));
+        console.log('[generateOptions] 提示词组装完成，长度:', prompt.length);
+        
         const finalMessages = [{ role: 'user', content: prompt }];
         let content = '';
         const apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
+        console.log('[generateOptions] API URL:', apiUrl);
+        console.log('[generateOptions] 模型:', settings.optionsApiModel);
         
         if (settings.streamOptions) {
+            console.log('[generateOptions] 使用流式生成...');
             // 流式生成
             const response = await fetch(apiUrl, {
                 method: 'POST',
@@ -391,12 +433,16 @@ async function generateOptions() {
                 }),
             });
             
+            console.log('[generateOptions] API响应状态:', response.status);
+            
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error('[generateOptions] API响应错误:', errorText);
                 logger.error('API 响应错误 (raw):', errorText);
                 throw new Error('API 请求失败');
             }
             
+            console.log('[generateOptions] 开始处理流式响应...');
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             
@@ -426,14 +472,18 @@ async function generateOptions() {
                 }
             }
             
+            console.log('[generateOptions] 流式生成完成，总内容长度:', content.length);
             // 流式生成完成
             // 解析建议
             const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+            console.log('[generateOptions] 解析到选项数量:', suggestions.length);
+            console.log('[generateOptions] 选项内容:', suggestions);
             
             // 等待选项完全显示后再隐藏loading
             await displayOptions(suggestions, true); // true表示流式显示
             hidePacePanelLoading();
         } else {
+            console.log('[generateOptions] 使用非流式生成...');
             // 非流式生成
             const response = await fetch(apiUrl, {
                 method: 'POST',
@@ -449,26 +499,34 @@ async function generateOptions() {
                 }),
             });
             
+            console.log('[generateOptions] API响应状态:', response.status);
+            
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error('[generateOptions] API响应错误:', errorText);
                 logger.error('API 响应错误 (raw):', errorText);
                 throw new Error('API 请求失败');
             }
             
             const data = await response.json();
             content = data.candidates?.[0]?.content?.parts?.[0]?.text || data.choices?.[0]?.message?.content || '';
+            console.log('[generateOptions] 非流式生成完成，内容长度:', content.length);
             
             // 解析建议
             const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+            console.log('[generateOptions] 解析到选项数量:', suggestions.length);
+            console.log('[generateOptions] 选项内容:', suggestions);
             
             // 等待选项完全显示后再隐藏loading
             await displayOptions(suggestions, false); // false表示非流式显示
             hidePacePanelLoading();
         }
     } catch (error) {
+        console.error('[generateOptions] 生成选项时出错:', error);
         logger.error('生成选项时出错:', error);
         hidePacePanelLoading();
     } finally {
+        console.log('[generateOptions] 生成完成，重置状态');
         OptionsGenerator.isGenerating = false;
     }
 }
@@ -606,4 +664,46 @@ export class OptionsGenerator {
     static displayOptionsStreaming = displayOptionsStreaming;
     static generateOptions = generateOptions;
     static testApiConnection = testApiConnection;
+    
+    // 测试TavernHelper接口
+    static async testTavernHelper() {
+        console.log('=== 开始测试TavernHelper接口 ===');
+        console.log('window.TavernHelper:', window.TavernHelper);
+        console.log('window.SillyTavern:', window.SillyTavern);
+        
+        if (typeof window.TavernHelper !== 'undefined') {
+            console.log('TavernHelper 可用，测试其方法...');
+            
+            // 测试可用的方法
+            const methods = [
+                'getContext',
+                'getCharAvatarPath',
+                'getWorldBooks',
+                'getVariables'
+            ];
+            
+            for (const method of methods) {
+                if (typeof window.TavernHelper[method] === 'function') {
+                    console.log(`TavernHelper.${method} 可用`);
+                    try {
+                        if (method === 'getContext') {
+                            const result = await window.TavernHelper[method]({ tokenLimit: 1000 });
+                            console.log(`${method} 结果:`, result);
+                        } else {
+                            const result = window.TavernHelper[method]();
+                            console.log(`${method} 结果:`, result);
+                        }
+                    } catch (error) {
+                        console.error(`${method} 调用失败:`, error);
+                    }
+                } else {
+                    console.log(`TavernHelper.${method} 不可用`);
+                }
+            }
+        } else {
+            console.log('TavernHelper 不可用');
+        }
+        
+        console.log('=== TavernHelper接口测试完成 ===');
+    }
 }
