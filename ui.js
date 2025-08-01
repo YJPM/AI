@@ -131,6 +131,8 @@ export function addExtensionSettings(settings) {
             baseUrlInput.value = settings.optionsBaseUrl;
             sendModeSelect.value = settings.sendMode;
             streamCheckbox.checked = settings.streamOptions;
+            paceSelect.value = settings.paceMode;
+            plotSelect.value = settings.plotMode;
             
             // 更新显示状态
             baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
@@ -230,6 +232,39 @@ export function addExtensionSettings(settings) {
     paceContainer.appendChild(paceLabel);
     paceContainer.appendChild(paceSelect);
     optionsContainer.appendChild(paceContainer);
+    
+    // 剧情走向设置
+    const plotContainer = document.createElement('div');
+    plotContainer.style.marginTop = '8px';
+    
+    const plotLabel = document.createElement('label');
+    plotLabel.textContent = '剧情走向:';
+    plotLabel.style.marginTop = '8px';
+    applyUnifiedLabelStyle(plotLabel);
+    const plotSelect = document.createElement('select');
+    
+    const plotOptions = [
+        { value: 'normal', text: '正常 (健康剧情发展)' },
+        { value: 'twist', text: '转折 (戏剧性变化)' },
+        { value: 'nsfw', text: 'NSFW (成人向内容)' }
+    ];
+    
+    plotOptions.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option.value;
+        optionElement.textContent = option.text;
+        plotSelect.appendChild(optionElement);
+    });
+    
+    plotSelect.value = settings.plotMode || 'normal';
+    plotSelect.addEventListener('change', (e) => {
+        settings.plotMode = e.target.value;
+        saveSettingsDebounced();
+    });
+    
+    plotContainer.appendChild(plotLabel);
+    plotContainer.appendChild(plotSelect);
+    optionsContainer.appendChild(plotContainer);
     
     // API Type
     const apiTypeLabel = document.createElement('label');
@@ -496,6 +531,14 @@ export function createQuickPacePanel() {
         { value: 'mixed', text: '混合', color: '#9C27B0' }
     ];
     
+    // 创建剧情走向按钮
+    const plotModes = [
+        { value: 'normal', text: '正常', color: '#4CAF50' },
+        { value: 'twist', text: '转折', color: '#FF5722' },
+        { value: 'nsfw', text: 'NSFW', color: '#E91E63' }
+    ];
+    
+    // 创建推进节奏按钮
     paceModes.forEach((mode, idx) => {
         const button = document.createElement('button');
         button.textContent = mode.text;
@@ -519,8 +562,8 @@ export function createQuickPacePanel() {
             settings.paceMode = mode.value;
             saveSettingsDebounced();
             
-            // 更新所有按钮状态
-            panel.querySelectorAll('button').forEach((btn, index) => {
+            // 更新所有推进节奏按钮状态
+            panel.querySelectorAll('[data-pace-mode]').forEach((btn, index) => {
                 const currentMode = paceModes[index];
                 console.log('[paceMode sync] index:', index, 'currentMode:', currentMode, 'btn:', btn);
                 if (!currentMode) {
@@ -531,24 +574,70 @@ export function createQuickPacePanel() {
                 btn.style.color = settings.paceMode === currentMode.value ? 'white' : currentMode.color;
             });
             
-            // 同步更新扩展设置面板中的选择器
-            const paceSelect = document.querySelector('select[data-pace-select]');
-            console.log('[paceMode sync] paceSelect:', paceSelect);
+            // 同步更新设置面板
+            const paceSelect = document.querySelector('[data-pace-select]');
             if (paceSelect) {
-                paceSelect.value = mode.value;
+                paceSelect.value = settings.paceMode;
             }
+            
+            console.log('[paceMode] 已切换到:', mode.value);
         });
         
-        button.addEventListener('mouseenter', () => {
-            if (settings.paceMode !== mode.value) {
-                button.style.background = mode.color + '20';
-            }
-        });
+        panel.appendChild(button);
+    });
+    
+    // 添加分隔符
+    const separator = document.createElement('div');
+    separator.style.cssText = `
+        width: 1px;
+        background: var(--SmartThemeBorderColor, #ddd);
+        margin: 0 3px;
+    `;
+    panel.appendChild(separator);
+    
+    // 创建剧情走向按钮
+    plotModes.forEach((mode, idx) => {
+        const button = document.createElement('button');
+        button.textContent = mode.text;
+        button.setAttribute('data-plot-mode', mode.value);
+        button.style.cssText = `
+            padding: 3px 6px;
+            border: 1px solid ${mode.color};
+            border-radius: 4px;
+            background: ${settings.plotMode === mode.value ? mode.color : 'transparent'};
+            color: ${settings.plotMode === mode.value ? 'white' : mode.color};
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.2s;
+            min-width: 36px;
+            text-align: center;
+            line-height: 1.2;
+        `;
         
-        button.addEventListener('mouseleave', () => {
-            if (settings.paceMode !== mode.value) {
-                button.style.background = 'transparent';
+        button.addEventListener('click', () => {
+            settings.plotMode = mode.value;
+            saveSettingsDebounced();
+            
+            // 更新所有剧情走向按钮状态
+            panel.querySelectorAll('[data-plot-mode]').forEach((btn, index) => {
+                const currentMode = plotModes[index];
+                console.log('[plotMode sync] index:', index, 'currentMode:', currentMode, 'btn:', btn);
+                if (!currentMode) {
+                    console.warn('[plotMode sync] plotModes[', index, '] 未定义，btn:', btn);
+                    return;
+                }
+                btn.style.background = settings.plotMode === currentMode.value ? currentMode.color : 'transparent';
+                btn.style.color = settings.plotMode === currentMode.value ? 'white' : currentMode.color;
+            });
+            
+            // 同步更新设置面板
+            const plotSelect = document.querySelector('select[value="' + settings.plotMode + '"]');
+            if (plotSelect) {
+                plotSelect.value = settings.plotMode;
             }
+            
+            console.log('[plotMode] 已切换到:', mode.value);
         });
         
         panel.appendChild(button);

@@ -390,17 +390,23 @@ async function generateOptions() {
     try {
         // 根据推进节奏选择提示模板
         const paceMode = settings.paceMode || 'balanced';
+        const plotMode = settings.plotMode || 'normal';
         console.log('[generateOptions] 当前推进节奏:', paceMode);
+        console.log('[generateOptions] 当前剧情走向:', plotMode);
         let promptTemplate;
         
-        if (paceMode === 'slow') {
-            promptTemplate = `
+        // 根据剧情走向选择基础模板
+        if (plotMode === 'normal') {
+            // 正常剧情 - 使用推进节奏模板
+            if (paceMode === 'slow') {
+                promptTemplate = `
 你是我的AI叙事导演。分析最近对话，为我生成4个深度行动建议（每条用【】包裹）。
 
 要求：
 - 始终以我的第一人称视角
 - 每条建议不超过50字
 - 深入分析我的心理状态和处境
+- 保持正常、健康的剧情发展
 - 必须生成4个选项
 
 ## 最近对话
@@ -412,8 +418,8 @@ async function generateOptions() {
 
 ## 开始
 `.trim();
-        } else if (paceMode === 'fast') {
-            promptTemplate = `
+            } else if (paceMode === 'fast') {
+                promptTemplate = `
 你是我的AI叙事导演。分析最近对话，为我生成4个时间跨越行动建议（每条用【】包裹）。
 
 要求：
@@ -421,6 +427,7 @@ async function generateOptions() {
 - 每条建议不超过50字
 - 包含明显时间推进（任务完成、赴约、重要事件）
 - 避免当前场景细节，直接推进到下一节点
+- 保持正常、健康的剧情发展
 - 必须生成4个选项
 
 ## 最近对话
@@ -432,8 +439,8 @@ async function generateOptions() {
 
 ## 开始
 `.trim();
-        } else if (paceMode === 'mixed') {
-            promptTemplate = `
+            } else if (paceMode === 'mixed') {
+                promptTemplate = `
 你是我的AI叙事导演。分析最近对话，为我生成4个混合节奏行动建议（每条用【】包裹）。
 
 要求：
@@ -444,6 +451,7 @@ async function generateOptions() {
   2. 第2个：平衡标准选项（分析场景类型、情绪、叙事焦点）
   3. 第3个：平衡标准选项（分析场景类型、情绪、叙事焦点）
   4. 第4个：快速推进选项（包含明显时间推进，如任务完成、赴约、重要事件）
+- 保持正常、健康的剧情发展
 
 ## 最近对话
 {{context}}
@@ -454,15 +462,16 @@ async function generateOptions() {
 
 ## 开始
 `.trim();
-        } else {
-            // balanced 模式
-            promptTemplate = `
+            } else {
+                // balanced 模式
+                promptTemplate = `
 你是我的AI叙事导演。分析最近对话，为我生成4个戏剧性行动建议（每条用【】包裹）。
 
 要求：
 - 始终以我的第一人称视角
 - 每条建议不超过50字
 - 分析场景类型、我的情绪、叙事焦点
+- 保持正常、健康的剧情发展
 - 必须生成4个选项
 
 ## 最近对话
@@ -471,6 +480,49 @@ async function generateOptions() {
 ## 输出格式
 - JSON格式分析（scene_type, user_mood, narrative_focus）
 - 建议列表（单行、每条用【】包裹）
+
+## 开始
+`.trim();
+            }
+        } else if (plotMode === 'twist') {
+            // 转折剧情
+            promptTemplate = `
+你是我的AI叙事导演。分析最近对话，为我生成4个转折剧情行动建议（每条用【】包裹）。
+
+要求：
+- 始终以我的第一人称视角
+- 每条建议不超过50字
+- 包含意外转折和戏剧性变化
+- 可以是角色关系变化、环境突变、情感转折等
+- 必须生成4个选项
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- JSON格式分析（scene_type, user_mood, narrative_focus）
+- 建议列表（单行、每条用【】包裹，必须4个，包含转折元素）
+
+## 开始
+`.trim();
+        } else if (plotMode === 'nsfw') {
+            // NSFW剧情
+            promptTemplate = `
+你是我的AI叙事导演。分析最近对话，为我生成4个成人向剧情行动建议（每条用【】包裹）。
+
+要求：
+- 始终以我的第一人称视角
+- 每条建议不超过50字
+- 包含成人向、亲密或浪漫内容
+- 保持艺术性和品味
+- 必须生成4个选项
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- JSON格式分析（scene_type, user_mood, narrative_focus）
+- 建议列表（单行、每条用【】包裹，必须4个，成人向内容）
 
 ## 开始
 `.trim();

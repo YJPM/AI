@@ -10,6 +10,7 @@ export const defaultSettings = {
     sendMode: 'auto',
     streamOptions: false, // true=流式, false=非流式
     paceMode: 'balanced', // 推进节奏：slow=慢速, balanced=平衡, fast=快速(时间跨越), mixed=混合
+    plotMode: 'normal', // 剧情走向：normal=正常, twist=转折, nsfw=NSFW
     
     // 调试设置
     debug: true, // 默认开启
@@ -86,6 +87,69 @@ const PACE_PROMPTS = {
 ## 输出格式
 - JSON格式分析（scene_type, user_mood, narrative_focus）
 - 建议列表（单行、每条用【】包裹，按慢速-平衡-平衡-快速顺序）
+
+## 开始
+`.trim()
+};
+
+// 剧情走向提示模板
+const PLOT_PROMPTS = {
+    normal: `
+你是我的AI叙事导演。分析最近对话，为我生成4个正常剧情行动建议（每条用【】包裹）。
+
+要求：
+- 始终以我的第一人称视角
+- 每条建议不超过50字
+- 保持正常、健康的剧情发展
+- 避免极端或不当内容
+- 必须生成4个选项
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- JSON格式分析（scene_type, user_mood, narrative_focus）
+- 建议列表（单行、每条用【】包裹，必须4个）
+
+## 开始
+`.trim(),
+    
+    twist: `
+你是我的AI叙事导演。分析最近对话，为我生成4个转折剧情行动建议（每条用【】包裹）。
+
+要求：
+- 始终以我的第一人称视角
+- 每条建议不超过50字
+- 包含意外转折和戏剧性变化
+- 可以是角色关系变化、环境突变、情感转折等
+- 必须生成4个选项
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- JSON格式分析（scene_type, user_mood, narrative_focus）
+- 建议列表（单行、每条用【】包裹，必须4个，包含转折元素）
+
+## 开始
+`.trim(),
+    
+    nsfw: `
+你是我的AI叙事导演。分析最近对话，为我生成4个成人向剧情行动建议（每条用【】包裹）。
+
+要求：
+- 始终以我的第一人称视角
+- 每条建议不超过50字
+- 包含成人向、亲密或浪漫内容
+- 保持艺术性和品味
+- 必须生成4个选项
+
+## 最近对话
+{{context}}
+
+## 输出格式
+- JSON格式分析（scene_type, user_mood, narrative_focus）
+- 建议列表（单行、每条用【】包裹，必须4个，成人向内容）
 
 ## 开始
 `.trim()
