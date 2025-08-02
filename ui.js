@@ -530,17 +530,149 @@ export function createQuickPacePanel() {
         position: absolute;
         top: -25px;
         right: 10px;
-        background: var(--SmartThemeBlurColor, rgba(255, 255, 255, 0.9));
-        border: 1px solid var(--SmartThemeBorderColor, #ddd);
+        background: #1a1a1a;
+        border: 1px solid #333;
         border-radius: 8px;
         padding: 6px;
         display: flex;
         gap: 3px;
         z-index: 1000;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         font-family: 'CooperZhengKai';
+        cursor: move;
+        transition: all 0.3s ease;
     `;
+    
+    // 添加拖动功能
+    let isDragging = false;
+    let startX, startY, startRight, startTop;
+    let isCollapsed = false;
+    
+    // 记录面板状态到localStorage
+    const savePanelState = () => {
+        const rect = panel.getBoundingClientRect();
+        const state = {
+            right: parseInt(panel.style.right),
+            top: parseInt(panel.style.top),
+            isCollapsed: isCollapsed
+        };
+        localStorage.setItem('quickPacePanelState', JSON.stringify(state));
+    };
+    
+    // 从localStorage加载面板状态
+    const loadPanelState = () => {
+        try {
+            const stateStr = localStorage.getItem('quickPacePanelState');
+            if (stateStr) {
+                const state = JSON.parse(stateStr);
+                if (state.right) panel.style.right = `${state.right}px`;
+                if (state.top) panel.style.top = `${state.top}px`;
+                if (state.isCollapsed) {
+                    isCollapsed = true;
+                    collapsePanel();
+                }
+            }
+        } catch (e) {
+            console.error('加载面板状态失败:', e);
+        }
+    };
+    
+    // 折叠面板函数
+    const collapsePanel = () => {
+        const modeButtons = panel.querySelectorAll('button[data-pace-mode]');
+        const separator = panel.querySelector('div[style*="background: var(--SmartThemeBorderColor"]');
+        
+        modeButtons.forEach(btn => {
+            btn.style.display = 'none';
+        });
+        
+        if (separator) separator.style.display = 'none';
+        
+        panel.style.background = '#1a1a1a';
+        panel.style.opacity = '0.7';
+        isCollapsed = true;
+        savePanelState();
+    };
+    
+    // 展开面板函数
+    const expandPanel = () => {
+        const modeButtons = panel.querySelectorAll('button[data-pace-mode]');
+        const separator = panel.querySelector('div[style*="background: var(--SmartThemeBorderColor"]');
+        
+        modeButtons.forEach(btn => {
+            btn.style.display = 'block';
+        });
+        
+        if (separator) separator.style.display = 'block';
+        
+        panel.style.background = '#1a1a1a';
+        panel.style.opacity = '1';
+        isCollapsed = false;
+        savePanelState();
+    };
+    
+    // 鼠标按下事件
+    panel.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startRight = parseInt(panel.style.right) || 10;
+        startTop = parseInt(panel.style.top) || -25;
+        panel.style.transition = 'none';
+        e.preventDefault();
+    });
+    
+    // 鼠标移动事件
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        const deltaX = startX - e.clientX;
+        const deltaY = startY - e.clientY;
+        
+        panel.style.right = `${startRight + deltaX}px`;
+        panel.style.top = `${startTop - deltaY}px`;
+    });
+    
+    // 鼠标释放事件
+    document.addEventListener('mouseup', (e) => {
+        if (!isDragging) return;
+        
+        isDragging = false;
+        panel.style.transition = 'all 0.3s ease';
+        
+        // 检测是否应该吸附到右侧
+        const rect = panel.getBoundingClientRect();
+        const windowWidth = window.innerWidth;
+        
+        if (windowWidth - rect.right < 50) { // 距离右侧小于50px时吸附
+            panel.style.right = '0px';
+            collapsePanel();
+        } else if (isCollapsed) {
+            expandPanel();
+        }
+        
+        savePanelState();
+    });
+    
+    // 鼠标悬浮事件
+    panel.addEventListener('mouseenter', () => {
+        if (isCollapsed) {
+            expandPanel();
+        }
+    });
+    
+    // 鼠标离开事件
+    panel.addEventListener('mouseleave', () => {
+        const rect = panel.getBoundingClientRect();
+        const windowWidth = window.innerWidth;
+        
+        if (windowWidth - rect.right < 50) { // 如果在右侧，则折叠
+            collapsePanel();
+        }
+    });
+    
+    // 加载保存的状态
+    setTimeout(loadPanelState, 100);
     
     // 创建推进节奏按钮
     const paceModes = [
@@ -562,7 +694,7 @@ export function createQuickPacePanel() {
             padding: 3px 6px;
             border: 1px solid ${mode.color};
             border-radius: 4px;
-            background: ${isActive ? mode.color : 'transparent'};
+            background: ${isActive ? mode.color : '#2d2d2d'};
             color: ${isActive ? 'white' : mode.color};
             cursor: pointer;
             font-size: 10px;
@@ -571,7 +703,8 @@ export function createQuickPacePanel() {
             min-width: 50px;
             text-align: center;
             line-height: 1.2;
-            margin: 1px;
+            margin: 2px;
+            box-shadow: ${isActive ? `0 0 5px ${mode.color}` : 'none'};
         `;
         
         button.addEventListener('click', () => {
@@ -585,8 +718,9 @@ export function createQuickPacePanel() {
                 
                 if (btnMode) {
                     const isBtnActive = settings.paceMode === btnMode.value;
-                    btn.style.background = isBtnActive ? btnMode.color : 'transparent';
+                    btn.style.background = isBtnActive ? btnMode.color : '#2d2d2d';
                     btn.style.color = isBtnActive ? 'white' : btnMode.color;
+                    btn.style.boxShadow = isBtnActive ? `0 0 5px ${btnMode.color}` : 'none';
                 }
             });
             
@@ -606,7 +740,7 @@ export function createQuickPacePanel() {
     const separator = document.createElement('div');
     separator.style.cssText = `
         width: 1px;
-        background: var(--SmartThemeBorderColor, #ddd);
+        background: #444;
         margin: 0 3px;
     `;
     panel.appendChild(separator);
@@ -617,14 +751,15 @@ export function createQuickPacePanel() {
     refreshButton.title = '重新获取选项';
     refreshButton.style.cssText = `
         padding: 3px 6px;
-        border: 1px solid #666;
+        border: 1px solid #888;
         border-radius: 4px;
-        background: transparent;
-        color: #666;
+        background: #2d2d2d;
+        color: #fff;
         cursor: pointer;
         font-size: 12px;
         transition: all 0.2s;
         min-width: 36px;
+        margin: 2px;
         text-align: center;
         line-height: 1.2;
         margin-left: 3px;
@@ -653,13 +788,17 @@ export function createQuickPacePanel() {
     });
     
     refreshButton.addEventListener('mouseenter', () => {
-        refreshButton.style.background = '#66620';
-        refreshButton.style.color = '#333';
+        refreshButton.style.background = '#4a4a4a';
+        refreshButton.style.color = '#fff';
+        refreshButton.style.boxShadow = '0 0 5px rgba(255,255,255,0.3)';
+        refreshButton.style.transform = 'scale(1.05)';
     });
     
     refreshButton.addEventListener('mouseleave', () => {
-        refreshButton.style.background = 'transparent';
-        refreshButton.style.color = '#666';
+        refreshButton.style.background = '#2d2d2d';
+        refreshButton.style.color = '#fff';
+        refreshButton.style.boxShadow = 'none';
+        refreshButton.style.transform = 'scale(1)';
     });
     
     panel.appendChild(refreshButton);
@@ -682,9 +821,11 @@ export function showPacePanelLoading() {
     // 保存原始内容
     refreshButton.setAttribute('data-original-html', refreshButton.innerHTML);
     // 替换为loading图标
-    refreshButton.innerHTML = '<div style="display:inline-block;animation:spin 1s linear infinite;font-size:14px;font-weight:bold;">⟳</div>';
+    refreshButton.innerHTML = '<div style="display:inline-block;animation:spin 1s linear infinite;font-size:14px;font-weight:bold;color:#fff;">⟳</div>';
     refreshButton.disabled = true;
-    refreshButton.style.opacity = '0.6';
+    refreshButton.style.opacity = '0.8';
+    refreshButton.style.background = '#2d2d2d';
+    refreshButton.style.boxShadow = '0 0 5px rgba(255,255,255,0.2)';
     // 添加旋转动画样式
     if (!document.getElementById('pace-loading-style')) {
         const style = document.createElement('style');
@@ -714,6 +855,9 @@ export function hidePacePanelLoading() {
     }
     refreshButton.disabled = false;
     refreshButton.style.opacity = '1';
+    refreshButton.style.background = '#2d2d2d';
+    refreshButton.style.color = '#fff';
+    refreshButton.style.boxShadow = 'none';
 }
 
 // 初始化快捷操作面板
