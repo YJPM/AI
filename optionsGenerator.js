@@ -196,28 +196,28 @@ async function displayOptions(options, isStreaming = false) {
                 font-size: 22px;
         `;
         
-        // // 添加轻微的hover效果
-        // btn.addEventListener('mouseover', () => {
-        //     btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
-        //     btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-        // });
+        // 添加轻微的hover效果
+        btn.addEventListener('mouseover', () => {
+            btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+            btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+        });
         
-        // btn.addEventListener('mouseout', () => {
-        //     btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
-        //     btn.style.boxShadow = 'none';
-        // });
-        // container.appendChild(btn);
+        btn.addEventListener('mouseout', () => {
+            btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+            btn.style.boxShadow = 'none';
+        });
+        container.appendChild(btn);
         
-        // // 添加轻微的hover效果
-        // btn.addEventListener('mouseover', () => {
-        //     btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
-        //     btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-        // });
+        // 添加轻微的hover效果
+        btn.addEventListener('mouseover', () => {
+            btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+            btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+        });
         
-        // btn.addEventListener('mouseout', () => {
-        //     btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
-        //     btn.style.boxShadow = 'none';
-        // });
+        btn.addEventListener('mouseout', () => {
+            btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+            btn.style.boxShadow = 'none';
+        });
         
         if (isStreaming) {
             // 流式显示：快速打字机效果
