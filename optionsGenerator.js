@@ -198,7 +198,7 @@ async function displayOptions(options, isStreaming = false) {
         
         // 添加轻微的hover效果
         btn.addEventListener('mouseover', () => {
-            btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+            btn.style.borderColor = 'rgb(28 35 48)';
             btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
         });
         
@@ -210,7 +210,7 @@ async function displayOptions(options, isStreaming = false) {
         
         // 添加轻微的hover效果
         btn.addEventListener('mouseover', () => {
-            btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+            btn.style.borderColor = 'rgb(28 35 48)';
             btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
         });
         
