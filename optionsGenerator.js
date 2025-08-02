@@ -183,38 +183,41 @@ async function displayOptions(options, isStreaming = false) {
             flex: 0 0 calc(25% - 6px);
             min-width: 150px;
             padding: 8px 12px;
-            border: 1px solid var(--SmartThemeBorderColor, #ccc);
-            border-radius: 6px;
-            background: var(--SmartThemeBackgroundColor, #fff);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-align: left;
-            word-wrap: break-word;
-            white-space: normal;
+                border: 1px solid var(--SmartThemeBorderColor, #ccc);
+                border-radius: 6px;
+                background-color: rgb(30, 44, 70);
+                cursor: pointer;
+                transition: none;
+                word-wrap: break-word;
+                white-space: normal;
+                font-family: CooperZhengKai;
+                color: rgba(255, 252, 226, 0.79);
+                line-height: 28px;
+                font-size: 22px;
         `;
         
-        // 添加轻微的hover效果
-        btn.addEventListener('mouseover', () => {
-            btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
-            btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-        });
+        // // 添加轻微的hover效果
+        // btn.addEventListener('mouseover', () => {
+        //     btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+        //     btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+        // });
         
-        btn.addEventListener('mouseout', () => {
-            btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
-            btn.style.boxShadow = 'none';
-        });
-        container.appendChild(btn);
+        // btn.addEventListener('mouseout', () => {
+        //     btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+        //     btn.style.boxShadow = 'none';
+        // });
+        // container.appendChild(btn);
         
-        // 添加轻微的hover效果
-        btn.addEventListener('mouseover', () => {
-            btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
-            btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-        });
+        // // 添加轻微的hover效果
+        // btn.addEventListener('mouseover', () => {
+        //     btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+        //     btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+        // });
         
-        btn.addEventListener('mouseout', () => {
-            btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
-            btn.style.boxShadow = 'none';
-        });
+        // btn.addEventListener('mouseout', () => {
+        //     btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+        //     btn.style.boxShadow = 'none';
+        // });
         
         if (isStreaming) {
             // 流式显示：快速打字机效果
