@@ -104,11 +104,10 @@ async function displayOptionsStreaming(content) {
                 transition: none;
                 word-wrap: break-word;
                 white-space: normal;
-                font-family: 'CooperZhengKai';
                 font-family: CooperZhengKai;
-    color: rgba(255, 252, 226, 0.79);
-    line-height: 28px;
-    font-size: 22px;
+                color: rgba(255, 252, 226, 0.79);
+                line-height: 28px;
+                font-size: 22px;
             `;
             container.appendChild(btn);
             
@@ -194,28 +193,28 @@ async function displayOptions(options, isStreaming = false) {
             white-space: normal;
         `;
         
-        // // 添加轻微的hover效果
-        // btn.addEventListener('mouseover', () => {
-        //     btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
-        //     btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-        // });
+        // 添加轻微的hover效果
+        btn.addEventListener('mouseover', () => {
+            btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+            btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+        });
         
-        // btn.addEventListener('mouseout', () => {
-        //     btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
-        //     btn.style.boxShadow = 'none';
-        // });
-        // container.appendChild(btn);
+        btn.addEventListener('mouseout', () => {
+            btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+            btn.style.boxShadow = 'none';
+        });
+        container.appendChild(btn);
         
-        // // 添加轻微的hover效果
-        // btn.addEventListener('mouseover', () => {
-        //     btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
-        //     btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-        // });
+        // 添加轻微的hover效果
+        btn.addEventListener('mouseover', () => {
+            btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+            btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+        });
         
-        // btn.addEventListener('mouseout', () => {
-        //     btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
-        //     btn.style.boxShadow = 'none';
-        // });
+        btn.addEventListener('mouseout', () => {
+            btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+            btn.style.boxShadow = 'none';
+        });
         
         if (isStreaming) {
             // 流式显示：快速打字机效果
