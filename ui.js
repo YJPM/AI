@@ -39,7 +39,6 @@ export function injectGlobalStyles() {
         }
         #ti-options-container {
             width: 100%;
-            padding: 8px 0;
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
@@ -540,7 +539,7 @@ export function createQuickPacePanel() {
         z-index: 1000;
         backdrop-filter: blur(10px);
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        font-family: inherit;
+        font-family: 'CooperZhengKai';
     `;
     
     // 创建推进节奏按钮

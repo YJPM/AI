@@ -6,3 +6,23 @@
     text-shadow: 0px 0px calc(var(--shadowWidth) * 1px) var(--SmartThemeShadowColor);
     order: 9999;
 }
+
+/* 底部快捷面板深色背景 */
+#ti-options-container {
+    background-color: #1a1a1a;
+    border-radius: 8px;
+    margin: 10px;
+}
+
+/* 选项按钮深色背景 */
+.ti-options-capsule {
+    background-color: #2d2d2d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+}
+
+.ti-options-capsule:hover {
+    background-color: #3d3d3d;
+}
