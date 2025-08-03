@@ -530,7 +530,6 @@ export function createQuickPacePanel() {
         position: absolute;
         top: -25px;
         right: 10px;
-        background: #1a1a1a;
         border: 1px solid #333;
         border-radius: 8px;
         padding: 6px;
@@ -538,7 +537,6 @@ export function createQuickPacePanel() {
         gap: 3px;
         z-index: 1000;
         box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        font-family: 'CooperZhengKai';
         cursor: move;
         transition: all 0.3s ease;
     `;
@@ -753,7 +751,6 @@ export function createQuickPacePanel() {
         padding: 3px 6px;
         border: 1px solid #888;
         border-radius: 4px;
-        background: #2d2d2d;
         color: #fff;
         cursor: pointer;
         font-size: 12px;

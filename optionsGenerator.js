@@ -73,7 +73,6 @@ async function displayOptionsStreaming(content) {
             flex-wrap: wrap;
             gap: 8px;
             margin: 10px;
-            background-color: #1a1a1a;
         `;
         sendForm.insertAdjacentElement('beforebegin', container);
         
@@ -99,15 +98,10 @@ async function displayOptionsStreaming(content) {
                 padding: 8px;
                 border: 1px solid var(--SmartThemeBorderColor, #ccc);
                 border-radius: 6px;
-                background-color: rgb(30, 44, 70);
                 cursor: pointer;
                 transition: none;
                 word-wrap: break-word;
                 white-space: normal;
-                font-family: CooperZhengKai;
-                color: rgba(255, 252, 226, 0.79);
-                line-height: 28px;
-                font-size: 22px;
             `;
             container.appendChild(btn);
             
@@ -185,15 +179,10 @@ async function displayOptions(options, isStreaming = false) {
             padding: 8px 12px;
                 border: 1px solid var(--SmartThemeBorderColor, #ccc);
                 border-radius: 6px;
-                background-color: rgb(30, 44, 70);
                 cursor: pointer;
                 transition: none;
                 word-wrap: break-word;
                 white-space: normal;
-                font-family: CooperZhengKai;
-                color: rgba(255, 252, 226, 0.79);
-                line-height: 28px;
-                font-size: 22px;
         `;
         
         // 添加轻微的hover效果
