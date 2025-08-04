@@ -305,132 +305,253 @@ async function displayOptions(options, isStreaming = false) {
     }
 }
 
-// 兼容型上下文提取
+// 兼容型上下文提取 - 获取所有类型的上下文数据
 async function getContextCompatible(limit = 20) {
-    console.log('[getContextCompatible] 开始获取上下文...');
-    console.log('[getContextCompatible] window.TavernHelper:', window.TavernHelper);
-    console.log('[getContextCompatible] window.SillyTavern:', window.SillyTavern);
+    console.log('=== 开始获取完整上下文数据 ===');
     
-    // 详细检查TavernHelper的所有属性
-    if (window.TavernHelper) {
-        console.log('[getContextCompatible] TavernHelper 对象存在，检查其属性:');
-        console.log('[getContextCompatible] TavernHelper 类型:', typeof window.TavernHelper);
-        console.log('[getContextCompatible] TavernHelper 所有属性:', Object.keys(window.TavernHelper));
-        
-        // 检查所有可能的方法名
-        const possibleMethods = [
-            'getContext',
-            'getContextCompatible',
-            'getChat',
-            'getMessages',
-            'getConversation',
-            'getHistory',
-            'getChatHistory',
-            'getMessageHistory'
-        ];
-        
-        for (const method of possibleMethods) {
-            if (typeof window.TavernHelper[method] === 'function') {
-                console.log(`[getContextCompatible] 找到可用方法: TavernHelper.${method}`);
-            }
-        }
-    }
+    const allContextData = {
+        sillyTavernContext: null,
+        tavernHelperContext: null,
+        tavernHelperChat: null,
+        sillyTavernChat: null,
+        tavernHelperMessages: null,
+        domMessages: null,
+        tavernHelperExtras: null
+    };
     
-    // 检查SillyTavern原生接口
-    if (window.SillyTavern) {
-        console.log('[getContextCompatible] SillyTavern 对象存在，检查其属性:');
-        console.log('[getContextCompatible] SillyTavern 类型:', typeof window.SillyTavern);
-        console.log('[getContextCompatible] SillyTavern 所有属性:', Object.keys(window.SillyTavern));
-        
-        if (window.SillyTavern.chat) {
-            console.log('[getContextCompatible] SillyTavern.chat 存在，长度:', window.SillyTavern.chat.length);
-        }
-    }
-    
-    // 优先使用酒馆助手的接口
-    if (typeof window.TavernHelper?.getContext === 'function') {
-        console.log('[getContextCompatible] 使用 TavernHelper.getContext()');
+    // 1. 获取SillyTavern原生上下文
+    console.log('\n--- 1. SillyTavern原生上下文 ---');
+    if (typeof window.SillyTavern?.getContext === 'function') {
         try {
-            const result = await window.TavernHelper.getContext({ tokenLimit: 8192 });
-            console.log('[getContextCompatible] TavernHelper.getContext() 成功:', result);
-            return result;
+            const result = await window.SillyTavern.getContext({ tokenLimit: 8192 });
+            allContextData.sillyTavernContext = result;
+            console.log('✅ SillyTavern.getContext() 成功');
+            console.log('📄 内容类型:', typeof result);
+            console.log('📄 内容结构:', Object.keys(result || {}));
+            if (result && result.messages) {
+                console.log('📄 消息数量:', result.messages.length);
+                console.log('📄 前3条消息示例:');
+                result.messages.slice(0, 3).forEach((msg, i) => {
+                    console.log(`   ${i+1}. [${msg.role}] ${msg.content.substring(0, 100)}...`);
+                });
+            }
+            console.log('📄 完整内容:', JSON.stringify(result, null, 2));
         } catch (error) {
-            console.error('[getContextCompatible] TavernHelper.getContext() 失败:', error);
-            // 降级到DOM解析
-            console.log('[getContextCompatible] 降级到DOM解析...');
+            console.error('❌ SillyTavern.getContext() 失败:', error);
         }
     } else {
-        console.log('[getContextCompatible] TavernHelper.getContext() 不可用，尝试其他方法...');
-        
-        // 尝试其他可能的接口
-        if (typeof window.TavernHelper?.getChat === 'function') {
-            console.log('[getContextCompatible] 尝试使用 TavernHelper.getChat()');
-            try {
-                const result = await window.TavernHelper.getChat();
-                console.log('[getContextCompatible] TavernHelper.getChat() 成功:', result);
-                return { messages: result };
-            } catch (error) {
-                console.error('[getContextCompatible] TavernHelper.getChat() 失败:', error);
+        console.log('❌ SillyTavern.getContext() 不可用');
+    }
+    
+    // 2. 获取TavernHelper上下文
+    console.log('\n--- 2. TavernHelper上下文 ---');
+    if (typeof window.TavernHelper?.getContext === 'function') {
+        try {
+            const result = await window.TavernHelper.getContext({ tokenLimit: 8192 });
+            allContextData.tavernHelperContext = result;
+            console.log('✅ TavernHelper.getContext() 成功');
+            console.log('📄 内容类型:', typeof result);
+            console.log('📄 内容结构:', Object.keys(result || {}));
+            if (result && result.messages) {
+                console.log('📄 消息数量:', result.messages.length);
+                console.log('📄 前3条消息示例:');
+                result.messages.slice(0, 3).forEach((msg, i) => {
+                    console.log(`   ${i+1}. [${msg.role}] ${msg.content.substring(0, 100)}...`);
+                });
             }
+            console.log('📄 完整内容:', JSON.stringify(result, null, 2));
+        } catch (error) {
+            console.error('❌ TavernHelper.getContext() 失败:', error);
         }
-        
-        // 尝试SillyTavern原生接口
-        if (window.SillyTavern?.chat) {
-            console.log('[getContextCompatible] 尝试使用 SillyTavern.chat');
-            try {
-                const messages = window.SillyTavern.chat.map(msg => ({
-                    role: msg.is_user ? 'user' : 'assistant',
-                    content: msg.mes
-                }));
-                console.log('[getContextCompatible] SillyTavern.chat 解析成功:', messages);
-                return { messages: messages.slice(-limit) };
-            } catch (error) {
-                console.error('[getContextCompatible] SillyTavern.chat 解析失败:', error);
+    } else {
+        console.log('❌ TavernHelper.getContext() 不可用');
+    }
+    
+    // 3. 获取TavernHelper聊天数据
+    console.log('\n--- 3. TavernHelper聊天数据 ---');
+    if (typeof window.TavernHelper?.getChat === 'function') {
+        try {
+            const result = await window.TavernHelper.getChat();
+            allContextData.tavernHelperChat = result;
+            console.log('✅ TavernHelper.getChat() 成功');
+            console.log('📄 内容类型:', typeof result);
+            console.log('📄 内容长度:', Array.isArray(result) ? result.length : '非数组');
+            if (Array.isArray(result) && result.length > 0) {
+                console.log('📄 前3条消息示例:');
+                result.slice(0, 3).forEach((msg, i) => {
+                    console.log(`   ${i+1}.`, msg);
+                });
             }
+            console.log('📄 完整内容:', JSON.stringify(result, null, 2));
+        } catch (error) {
+            console.error('❌ TavernHelper.getChat() 失败:', error);
         }
-        
-        // 尝试通过酒馆助手的其他方法获取消息
-        if (typeof window.TavernHelper?.getMessages === 'function') {
-            console.log('[getContextCompatible] 尝试使用 TavernHelper.getMessages()');
-            try {
-                const result = await window.TavernHelper.getMessages();
-                console.log('[getContextCompatible] TavernHelper.getMessages() 成功:', result);
-                return { messages: result };
-            } catch (error) {
-                console.error('[getContextCompatible] TavernHelper.getMessages() 失败:', error);
+    } else {
+        console.log('❌ TavernHelper.getChat() 不可用');
+    }
+    
+    // 4. 获取SillyTavern聊天数组
+    console.log('\n--- 4. SillyTavern聊天数组 ---');
+    if (window.SillyTavern?.chat) {
+        try {
+            const messages = window.SillyTavern.chat.map(msg => ({
+                role: msg.is_user ? 'user' : 'assistant',
+                content: msg.mes,
+                timestamp: msg.timestamp,
+                id: msg.id
+            }));
+            allContextData.sillyTavernChat = messages;
+            console.log('✅ SillyTavern.chat 解析成功');
+            console.log('📄 消息数量:', messages.length);
+            console.log('📄 前3条消息示例:');
+            messages.slice(0, 3).forEach((msg, i) => {
+                console.log(`   ${i+1}. [${msg.role}] ${msg.content.substring(0, 100)}...`);
+            });
+            console.log('📄 完整内容:', JSON.stringify(messages, null, 2));
+        } catch (error) {
+            console.error('❌ SillyTavern.chat 解析失败:', error);
+        }
+    } else {
+        console.log('❌ SillyTavern.chat 不可用');
+    }
+    
+    // 5. 获取TavernHelper消息
+    console.log('\n--- 5. TavernHelper消息 ---');
+    if (typeof window.TavernHelper?.getMessages === 'function') {
+        try {
+            const result = await window.TavernHelper.getMessages();
+            allContextData.tavernHelperMessages = result;
+            console.log('✅ TavernHelper.getMessages() 成功');
+            console.log('📄 内容类型:', typeof result);
+            console.log('📄 内容长度:', Array.isArray(result) ? result.length : '非数组');
+            if (Array.isArray(result) && result.length > 0) {
+                console.log('📄 前3条消息示例:');
+                result.slice(0, 3).forEach((msg, i) => {
+                    console.log(`   ${i+1}.`, msg);
+                });
             }
+            console.log('📄 完整内容:', JSON.stringify(result, null, 2));
+        } catch (error) {
+            console.error('❌ TavernHelper.getMessages() 失败:', error);
+        }
+    } else {
+        console.log('❌ TavernHelper.getMessages() 不可用');
+    }
+    
+    // 6. 获取TavernHelper额外信息
+    console.log('\n--- 6. TavernHelper额外信息 ---');
+    if (window.TavernHelper) {
+        try {
+            const extras = {};
+            
+            // 获取角色头像路径
+            if (typeof window.TavernHelper.getCharAvatarPath === 'function') {
+                extras.charAvatarPath = window.TavernHelper.getCharAvatarPath();
+                console.log('✅ 角色头像路径:', extras.charAvatarPath);
+            }
+            
+            // 获取世界书籍
+            if (typeof window.TavernHelper.getWorldBooks === 'function') {
+                extras.worldBooks = window.TavernHelper.getWorldBooks();
+                console.log('✅ 世界书籍:', extras.worldBooks);
+            }
+            
+            // 获取变量
+            if (typeof window.TavernHelper.getVariables === 'function') {
+                extras.variables = window.TavernHelper.getVariables();
+                console.log('✅ 变量:', extras.variables);
+            }
+            
+            allContextData.tavernHelperExtras = extras;
+            console.log('📄 完整额外信息:', JSON.stringify(extras, null, 2));
+        } catch (error) {
+            console.error('❌ 获取TavernHelper额外信息失败:', error);
         }
     }
     
-    // DOM fallback
-    console.log('[getContextCompatible] 开始DOM解析...');
-    const messageElements = document.querySelectorAll('#chat .mes');
-    console.log('[getContextCompatible] 找到消息元素数量:', messageElements.length);
-    
-    const messages = [];
-    messageElements.forEach((el, index) => {
-        const contentEl = el.querySelector('.mes_text');
-        if (contentEl) {
-            let role = 'system';
-            const isUserAttr = el.getAttribute('is_user');
-            if (isUserAttr === 'true') role = 'user';
-            else if (isUserAttr === 'false') role = 'assistant';
-            
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = contentEl.innerHTML.replace(/<br\s*\/?>/gi, '\n');
-            const content = (tempDiv.textContent || tempDiv.innerText || '').trim();
-            
-            if (content && (role === 'user' || role === 'assistant')) {
-                messages.push({ role, content });
-                console.log(`[getContextCompatible] 解析消息 ${index}:`, { role, content: content.substring(0, 50) + '...' });
+    // 7. DOM解析备用方案
+    console.log('\n--- 7. DOM解析备用方案 ---');
+    try {
+        const messageElements = document.querySelectorAll('#chat .mes');
+        const messages = [];
+        messageElements.forEach((el, index) => {
+            const contentEl = el.querySelector('.mes_text');
+            if (contentEl) {
+                let role = 'system';
+                const isUserAttr = el.getAttribute('is_user');
+                if (isUserAttr === 'true') role = 'user';
+                else if (isUserAttr === 'false') role = 'assistant';
+                
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = contentEl.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+                const content = (tempDiv.textContent || tempDiv.innerText || '').trim();
+                
+                if (content && (role === 'user' || role === 'assistant')) {
+                    messages.push({ role, content });
+                }
             }
-        }
-    });
+        });
+        
+        allContextData.domMessages = messages.slice(-limit);
+        console.log('✅ DOM解析成功');
+        console.log('📄 消息数量:', allContextData.domMessages.length);
+        console.log('📄 前3条消息示例:');
+        allContextData.domMessages.slice(0, 3).forEach((msg, i) => {
+            console.log(`   ${i+1}. [${msg.role}] ${msg.content.substring(0, 100)}...`);
+        });
+        console.log('📄 完整内容:', JSON.stringify(allContextData.domMessages, null, 2));
+    } catch (error) {
+        console.error('❌ DOM解析失败:', error);
+    }
     
-    const result = { messages: messages.slice(-limit) };
-    console.log('[getContextCompatible] DOM解析完成，消息数量:', result.messages.length);
-    console.log('[getContextCompatible] 最终结果:', result);
-    return result;
+    // 8. 返回所有获取到的上下文数据
+    console.log('\n--- 8. 返回所有上下文数据 ---');
+    
+    // 选择最佳数据源作为主要消息
+    let primaryMessages = [];
+    if (allContextData.sillyTavernContext && allContextData.sillyTavernContext.messages) {
+        primaryMessages = allContextData.sillyTavernContext.messages;
+        console.log('✅ 使用 SillyTavern.getContext() 作为主要消息源');
+    } else if (allContextData.tavernHelperContext && allContextData.tavernHelperContext.messages) {
+        primaryMessages = allContextData.tavernHelperContext.messages;
+        console.log('✅ 使用 TavernHelper.getContext() 作为主要消息源');
+    } else if (allContextData.sillyTavernChat) {
+        primaryMessages = allContextData.sillyTavernChat.slice(-limit);
+        console.log('✅ 使用 SillyTavern.chat 作为主要消息源');
+    } else if (allContextData.tavernHelperChat) {
+        primaryMessages = allContextData.tavernHelperChat;
+        console.log('✅ 使用 TavernHelper.getChat() 作为主要消息源');
+    } else if (allContextData.tavernHelperMessages) {
+        primaryMessages = allContextData.tavernHelperMessages;
+        console.log('✅ 使用 TavernHelper.getMessages() 作为主要消息源');
+    } else if (allContextData.domMessages) {
+        primaryMessages = allContextData.domMessages;
+        console.log('✅ 使用 DOM解析 作为主要消息源');
+    } else {
+        console.log('❌ 所有数据源都失败，使用空消息数组');
+    }
+    
+    // 构建包含所有数据的完整上下文
+    const completeContext = {
+        messages: primaryMessages,
+        allContextData: allContextData, // 包含所有获取到的数据
+        summary: {
+            sillyTavernContext: !!allContextData.sillyTavernContext,
+            tavernHelperContext: !!allContextData.tavernHelperContext,
+            tavernHelperChat: !!allContextData.tavernHelperChat,
+            sillyTavernChat: !!allContextData.sillyTavernChat,
+            tavernHelperMessages: !!allContextData.tavernHelperMessages,
+            domMessages: !!allContextData.domMessages,
+            tavernHelperExtras: !!allContextData.tavernHelperExtras
+        }
+    };
+    
+    console.log('\n=== 上下文数据获取完成 ===');
+    console.log('📊 主要消息数量:', primaryMessages.length);
+    console.log('📊 数据源可用性:', completeContext.summary);
+    console.log('📊 完整上下文结构:', Object.keys(completeContext));
+    
+    return completeContext;
 }
 
 // 在建议生成/选择后定期分析
@@ -464,9 +585,74 @@ async function generateOptions() {
         const context = await getContextCompatible();
         console.log('[generateOptions] 上下文获取完成，消息数量:', context.messages.length);
         
+        // 构建包含所有上下文数据的完整提示词
+        let fullContextText = '';
+        
+        // 1. 添加主要对话消息
+        if (context.messages && context.messages.length > 0) {
+            fullContextText += '## 主要对话历史\n';
+            fullContextText += context.messages.map(m => `[${m.role}] ${m.content}`).join('\n');
+            fullContextText += '\n\n';
+        }
+        
+        // 2. 添加SillyTavern原生上下文数据
+        if (context.allContextData.sillyTavernContext) {
+            fullContextText += '## SillyTavern原生上下文数据\n';
+            fullContextText += JSON.stringify(context.allContextData.sillyTavernContext, null, 2);
+            fullContextText += '\n\n';
+        }
+        
+        // 3. 添加TavernHelper上下文数据
+        if (context.allContextData.tavernHelperContext) {
+            fullContextText += '## TavernHelper上下文数据\n';
+            fullContextText += JSON.stringify(context.allContextData.tavernHelperContext, null, 2);
+            fullContextText += '\n\n';
+        }
+        
+        // 4. 添加TavernHelper聊天数据
+        if (context.allContextData.tavernHelperChat) {
+            fullContextText += '## TavernHelper聊天数据\n';
+            fullContextText += JSON.stringify(context.allContextData.tavernHelperChat, null, 2);
+            fullContextText += '\n\n';
+        }
+        
+        // 5. 添加SillyTavern聊天数组
+        if (context.allContextData.sillyTavernChat) {
+            fullContextText += '## SillyTavern聊天数组\n';
+            fullContextText += JSON.stringify(context.allContextData.sillyTavernChat, null, 2);
+            fullContextText += '\n\n';
+        }
+        
+        // 6. 添加TavernHelper消息
+        if (context.allContextData.tavernHelperMessages) {
+            fullContextText += '## TavernHelper消息\n';
+            fullContextText += JSON.stringify(context.allContextData.tavernHelperMessages, null, 2);
+            fullContextText += '\n\n';
+        }
+        
+        // 7. 添加TavernHelper额外信息
+        if (context.allContextData.tavernHelperExtras) {
+            fullContextText += '## TavernHelper额外信息\n';
+            fullContextText += JSON.stringify(context.allContextData.tavernHelperExtras, null, 2);
+            fullContextText += '\n\n';
+        }
+        
+        // 8. 添加DOM解析消息
+        if (context.allContextData.domMessages) {
+            fullContextText += '## DOM解析消息\n';
+            fullContextText += JSON.stringify(context.allContextData.domMessages, null, 2);
+            fullContextText += '\n\n';
+        }
+        
+        // 9. 添加数据源摘要
+        fullContextText += '## 数据源摘要\n';
+        fullContextText += JSON.stringify(context.summary, null, 2);
+        fullContextText += '\n\n';
+        
         const prompt = promptTemplate
-            .replace(/{{context}}/g, context.messages.map(m => `[${m.role}] ${m.content}`).join('\n'));
+            .replace(/{{context}}/g, fullContextText);
         console.log('[generateOptions] 提示词组装完成，长度:', prompt.length);
+        console.log('[generateOptions] 完整上下文数据已包含在提示词中');
         
         const finalMessages = [{ role: 'user', content: prompt }];
         let content = '';
