@@ -1549,7 +1549,7 @@ export class OptionsGenerator {
                     if (apiType === 'gemini') {
                         // 转换为Gemini格式
                         convertedBody = OptionsGenerator.convertToGeminiFormat(originalBody);
-                        newUrl = `https://generativelanguage.googleapis.com/v1/models/${settings.optionsModel}:generateContent?key=${settings.optionsApiKey}`;
+                        newUrl = `https://generativelanguage.googleapis.com/v1/models/${settings.optionsApiModel}:generateContent?key=${settings.optionsApiKey}`;
                         console.log('📄 转换为Gemini格式:', convertedBody);
                         console.log('📄 使用Gemini API URL:', newUrl);
                     } else {
@@ -1656,6 +1656,17 @@ export class OptionsGenerator {
         console.log('  - 模型:', modelName);
         console.log('  - 基础URL:', settings.optionsBaseUrl);
         console.log('  - API密钥:', settings.optionsApiKey ? '已配置' : '未配置');
+        
+        // 检查模型名称是否有效
+        if (!settings.optionsApiModel || settings.optionsApiModel === 'undefined' || settings.optionsApiModel.trim() === '') {
+            console.log('❌ 问题: 模型名称无效或未设置');
+            console.log('💡 解决方案:');
+            console.log('  1. 在扩展设置中找到"API模型"输入框');
+            console.log('  2. 输入有效的模型名称');
+            console.log('  3. Gemini模型示例: gemini-2.5-flash-free, gemini-pro, gemini-2.5-pro');
+            console.log('  4. OpenAI模型示例: gpt-3.5-turbo, gpt-4, gpt-4-turbo');
+            return false;
+        }
         
         if (!settings.optionsApiKey || !settings.optionsApiKey.trim()) {
             console.log('❌ 问题: 扩展API配置中缺少API密钥');

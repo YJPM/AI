@@ -103,6 +103,28 @@ Access to fetch at 'https://generativelanguage.googleapis.com/v1/models/...' has
 3. **临时方案**：将扩展API类型改为"OpenAI兼容"，使用Gemini代理
 4. **禁用拦截器**：关闭API拦截器，让SillyTavern直接处理API调用
 
+### API URL中出现"undefined"错误
+如果遇到类似 `http://127.0.0.1:8889/v1/models/undefined:generateContent` 的错误：
+
+**快速修复方法：**
+1. 在浏览器控制台运行修复脚本：
+   ```javascript
+   // 复制并粘贴 fix-api-config.js 的内容到控制台
+   // 或者直接运行：
+   AIAssistantFix.fixApiConfig()
+   ```
+
+2. **手动修复**：
+   - 打开扩展设置
+   - 检查"API模型"字段是否为空或包含"undefined"
+   - 输入有效的模型名称（如：`gemini-2.5-flash-free`、`gpt-3.5-turbo`）
+   - 保存设置并刷新页面
+
+3. **重置配置**：
+   ```javascript
+   AIAssistantFix.resetToDefaults()
+   ```
+
 ### 诊断工具
 在浏览器控制台中可以使用以下命令进行诊断：
 - `OptionsGenerator.diagnoseApiConfiguration()` - 诊断API配置
