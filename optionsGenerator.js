@@ -1528,10 +1528,12 @@ export class OptionsGenerator {
                     // 根据API类型构建正确的URL
                     let newUrl;
                     if (apiType === 'gemini') {
-                        // Google Gemini API - 直接使用官方API
-                        const modelName = settings.optionsApiModel || 'gemini-pro';
-                        newUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${settings.optionsApiKey}`;
-                        console.log('📄 使用Google Gemini API URL:', newUrl);
+                        // Google Gemini API - 由于CORS限制，回退到原始SillyTavern API
+                        console.log('⚠️ Gemini API存在CORS限制，回退到原始SillyTavern API调用');
+                        console.log('💡 建议: 在SillyTavern设置中配置Gemini后端，或使用OpenAI兼容的Gemini代理');
+                        
+                        // 回退到原始请求，让SillyTavern处理
+                        return originalFetch.apply(this, args);
                     } else {
                         // OpenAI兼容API
                         newUrl = `${settings.optionsBaseUrl}/chat/completions`;
@@ -1621,14 +1623,54 @@ export class OptionsGenerator {
             }
         }
         
+        // Gemini CORS问题诊断
+        if (apiType === 'gemini') {
+            console.log('\n⚠️ Gemini API CORS问题诊断:');
+            console.log('  - 问题: Google Gemini API不支持直接从浏览器调用（CORS限制）');
+            console.log('  - 当前状态: API拦截器会自动回退到SillyTavern原始API');
+            console.log('  - 影响: 无法使用扩展的API配置进行Gemini调用');
+            console.log('\n💡 Gemini解决方案:');
+            console.log('  1. 在SillyTavern设置中配置Gemini后端');
+            console.log('  2. 使用支持Gemini的OpenAI兼容代理服务');
+            console.log('  3. 将API类型改为"OpenAI兼容"并使用Gemini代理');
+            console.log('  4. 禁用API拦截器，让SillyTavern直接处理Gemini调用');
+        }
+        
         console.log('\n💡 建议:');
         console.log('1. 确保扩展的API密钥正确且有效');
         console.log('2. 检查API密钥是否有足够的配额');
         console.log('3. 确认选择的模型在您的API账户中可用');
         if (apiType === 'gemini') {
             console.log('4. 对于Gemini，确认API密钥有访问gemini-2.5-pro的权限');
+            console.log('5. 考虑使用OpenAI兼容的Gemini代理服务');
         }
-        console.log('5. 尝试在扩展设置中点击"测试连接"按钮');
+        console.log('6. 尝试在扩展设置中点击"测试连接"按钮');
+        
+        return true;
+    }
+    
+    // 诊断CORS问题
+    static diagnoseCorsIssue() {
+        console.log('=== 诊断CORS问题 ===');
+        console.log('📄 问题描述:');
+        console.log('  - 当使用Google Gemini API时，浏览器会阻止直接调用');
+        console.log('  - 错误信息: "Access to fetch at ... has been blocked by CORS policy"');
+        console.log('  - 原因: Google Gemini API不支持直接从浏览器调用');
+        
+        console.log('\n📄 当前解决方案:');
+        console.log('  - API拦截器检测到Gemini API类型时，会自动回退到SillyTavern原始API');
+        console.log('  - 这意味着Gemini调用将使用SillyTavern的配置，而不是扩展的配置');
+        
+        console.log('\n💡 推荐的解决方案:');
+        console.log('1. 在SillyTavern设置中配置Gemini后端');
+        console.log('2. 使用支持Gemini的OpenAI兼容代理服务（如newapi.sisuo.de）');
+        console.log('3. 将扩展的API类型改为"OpenAI兼容"，使用Gemini代理');
+        console.log('4. 禁用API拦截器，让SillyTavern直接处理所有API调用');
+        
+        console.log('\n🔧 立即解决方案:');
+        console.log('- 在扩展设置中将API类型改为"OpenAI兼容"');
+        console.log('- 使用支持Gemini的代理服务URL');
+        console.log('- 或者禁用API拦截器功能');
         
         return true;
     }

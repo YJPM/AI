@@ -27,6 +27,7 @@
 - **解决兼容性问题**：当SillyTavern的API调用出现问题时，可以通过扩展的API配置来解决
 - **可控制开关**：在扩展设置中可以启用或禁用API拦截器
 - **自动格式转换**：支持OpenAI和Gemini格式之间的自动转换
+- **CORS问题处理**：自动处理Google Gemini API的CORS限制，回退到SillyTavern原始API
 
 ### 美观的提示样式
 - 继承自打字指示器的动画效果
@@ -72,6 +73,27 @@
 - 让SillyTavern使用与扩展相同的API配置
 - 自动处理OpenAI和Gemini格式转换
 - 解决SillyTavern API调用问题
+- **注意**：使用Google Gemini API时，由于CORS限制，会自动回退到SillyTavern原始API
+
+## 故障排除
+
+### CORS错误（Google Gemini API）
+如果遇到以下错误：
+```
+Access to fetch at 'https://generativelanguage.googleapis.com/v1/models/...' has been blocked by CORS policy
+```
+
+**解决方案：**
+1. **推荐方案**：在SillyTavern设置中配置Gemini后端
+2. **替代方案**：使用支持Gemini的OpenAI兼容代理服务
+3. **临时方案**：将扩展API类型改为"OpenAI兼容"，使用Gemini代理
+4. **禁用拦截器**：关闭API拦截器，让SillyTavern直接处理API调用
+
+### 诊断工具
+在浏览器控制台中可以使用以下命令进行诊断：
+- `OptionsGenerator.diagnoseApiConfiguration()` - 诊断API配置
+- `OptionsGenerator.diagnoseCorsIssue()` - 诊断CORS问题
+- `OptionsGenerator.testApiConnection()` - 测试API连接
 
 ## 许可证
 
