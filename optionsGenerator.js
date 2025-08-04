@@ -319,9 +319,12 @@ async function getContextCompatible(limit = 5) {
             console.log('📄 内容结构:', Object.keys(result || {}));
             console.log('📄 完整返回数据:', JSON.stringify(result, null, 2));
             
-            // 单独打印角色设定信息
-            if (result && result.character) {
-                console.log('\n--- 角色设定信息 ---');
+            // 检查角色设定信息
+            console.log('\n--- 检查角色设定信息 ---');
+            console.log('📄 result.character 存在:', !!result?.character);
+            console.log('📄 result.character 类型:', typeof result?.character);
+            if (result?.character) {
+                console.log('📄 角色设定字段:', Object.keys(result.character));
                 console.log('📄 角色名称:', result.character.name || '未设置');
                 console.log('📄 角色描述:', result.character.description || '未设置');
                 console.log('📄 角色人格:', result.character.personality || '未设置');
@@ -329,11 +332,15 @@ async function getContextCompatible(limit = 5) {
                 console.log('📄 角色第一印象:', result.character.first_mes || '未设置');
                 console.log('📄 角色消息示例:', result.character.mes_example || '未设置');
                 console.log('📄 完整角色信息:', JSON.stringify(result.character, null, 2));
+            } else {
+                console.log('❌ 未找到角色设定信息');
             }
             
-            // 单独打印世界书信息
-            if (result && result.world_info) {
-                console.log('\n--- 世界书信息 ---');
+            // 检查世界书信息
+            console.log('\n--- 检查世界书信息 ---');
+            console.log('📄 result.world_info 存在:', !!result?.world_info);
+            console.log('📄 result.world_info 类型:', typeof result?.world_info);
+            if (result?.world_info) {
                 console.log('📄 世界书数量:', result.world_info.length || 0);
                 if (result.world_info.length > 0) {
                     result.world_info.forEach((world, index) => {
@@ -345,6 +352,87 @@ async function getContextCompatible(limit = 5) {
                     });
                 }
                 console.log('📄 完整世界书信息:', JSON.stringify(result.world_info, null, 2));
+            } else {
+                console.log('❌ 未找到世界书信息');
+            }
+            
+            // 备用方案：尝试其他方式获取角色卡和世界书
+            let characterInfo = result?.character;
+            let worldInfo = result?.world_info;
+            
+            // 如果SillyTavern没有返回角色卡，尝试其他方式
+            if (!characterInfo) {
+                console.log('\n--- 尝试备用方案获取角色卡 ---');
+                
+                // 备用方案1: 尝试从DOM获取角色卡
+                const characterCard = document.querySelector('#character_info, .character_info, [data-character]');
+                if (characterCard) {
+                    console.log('✅ 从DOM找到角色卡元素');
+                    const charName = characterCard.querySelector('.char_name, .character_name')?.textContent?.trim();
+                    const charDesc = characterCard.querySelector('.char_desc, .character_description')?.textContent?.trim();
+                    if (charName || charDesc) {
+                        characterInfo = {
+                            name: charName || '未知角色',
+                            description: charDesc || '无描述'
+                        };
+                        console.log('📄 从DOM获取的角色卡:', characterInfo);
+                    }
+                }
+                
+                // 备用方案2: 尝试TavernHelper
+                if (!characterInfo && typeof window.TavernHelper?.getCharacter === 'function') {
+                    try {
+                        console.log('🔍 尝试使用TavernHelper.getCharacter()...');
+                        const charData = window.TavernHelper.getCharacter();
+                        if (charData) {
+                            characterInfo = charData;
+                            console.log('✅ TavernHelper.getCharacter() 成功:', characterInfo);
+                        }
+                    } catch (error) {
+                        console.error('❌ TavernHelper.getCharacter() 失败:', error);
+                    }
+                }
+            }
+            
+            // 如果SillyTavern没有返回世界书，尝试其他方式
+            if (!worldInfo) {
+                console.log('\n--- 尝试备用方案获取世界书 ---');
+                
+                // 备用方案1: 尝试TavernHelper
+                if (typeof window.TavernHelper?.getWorldBooks === 'function') {
+                    try {
+                        console.log('🔍 尝试使用TavernHelper.getWorldBooks()...');
+                        const worldBooks = window.TavernHelper.getWorldBooks();
+                        if (worldBooks && worldBooks.length > 0) {
+                            worldInfo = worldBooks;
+                            console.log('✅ TavernHelper.getWorldBooks() 成功，数量:', worldBooks.length);
+                        }
+                    } catch (error) {
+                        console.error('❌ TavernHelper.getWorldBooks() 失败:', error);
+                    }
+                }
+                
+                // 备用方案2: 尝试从DOM获取世界书
+                if (!worldInfo) {
+                    const worldBookElements = document.querySelectorAll('.world_book, [data-world-book], .world_info');
+                    if (worldBookElements.length > 0) {
+                        console.log('✅ 从DOM找到世界书元素，数量:', worldBookElements.length);
+                        worldInfo = [];
+                        worldBookElements.forEach((element, index) => {
+                            const title = element.querySelector('.title, .world_title')?.textContent?.trim() || `世界书${index + 1}`;
+                            const content = element.querySelector('.content, .world_content')?.textContent?.trim() || '';
+                            if (content) {
+                                worldInfo.push({
+                                    title: title,
+                                    content: content,
+                                    keys: '',
+                                    priority: 'default'
+                                });
+                            }
+                        });
+                        console.log('📄 从DOM获取的世界书:', worldInfo);
+                    }
+                }
             }
             
             // 处理消息，只保留最近5条
@@ -362,16 +450,16 @@ async function getContextCompatible(limit = 5) {
                 // 返回简化后的上下文
                 const simplifiedContext = {
                     messages: recentMessages,
-                    character: result.character,
-                    world_info: result.world_info,
+                    character: characterInfo,
+                    world_info: worldInfo,
                     system_prompt: result.system_prompt,
                     original_message_count: result.messages.length
                 };
                 
                 console.log('\n=== 上下文数据获取完成 ===');
                 console.log('📊 返回消息数量:', recentMessages.length);
-                console.log('📊 包含角色设定:', !!result.character);
-                console.log('📊 包含世界书:', !!result.world_info);
+                console.log('📊 包含角色设定:', !!characterInfo);
+                console.log('📊 包含世界书:', !!worldInfo);
                 console.log('📊 包含系统提示词:', !!result.system_prompt);
                 
                 return simplifiedContext;
@@ -410,8 +498,8 @@ async function getContextCompatible(limit = 5) {
                         
                         return {
                             messages: recentMessages,
-                            character: result?.character,
-                            world_info: result?.world_info,
+                            character: characterInfo,
+                            world_info: worldInfo,
                             system_prompt: result?.system_prompt,
                             original_message_count: messages.length
                         };
@@ -432,8 +520,8 @@ async function getContextCompatible(limit = 5) {
                             const recentMessages = messages.slice(-limit);
                             return {
                                 messages: recentMessages,
-                                character: result?.character,
-                                world_info: result?.world_info,
+                                character: characterInfo,
+                                world_info: worldInfo,
                                 system_prompt: result?.system_prompt,
                                 original_message_count: messages.length
                             };
@@ -981,11 +1069,176 @@ export class OptionsGenerator {
                 });
             }
             
+            if (context.character) {
+                console.log('📄 角色设定详情:');
+                console.log(`   名称: ${context.character.name || '未设置'}`);
+                console.log(`   描述: ${context.character.description || '未设置'}`);
+                console.log(`   人格: ${context.character.personality || '未设置'}`);
+            }
+            
+            if (context.world_info && context.world_info.length > 0) {
+                console.log('📄 世界书详情:');
+                context.world_info.forEach((world, i) => {
+                    console.log(`   世界书 ${i+1}: ${world.title || '未命名'}`);
+                    console.log(`   内容: ${world.content?.substring(0, 100) || '无内容'}...`);
+                });
+            }
+            
             return context;
         } catch (error) {
             console.error('❌ 上下文获取测试失败:', error);
             return null;
         }
+    }
+    
+    // 专门测试角色卡和世界书获取
+    static async testCharacterAndWorldInfo() {
+        console.log('=== 开始测试角色卡和世界书获取 ===');
+        
+        // 测试SillyTavern.getContext()
+        if (typeof window.SillyTavern?.getContext === 'function') {
+            try {
+                console.log('🔍 测试 SillyTavern.getContext()...');
+                const result = await window.SillyTavern.getContext({ tokenLimit: 8192 });
+                console.log('✅ SillyTavern.getContext() 成功');
+                console.log('📄 返回数据字段:', Object.keys(result || {}));
+                console.log('📄 角色卡存在:', !!result?.character);
+                console.log('📄 世界书存在:', !!result?.world_info);
+                
+                if (result?.character) {
+                    console.log('📄 角色卡字段:', Object.keys(result.character));
+                }
+                if (result?.world_info) {
+                    console.log('📄 世界书数量:', result.world_info.length);
+                }
+            } catch (error) {
+                console.error('❌ SillyTavern.getContext() 失败:', error);
+            }
+        } else {
+            console.log('❌ SillyTavern.getContext() 不可用');
+        }
+        
+        // 测试TavernHelper
+        if (typeof window.TavernHelper !== 'undefined') {
+            console.log('\n🔍 测试 TavernHelper...');
+            console.log('📄 TavernHelper 方法:', Object.keys(window.TavernHelper));
+            
+            if (typeof window.TavernHelper.getCharacter === 'function') {
+                try {
+                    const charData = window.TavernHelper.getCharacter();
+                    console.log('✅ TavernHelper.getCharacter() 成功:', charData);
+                } catch (error) {
+                    console.error('❌ TavernHelper.getCharacter() 失败:', error);
+                }
+            }
+            
+            if (typeof window.TavernHelper.getWorldBooks === 'function') {
+                try {
+                    const worldBooks = window.TavernHelper.getWorldBooks();
+                    console.log('✅ TavernHelper.getWorldBooks() 成功:', worldBooks);
+                } catch (error) {
+                    console.error('❌ TavernHelper.getWorldBooks() 失败:', error);
+                }
+            }
+        } else {
+            console.log('❌ TavernHelper 不可用');
+        }
+        
+        // 测试DOM元素
+        console.log('\n🔍 测试DOM元素...');
+        const characterElements = document.querySelectorAll('#character_info, .character_info, [data-character]');
+        const worldBookElements = document.querySelectorAll('.world_book, [data-world-book], .world_info');
+        
+        console.log('📄 角色卡DOM元素数量:', characterElements.length);
+        console.log('📄 世界书DOM元素数量:', worldBookElements.length);
+        
+        if (characterElements.length > 0) {
+            console.log('📄 第一个角色卡元素:', characterElements[0]);
+        }
+        if (worldBookElements.length > 0) {
+            console.log('📄 第一个世界书元素:', worldBookElements[0]);
+        }
+        
+        console.log('=== 角色卡和世界书测试完成 ===');
+    }
+    
+    // 诊断SillyTavern API问题
+    static async diagnoseSillyTavernAPI() {
+        console.log('=== 开始诊断SillyTavern API问题 ===');
+        
+        // 1. 测试代理服务器连接
+        console.log('\n🔍 测试代理服务器连接...');
+        try {
+            const testResponse = await fetch('http://127.0.0.1:8001/api/backends/chat-completions/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: 'gpt-3.5-turbo',
+                    messages: [{ role: 'user', content: 'test' }],
+                    max_tokens: 10
+                })
+            });
+            console.log('✅ 代理服务器连接成功，状态:', testResponse.status);
+            const testText = await testResponse.text();
+            console.log('📄 测试响应:', testText.substring(0, 200));
+        } catch (error) {
+            console.error('❌ 代理服务器连接失败:', error);
+        }
+        
+        // 2. 检查SillyTavern设置
+        console.log('\n🔍 检查SillyTavern设置...');
+        const settings = getSettings();
+        console.log('📄 当前API设置:');
+        console.log('  - API类型:', settings.optionsApiType);
+        console.log('  - 模型:', settings.optionsApiModel);
+        console.log('  - 基础URL:', settings.optionsBaseUrl);
+        console.log('  - 是否启用:', settings.optionsGenEnabled);
+        
+        // 3. 检查全局SillyTavern对象
+        console.log('\n🔍 检查SillyTavern全局对象...');
+        if (window.SillyTavern) {
+            console.log('✅ SillyTavern对象存在');
+            console.log('📄 可用方法:', Object.keys(window.SillyTavern));
+            
+            // 检查是否有API相关设置
+            if (window.SillyTavern.settings) {
+                console.log('📄 SillyTavern设置:', window.SillyTavern.settings);
+            }
+        } else {
+            console.log('❌ SillyTavern对象不存在');
+        }
+        
+        // 4. 检查网络请求
+        console.log('\n🔍 检查网络请求配置...');
+        const originalFetch = window.fetch;
+        let requestCount = 0;
+        
+        window.fetch = function(...args) {
+            requestCount++;
+            console.log(`📄 网络请求 ${requestCount}:`, args[0]);
+            if (args[1] && args[1].body) {
+                try {
+                    const body = JSON.parse(args[1].body);
+                    console.log(`📄 请求体大小:`, JSON.stringify(body).length, '字符');
+                    if (JSON.stringify(body).length > 10000) {
+                        console.log('⚠️ 请求体过大，可能导致500错误');
+                    }
+                } catch (e) {
+                    console.log('📄 请求体解析失败');
+                }
+            }
+            return originalFetch.apply(this, args);
+        };
+        
+        console.log('✅ 已安装网络请求监听器');
+        console.log('📄 请尝试发送一条消息，然后查看控制台输出');
+        
+        console.log('\n=== SillyTavern API诊断完成 ===');
+        console.log('💡 建议:');
+        console.log('1. 检查代理服务器是否正常运行');
+        console.log('2. 检查SillyTavern的API配置');
+        console.log('3. 尝试减少上下文长度');
+        console.log('4. 检查代理服务器的token限制');
     }
 }
 
