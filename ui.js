@@ -132,12 +132,19 @@ export function addExtensionSettings(settings) {
             streamCheckbox.checked = settings.streamOptions;
             paceSelect.value = settings.paceMode;
             autoGenSelect.value = settings.autoGenMode;
+            quickPanelCheckbox.checked = settings.showQuickPanel;
             
             // 更新快捷面板
             updateQuickPanelFromSettings();
             
             // 更新显示状态
             baseUrlGroup.style.display = settings.optionsApiType === 'openai' ? 'block' : 'none';
+            
+            // 更新底部快捷面板显示状态
+            const panel = document.getElementById('quick-pace-panel');
+            if (panel) {
+                panel.style.display = settings.showQuickPanel ? 'flex' : 'none';
+            }
             
             saveSettingsDebounced();
             console.log('设置已重置为默认值');
@@ -221,6 +228,38 @@ export function addExtensionSettings(settings) {
     autoGenContainer.appendChild(autoGenLabel);
     autoGenContainer.appendChild(autoGenSelect);
     optionsContainer.appendChild(autoGenContainer);
+    
+    // 底部快捷面板显示设置
+    const quickPanelContainer = document.createElement('div');
+    quickPanelContainer.style.marginTop = '8px';
+    
+    const quickPanelLabel = document.createElement('label');
+    quickPanelLabel.textContent = '底部快捷面板:';
+    applyUnifiedLabelStyle(quickPanelLabel);
+    
+    const quickPanelCheckbox = document.createElement('input');
+    quickPanelCheckbox.type = 'checkbox';
+    quickPanelCheckbox.checked = settings.showQuickPanel !== false;
+    quickPanelCheckbox.addEventListener('change', (e) => {
+        settings.showQuickPanel = e.target.checked;
+        saveSettingsDebounced();
+        
+        // 立即更新面板显示状态
+        const panel = document.getElementById('quick-pace-panel');
+        if (panel) {
+            panel.style.display = settings.showQuickPanel ? 'flex' : 'none';
+        }
+    });
+    
+    const quickPanelText = document.createElement('span');
+    quickPanelText.textContent = '显示底部快捷操作面板';
+    quickPanelText.style.fontSize = '16px';
+    quickPanelText.style.color = 'var(--SmartThemeBodyColor, #222)';
+    quickPanelText.style.marginLeft = '8px';
+    
+    quickPanelContainer.appendChild(quickPanelCheckbox);
+    quickPanelContainer.appendChild(quickPanelText);
+    optionsContainer.appendChild(quickPanelContainer);
     
     // 推进节奏设置
     const paceContainer = document.createElement('div');
@@ -539,6 +578,7 @@ export function createQuickPacePanel() {
         box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         cursor: move;
         transition: all 0.3s ease;
+        background-color: transparent;
     `;
     
     // 添加拖动功能
@@ -859,6 +899,8 @@ export function hidePacePanelLoading() {
 
 // 初始化快捷操作面板
 export function initQuickPacePanel() {
+    const settings = getSettings();
+    
     // 监听输入框变化
     const observer = new MutationObserver(() => {
         const textarea = document.querySelector('#send_textarea, .send_textarea');
@@ -874,6 +916,11 @@ export function initQuickPacePanel() {
                     // 创建并添加面板
                     const panel = createQuickPacePanel();
                     textareaContainer.appendChild(panel);
+                    
+                    // 根据设置控制面板显示状态
+                    if (!settings.showQuickPanel) {
+                        panel.style.display = 'none';
+                    }
                 }
             }
         }
@@ -893,6 +940,11 @@ export function initQuickPacePanel() {
             textareaContainer.style.position = 'relative';
             const panel = createQuickPacePanel();
             textareaContainer.appendChild(panel);
+            
+            // 根据设置控制面板显示状态
+            if (!settings.showQuickPanel) {
+                panel.style.display = 'none';
+            }
         }
     }
 }

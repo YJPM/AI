@@ -12,6 +12,9 @@ export const defaultSettings = {
     paceMode: 'normal', // 推进节奏：normal=正常, fast=快速, jump=跳跃
     autoGenMode: 'auto', // 选项生成模式：auto=自动生成, manual=手动生成
     
+    // 底部快捷面板设置
+    showQuickPanel: true, // 是否显示底部快捷面板
+    
     // 调试设置
     debug: true, // 默认开启
 };

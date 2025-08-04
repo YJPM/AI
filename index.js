@@ -15,6 +15,15 @@ function initializeTypingIndicator() {
     
     // 清除选项的函数
     function clearOptions() {
+        const settings = getSettings();
+        const sendMode = settings.sendMode || 'auto';
+        
+        // 在手动模式下不清除选项容器
+        if (sendMode === 'manual') {
+            logger.log('手动模式，不清除选项容器。');
+            return;
+        }
+        
         const oldContainer = document.getElementById('ti-options-container');
         if (oldContainer) {
             logger.log('清除已存在的选项容器。');
@@ -25,12 +34,52 @@ function initializeTypingIndicator() {
     
     // 用户发送消息时清除选项
     eventSource.on(event_types.MESSAGE_SENT, () => {
+        const settings = getSettings();
+        const sendMode = settings.sendMode || 'auto';
+        
+        if (sendMode === 'manual') {
+            logger.log('MESSAGE_SENT event triggered. 手动模式，清除选中的选项状态。');
+            // 清除选中的选项状态
+            OptionsGenerator.selectedOptions = [];
+            // 重置所有选项按钮的样式
+            const container = document.getElementById('ti-options-container');
+            if (container) {
+                const buttons = container.querySelectorAll('button');
+                buttons.forEach(btn => {
+                    btn.style.background = 'var(--SmartThemeBackgroundColor, #fff)';
+                    btn.style.color = 'var(--SmartThemeBodyColor, #222)';
+                    btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+                });
+            }
+            return;
+        }
+        
         logger.log('MESSAGE_SENT event triggered. 清除选项，等待AI回复。');
         clearOptions();
     });
     
     // 用户重新请求时清除选项
     eventSource.on(event_types.GENERATION_STARTED, () => {
+        const settings = getSettings();
+        const sendMode = settings.sendMode || 'auto';
+        
+        if (sendMode === 'manual') {
+            logger.log('GENERATION_STARTED event triggered. 手动模式，清除选中的选项状态。');
+            // 清除选中的选项状态
+            OptionsGenerator.selectedOptions = [];
+            // 重置所有选项按钮的样式
+            const container = document.getElementById('ti-options-container');
+            if (container) {
+                const buttons = container.querySelectorAll('button');
+                buttons.forEach(btn => {
+                    btn.style.background = 'var(--SmartThemeBackgroundColor, #fff)';
+                    btn.style.color = 'var(--SmartThemeBodyColor, #222)';
+                    btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+                });
+            }
+            return;
+        }
+        
         logger.log('GENERATION_STARTED event triggered. 清除选项，等待AI回复。');
         clearOptions();
     });
@@ -69,6 +118,14 @@ function initializeTypingIndicator() {
     });
     
     eventSource.on(event_types.CHAT_CHANGED, () => {
+        const settings = getSettings();
+        const sendMode = settings.sendMode || 'auto';
+        
+        if (sendMode === 'manual') {
+            logger.log('CHAT_CHANGED event triggered. 手动模式，不清除选项。');
+            return;
+        }
+        
         logger.log('CHAT_CHANGED event triggered.');
         clearOptions();
     });

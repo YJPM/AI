@@ -84,6 +84,12 @@ async function displayOptionsStreaming(content) {
     const settings = getSettings();
     const sendMode = settings.sendMode || 'manual';
     
+    // 在手动模式下，记录已选择的选项
+    if (sendMode === 'manual') {
+        // 重置选中的选项
+        OptionsGenerator.selectedOptions = [];
+    }
+    
     // 更新或创建按钮
     suggestions.forEach((text, index) => {
         let btn = container.querySelector(`[data-option-index="${index}"]`);
@@ -111,16 +117,49 @@ async function displayOptionsStreaming(content) {
                 const sendButton = document.querySelector('#send_but, .send_but, button[onclick*="send"], button[onclick*="Send"]');
                 
                 if (textarea) {
-                    textarea.value = text;
-                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                    textarea.focus();
-                    
-                    // 根据发送模式决定是否自动发送
-                    if (sendMode === 'auto' && sendButton) {
-                        sendButton.click();
+                    if (sendMode === 'manual') {
+                        // 手动模式：多选功能
+                        const isSelected = OptionsGenerator.selectedOptions.includes(text);
+                        
+                        if (isSelected) {
+                            // 取消选择
+                            OptionsGenerator.selectedOptions = OptionsGenerator.selectedOptions.filter(option => option !== text);
+                            btn.style.background = 'var(--SmartThemeBackgroundColor, #fff)';
+                            btn.style.color = 'var(--SmartThemeBodyColor, #222)';
+                            btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+                        } else {
+                            // 添加选择
+                            OptionsGenerator.selectedOptions.push(text);
+                            btn.style.background = 'var(--SmartThemeBlurple, #007bff)';
+                            btn.style.color = 'white';
+                            btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+                        }
+                        
+                        // 拼接选中的选项到输入框
+                        if (OptionsGenerator.selectedOptions.length > 0) {
+                            textarea.value = OptionsGenerator.selectedOptions.join(' ');
+                            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                            textarea.focus();
+                        } else {
+                            textarea.value = '';
+                            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                            textarea.focus();
+                        }
+                        
+                        // 手动模式下不清除选项容器
+                    } else {
+                        // 自动模式：原有行为
+                        textarea.value = text;
+                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                        textarea.focus();
+                        
+                        // 根据发送模式决定是否自动发送
+                        if (sendMode === 'auto' && sendButton) {
+                            sendButton.click();
+                        }
+                        container.remove();
                     }
                 }
-                container.remove();
             };
         }
         
@@ -162,6 +201,12 @@ async function displayOptions(options, isStreaming = false) {
     const settings = getSettings();
     const sendMode = settings.sendMode || 'manual';
     
+    // 在手动模式下，记录已选择的选项
+    if (sendMode === 'manual') {
+        // 重置选中的选项
+        OptionsGenerator.selectedOptions = [];
+    }
+    
     // 设置容器样式，确保按钮布局
     container.style.cssText = `
         display: flex;
@@ -177,12 +222,12 @@ async function displayOptions(options, isStreaming = false) {
             flex: 0 0 calc(25% - 6px);
             min-width: 150px;
             padding: 8px 12px;
-                border: 1px solid var(--SmartThemeBorderColor, #ccc);
-                border-radius: 6px;
-                cursor: pointer;
-                transition: none;
-                word-wrap: break-word;
-                white-space: normal;
+            border: 1px solid var(--SmartThemeBorderColor, #ccc);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: none;
+            word-wrap: break-word;
+            white-space: normal;
         `;
         
         // 添加轻微的hover效果
@@ -196,17 +241,6 @@ async function displayOptions(options, isStreaming = false) {
             btn.style.boxShadow = 'none';
         });
         container.appendChild(btn);
-        
-        // 添加轻微的hover效果
-        btn.addEventListener('mouseover', () => {
-            btn.style.borderColor = 'rgb(28 35 48)';
-            btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-        });
-        
-        btn.addEventListener('mouseout', () => {
-            btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
-            btn.style.boxShadow = 'none';
-        });
         
         if (isStreaming) {
             // 流式显示：快速打字机效果
@@ -224,16 +258,49 @@ async function displayOptions(options, isStreaming = false) {
             const sendButton = document.querySelector('#send_but, .send_but, button[onclick*="send"], button[onclick*="Send"]');
             
             if (textarea) {
-                textarea.value = text;
-                textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                textarea.focus();
-                
-                // 根据发送模式决定是否自动发送
-                if (sendMode === 'auto' && sendButton) {
-                    sendButton.click();
+                if (sendMode === 'manual') {
+                    // 手动模式：多选功能
+                    const isSelected = OptionsGenerator.selectedOptions.includes(text);
+                    
+                    if (isSelected) {
+                        // 取消选择
+                        OptionsGenerator.selectedOptions = OptionsGenerator.selectedOptions.filter(option => option !== text);
+                        btn.style.background = 'var(--SmartThemeBackgroundColor, #fff)';
+                        btn.style.color = 'var(--SmartThemeBodyColor, #222)';
+                        btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+                    } else {
+                        // 添加选择
+                        OptionsGenerator.selectedOptions.push(text);
+                        btn.style.background = 'var(--SmartThemeBlurple, #007bff)';
+                        btn.style.color = 'white';
+                        btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+                    }
+                    
+                    // 拼接选中的选项到输入框
+                    if (OptionsGenerator.selectedOptions.length > 0) {
+                        textarea.value = OptionsGenerator.selectedOptions.join(' ');
+                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                        textarea.focus();
+                    } else {
+                        textarea.value = '';
+                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                        textarea.focus();
+                    }
+                    
+                    // 手动模式下不清除选项容器
+                } else {
+                    // 自动模式：原有行为
+                    textarea.value = text;
+                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    textarea.focus();
+                    
+                    // 根据发送模式决定是否自动发送
+                    if (sendMode === 'auto' && sendButton) {
+                        sendButton.click();
+                    }
+                    container.remove();
                 }
             }
-            container.remove();
         };
     }
 }
@@ -647,6 +714,7 @@ async function testApiConnection() {
 export class OptionsGenerator {
     static isManuallyStopped = false;
     static isGenerating = false;
+    static selectedOptions = []; // 手动模式下选中的选项
     
     static showGeneratingUI = showGeneratingUI;
     static hideGeneratingUI = hideGeneratingUI;
