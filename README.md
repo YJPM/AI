@@ -113,11 +113,27 @@ Access to fetch at 'https://generativelanguage.googleapis.com/v1/models/...' has
 
 ### 代理服务器设置
 1. 确保已安装Node.js
-2. 安装依赖：`npm install express ws`
-3. 启动代理服务器：`node dark-server.js`
+2. 安装依赖：`npm install`
+3. 启动代理服务器：
+   - **简单启动**：`node dark-server.js` 或运行 `start-proxy.bat`
+   - **管理工具**：运行 `manage-proxy.bat` 进行启动、停止、重启和状态检查
 4. 服务器将在以下端口启动：
    - HTTP代理：http://127.0.0.1:8889
    - WebSocket：ws://127.0.0.1:9998
+
+### 代理服务器管理
+使用 `manage-proxy.bat` 可以方便地管理代理服务器：
+- **启动服务器**：自动检查端口占用并处理冲突
+- **停止服务器**：安全地终止所有相关进程
+- **重启服务器**：先停止再启动，确保干净重启
+- **状态检查**：查看当前服务器运行状态和进程信息
+
+### 测试代理系统
+可以使用 `test-proxy.html` 文件来测试代理系统是否正常工作：
+1. 在浏览器中打开 `test-proxy.html`
+2. 点击"测试连接"按钮
+3. 如果连接成功，状态会显示为"已连接"
+4. 可以点击"测试代理请求"来验证代理功能
 
 ## 许可证
 
