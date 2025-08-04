@@ -1511,6 +1511,18 @@ export class OptionsGenerator {
                         }
                     };
                     
+                    // 添加API密钥到请求头
+                    if (settings.optionsApiKey && settings.optionsApiKey.trim()) {
+                        if (apiType === 'gemini') {
+                            newOptions.headers['x-goog-api-key'] = settings.optionsApiKey;
+                        } else {
+                            newOptions.headers['Authorization'] = `Bearer ${settings.optionsApiKey}`;
+                        }
+                        console.log('📄 已添加API密钥到请求头');
+                    } else {
+                        console.log('⚠️ 扩展API配置中缺少API密钥');
+                    }
+                    
                     // 使用扩展的API URL
                     const newUrl = `${settings.optionsBaseUrl}/chat/completions`;
                     console.log('📄 使用扩展API URL:', newUrl);
@@ -1552,6 +1564,62 @@ export class OptionsGenerator {
             return true;
         }
         return false;
+    }
+    
+    // 诊断API配置问题
+    static diagnoseApiConfiguration() {
+        console.log('=== 开始诊断API配置问题 ===');
+        
+        const settings = getSettings();
+        const apiType = settings.optionsApiType || 'openai';
+        const modelName = settings.optionsApiModel || 'gpt-3.5-turbo';
+        
+        console.log('📄 扩展API配置:');
+        console.log('  - API类型:', apiType);
+        console.log('  - 模型:', modelName);
+        console.log('  - 基础URL:', settings.optionsBaseUrl);
+        console.log('  - API密钥:', settings.optionsApiKey ? '已配置' : '未配置');
+        
+        if (!settings.optionsApiKey || !settings.optionsApiKey.trim()) {
+            console.log('❌ 问题: 扩展API配置中缺少API密钥');
+            console.log('💡 解决方案:');
+            console.log('  1. 在扩展设置中找到"API密钥"输入框');
+            console.log('  2. 输入您的API密钥');
+            console.log('  3. 如果使用Gemini，请输入Google Gemini API密钥');
+            console.log('  4. 如果使用OpenAI，请输入OpenAI API密钥');
+            console.log('  5. 点击"测试连接"按钮验证配置');
+            return false;
+        }
+        
+        console.log('✅ API密钥已配置');
+        
+        // 检查SillyTavern的API配置
+        if (window.SillyTavern && window.SillyTavern.settings) {
+            const stSettings = window.SillyTavern.settings;
+            console.log('\n📄 SillyTavern API配置:');
+            console.log('  - 后端类型:', stSettings.api_backend);
+            console.log('  - API URL:', stSettings.api_url);
+            console.log('  - 模型:', stSettings.api_model);
+            
+            // 检查配置冲突
+            if (stSettings.api_model !== modelName) {
+                console.log('⚠️ 模型不匹配: SillyTavern使用', stSettings.api_model, '，扩展使用', modelName);
+            }
+            if (stSettings.api_url !== settings.optionsBaseUrl) {
+                console.log('⚠️ API URL不匹配: SillyTavern使用', stSettings.api_url, '，扩展使用', settings.optionsBaseUrl);
+            }
+        }
+        
+        console.log('\n💡 建议:');
+        console.log('1. 确保扩展的API密钥正确且有效');
+        console.log('2. 检查API密钥是否有足够的配额');
+        console.log('3. 确认选择的模型在您的API账户中可用');
+        if (apiType === 'gemini') {
+            console.log('4. 对于Gemini，确认API密钥有访问gemini-2.5-pro的权限');
+        }
+        console.log('5. 尝试在扩展设置中点击"测试连接"按钮');
+        
+        return true;
     }
 }
 
