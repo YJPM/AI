@@ -1266,6 +1266,158 @@ export class OptionsGenerator {
             console.log('7. 检查gemini-2.5-pro模型是否在代理服务器中可用');
         }
     }
+    
+    // 详细诊断SillyTavern内部API调用
+    static async diagnoseSillyTavernInternalAPI() {
+        console.log('=== 开始详细诊断SillyTavern内部API调用 ===');
+        
+        const settings = getSettings();
+        const apiType = settings.optionsApiType || 'openai';
+        const modelName = settings.optionsApiModel || 'gpt-3.5-turbo';
+        
+        console.log('📄 当前扩展设置:');
+        console.log('  - API类型:', apiType);
+        console.log('  - 模型:', modelName);
+        console.log('  - 基础URL:', settings.optionsBaseUrl);
+        
+        // 1. 检查SillyTavern的内部API配置
+        console.log('\n🔍 检查SillyTavern内部API配置...');
+        if (window.SillyTavern && window.SillyTavern.settings) {
+            const stSettings = window.SillyTavern.settings;
+            console.log('📄 SillyTavern API设置:');
+            console.log('  - 后端类型:', stSettings.api_backend);
+            console.log('  - API URL:', stSettings.api_url);
+            console.log('  - 模型:', stSettings.api_model);
+            console.log('  - 最大上下文:', stSettings.max_context);
+            console.log('  - 最大新token:', stSettings.max_new_tokens);
+            
+            // 检查是否有冲突
+            if (stSettings.api_model !== modelName) {
+                console.log('⚠️ 模型不匹配: SillyTavern使用', stSettings.api_model, '，扩展使用', modelName);
+            }
+            if (stSettings.api_url !== settings.optionsBaseUrl) {
+                console.log('⚠️ API URL不匹配: SillyTavern使用', stSettings.api_url, '，扩展使用', settings.optionsBaseUrl);
+            }
+        } else {
+            console.log('❌ 无法获取SillyTavern设置');
+        }
+        
+        // 2. 模拟SillyTavern的完整请求
+        console.log('\n🔍 模拟SillyTavern的完整请求...');
+        try {
+            // 获取完整的上下文
+            const context = await this.getContextCompatible(5);
+            console.log('📄 获取到的上下文长度:', JSON.stringify(context).length, '字符');
+            
+            // 构建SillyTavern风格的请求
+            let requestBody;
+            if (apiType === 'gemini') {
+                requestBody = {
+                    contents: [{
+                        parts: [{
+                            text: `角色设定：${context.characterInfo || '无'}\n\n世界设定：${context.worldInfo || '无'}\n\n系统提示：${context.systemPrompt || '无'}\n\n对话历史：${context.messages.map(m => `${m.role}: ${m.content}`).join('\n')}\n\n用户：请回复`
+                        }]
+                    }],
+                    generationConfig: {
+                        maxOutputTokens: 100,
+                        temperature: 0.7
+                    }
+                };
+            } else {
+                const messages = [];
+                
+                // 添加系统消息
+                if (context.systemPrompt) {
+                    messages.push({ role: 'system', content: context.systemPrompt });
+                }
+                
+                // 添加角色和世界信息
+                if (context.characterInfo || context.worldInfo) {
+                    let assistantInfo = '';
+                    if (context.characterInfo) assistantInfo += `角色设定：${context.characterInfo}\n\n`;
+                    if (context.worldInfo) assistantInfo += `世界设定：${context.worldInfo}`;
+                    if (assistantInfo) {
+                        messages.push({ role: 'assistant', content: assistantInfo });
+                    }
+                }
+                
+                // 添加对话历史
+                messages.push(...context.messages);
+                
+                // 添加用户消息
+                messages.push({ role: 'user', content: '请回复' });
+                
+                requestBody = {
+                    model: modelName,
+                    messages: messages,
+                    max_tokens: 100,
+                    temperature: 0.7
+                };
+            }
+            
+            console.log('📄 请求体大小:', JSON.stringify(requestBody).length, '字符');
+            if (JSON.stringify(requestBody).length > 15000) {
+                console.log('⚠️ 请求体过大，可能导致500错误');
+            }
+            
+            // 3. 发送测试请求
+            console.log('\n🔍 发送测试请求...');
+            const response = await fetch('http://127.0.0.1:8001/api/backends/chat-completions/generate', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+            
+            console.log('📄 响应状态:', response.status);
+            console.log('📄 响应头:', Object.fromEntries(response.headers.entries()));
+            
+            const responseText = await response.text();
+            console.log('📄 响应内容:', responseText.substring(0, 500));
+            
+            if (response.ok) {
+                console.log('✅ 测试请求成功');
+            } else {
+                console.log('❌ 测试请求失败');
+                if (response.status === 500) {
+                    console.log('💡 500错误通常表示:');
+                    console.log('  1. 请求体过大或格式错误');
+                    console.log('  2. 代理服务器内部错误');
+                    console.log('  3. 模型不支持或配置错误');
+                    console.log('  4. API密钥问题');
+                }
+            }
+            
+        } catch (error) {
+            console.error('❌ 测试请求异常:', error);
+        }
+        
+        // 4. 检查SillyTavern的事件系统
+        console.log('\n🔍 检查SillyTavern事件系统...');
+        if (window.eventSource) {
+            console.log('✅ 事件源存在');
+            console.log('📄 事件类型:', Object.keys(window.eventSource._events || {}));
+        } else {
+            console.log('❌ 事件源不存在');
+        }
+        
+        // 5. 提供解决建议
+        console.log('\n=== 详细诊断完成 ===');
+        console.log('💡 解决建议:');
+        console.log('1. 检查代理服务器日志获取详细错误信息');
+        console.log('2. 确认SillyTavern和扩展使用相同的API配置');
+        console.log('3. 尝试减少上下文长度（减少max_context设置）');
+        console.log('4. 检查代理服务器是否支持当前模型');
+        console.log('5. 验证API密钥的有效性');
+        if (apiType === 'gemini') {
+            console.log('6. 确认代理服务器正确配置了Gemini API');
+            console.log('7. 检查gemini-2.5-pro模型是否在代理服务器中可用');
+        }
+        console.log('8. 尝试重启代理服务器');
+        console.log('9. 检查代理服务器的token限制设置');
+    }
 }
 
 // 将OptionsGenerator导出到全局作用域，以便在控制台中调用
