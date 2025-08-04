@@ -29,6 +29,13 @@
 - **自动格式转换**：支持OpenAI和Gemini格式之间的自动转换
 - **CORS问题处理**：自动处理Google Gemini API的CORS限制，回退到SillyTavern原始API
 
+### 代理系统功能
+- **绕过CORS限制**：通过本地代理服务器绕过浏览器CORS限制
+- **支持所有API**：支持Google Gemini、OpenAI等所有API的直接调用
+- **流式响应**：支持流式响应处理，提供更好的用户体验
+- **自动重连**：WebSocket连接断开时自动重连
+- **错误处理**：完善的错误处理和日志记录
+
 ### 美观的提示样式
 - 继承自打字指示器的动画效果
 - 可自定义提示文本
@@ -75,6 +82,13 @@
 - 解决SillyTavern API调用问题
 - **注意**：使用Google Gemini API时，由于CORS限制，会自动回退到SillyTavern原始API
 
+### 代理系统
+- 在扩展设置中启用"代理系统"选项
+- 需要先启动本地代理服务器（dark-server.js）
+- 绕过浏览器CORS限制，支持直接调用Google Gemini API
+- 提供流式响应支持，更好的用户体验
+- 自动处理连接断开和重连
+
 ## 故障排除
 
 ### CORS错误（Google Gemini API）
@@ -94,6 +108,16 @@ Access to fetch at 'https://generativelanguage.googleapis.com/v1/models/...' has
 - `OptionsGenerator.diagnoseApiConfiguration()` - 诊断API配置
 - `OptionsGenerator.diagnoseCorsIssue()` - 诊断CORS问题
 - `OptionsGenerator.testApiConnection()` - 测试API连接
+- `OptionsGenerator.initializeProxySystem()` - 初始化代理系统
+- `OptionsGenerator.stopProxySystem()` - 停止代理系统
+
+### 代理服务器设置
+1. 确保已安装Node.js
+2. 安装依赖：`npm install express ws`
+3. 启动代理服务器：`node dark-server.js`
+4. 服务器将在以下端口启动：
+   - HTTP代理：http://127.0.0.1:8889
+   - WebSocket：ws://127.0.0.1:9998
 
 ## 许可证
 

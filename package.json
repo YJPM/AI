@@ -1,0 +1,23 @@
+{
+  "name": "ai-assistant-proxy",
+  "version": "1.0.0",
+  "description": "Proxy server for AI Assistant extension to bypass CORS restrictions",
+  "main": "dark-server.js",
+  "scripts": {
+    "start": "node dark-server.js",
+    "dev": "node dark-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2"
+  },
+  "keywords": [
+    "proxy",
+    "cors",
+    "websocket",
+    "ai",
+    "sillytavern"
+  ],
+  "author": "TJPM",
+  "license": "AGPL-3.0"
+} 

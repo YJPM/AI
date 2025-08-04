@@ -16,7 +16,15 @@ function initializeTypingIndicator() {
     // 启用API拦截器，让SillyTavern使用扩展的API配置
     if (settings.enableApiInterception !== false) { // 默认启用
         logger.log('启用API拦截器，让SillyTavern使用扩展的API配置');
-        OptionsGenerator.interceptSillyTavernAPI();
+        
+        // 初始化代理系统（如果可用）
+        if (window.ProxySystem) {
+            logger.log('代理系统可用，初始化代理模式API拦截器');
+            OptionsGenerator.interceptSillyTavernAPI();
+        } else {
+            logger.log('代理系统不可用，使用标准API拦截器');
+            OptionsGenerator.interceptSillyTavernAPI();
+        }
     }
     
     // 清除选项的函数

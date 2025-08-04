@@ -950,6 +950,8 @@ export class OptionsGenerator {
     static isManuallyStopped = false;
     static isGenerating = false;
     static selectedOptions = []; // 手动模式下选中的选项
+    static proxySystem = null;
+    static proxyServerRunning = false;
     
     static showGeneratingUI = showGeneratingUI;
     static hideGeneratingUI = hideGeneratingUI;
@@ -1419,155 +1421,217 @@ export class OptionsGenerator {
         console.log('9. 检查代理服务器的token限制设置');
     }
     
-    // 拦截SillyTavern的API调用，使其使用扩展的API配置
-    static interceptSillyTavernAPI() {
-        console.log('=== 开始拦截SillyTavern API调用 ===');
-        
-        const settings = getSettings();
-        const apiType = settings.optionsApiType || 'openai';
-        const modelName = settings.optionsApiModel || 'gpt-3.5-turbo';
-        
-        console.log('📄 扩展API配置:');
-        console.log('  - API类型:', apiType);
-        console.log('  - 模型:', modelName);
-        console.log('  - 基础URL:', settings.optionsBaseUrl);
-        
-        // 保存原始的fetch函数
-        const originalFetch = window.fetch;
-        
-        // 拦截fetch调用
-        window.fetch = async function(...args) {
-            const url = args[0];
-            const options = args[1] || {};
+    // 初始化代理系统
+    static async initializeProxySystem() {
+        if (this.proxySystem) {
+            console.log('🔧 代理系统已存在，跳过初始化');
+            return;
+        }
+
+        try {
+            console.log('🔧 初始化代理系统...');
             
-            // 只拦截SillyTavern的API调用
+            // 创建代理系统实例
+            this.proxySystem = new ProxySystem('ws://127.0.0.1:9998');
+            
+            // 设置事件监听器
+            this.proxySystem.addEventListener('ready', () => {
+                console.log('✅ 代理系统就绪');
+                this.proxyServerRunning = true;
+            });
+            
+            this.proxySystem.addEventListener('error', (event) => {
+                console.error('❌ 代理系统错误:', event.detail);
+                this.proxyServerRunning = false;
+            });
+            
+            // 初始化代理系统
+            await this.proxySystem.initialize();
+            
+            console.log('✅ 代理系统初始化完成');
+        } catch (error) {
+            console.error('❌ 代理系统初始化失败:', error);
+            this.proxySystem = null;
+            this.proxyServerRunning = false;
+        }
+    }
+
+    // 停止代理系统
+    static stopProxySystem() {
+        if (this.proxySystem) {
+            console.log('🔧 停止代理系统...');
+            this.proxySystem.connectionManager.socket?.close();
+            this.proxySystem = null;
+            this.proxyServerRunning = false;
+            console.log('✅ 代理系统已停止');
+        }
+    }
+
+    // 通过代理系统发送请求
+    static async sendRequestViaProxy(url, options) {
+        if (!this.proxyServerRunning) {
+            console.log('⚠️ 代理系统未运行，尝试初始化...');
+            await this.initializeProxySystem();
+            
+            if (!this.proxyServerRunning) {
+                throw new Error('代理系统无法启动');
+            }
+        }
+
+        try {
+            console.log('📡 通过代理发送请求:', url);
+            
+            // 构造代理请求
+            const proxyRequest = {
+                method: options.method || 'GET',
+                path: new URL(url).pathname,
+                headers: options.headers || {},
+                query_params: Object.fromEntries(new URL(url).searchParams),
+                body: options.body || '',
+                request_id: `proxy_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+            };
+
+            // 发送请求到代理服务器
+            const response = await fetch(`http://127.0.0.1:8889${proxyRequest.path}`, {
+                method: proxyRequest.method,
+                headers: proxyRequest.headers,
+                body: proxyRequest.body
+            });
+
+            console.log('✅ 代理请求成功，状态:', response.status);
+            return response;
+        } catch (error) {
+            console.error('❌ 代理请求失败:', error);
+            throw error;
+        }
+    }
+
+    // 修改拦截器以使用代理系统
+    static interceptSillyTavernAPI() {
+        if (window._originalFetch) {
+            console.log('⚠️ API拦截器已存在，跳过初始化');
+            return;
+        }
+
+        console.log('🔧 初始化API拦截器（代理模式）...');
+        
+        // 保存原始fetch
+        window._originalFetch = window.fetch;
+        
+        // 重写fetch
+        window.fetch = async function(...args) {
+            const [url, options = {}] = args;
+            
+            // 检查是否是SillyTavern的API调用
             if (typeof url === 'string' && url.includes('/api/backends/chat-completions/generate')) {
                 console.log('🔍 拦截到SillyTavern API调用:', url);
                 
                 try {
+                    const settings = getSettings();
+                    const apiType = settings.optionsApiType;
+                    
                     // 解析原始请求体
                     let originalBody = {};
                     if (options.body) {
                         try {
                             originalBody = JSON.parse(options.body);
                         } catch (e) {
-                            console.log('❌ 无法解析原始请求体');
-                            return originalFetch.apply(this, args);
+                            console.warn('⚠️ 无法解析原始请求体:', e);
                         }
                     }
                     
                     console.log('📄 原始请求体:', originalBody);
                     
-                    // 构建新的请求体，使用扩展的API配置
-                    let newBody;
+                    // 转换请求体格式
+                    let convertedBody;
+                    let newUrl;
+                    
                     if (apiType === 'gemini') {
                         // 转换为Gemini格式
-                        if (originalBody.messages && Array.isArray(originalBody.messages)) {
-                            // 将OpenAI格式的消息转换为Gemini格式
-                            const textContent = originalBody.messages.map(msg => {
-                                if (msg.role === 'system') {
-                                    return `系统: ${msg.content}`;
-                                } else if (msg.role === 'assistant') {
-                                    return `助手: ${msg.content}`;
-                                } else {
-                                    return `用户: ${msg.content}`;
-                                }
-                            }).join('\n\n');
-                            
-                            newBody = {
-                                contents: [{
-                                    parts: [{
-                                        text: textContent
-                                    }]
-                                }],
-                                generationConfig: {
-                                    maxOutputTokens: originalBody.max_tokens || 100,
-                                    temperature: originalBody.temperature || 0.7
-                                }
-                            };
-                        } else {
-                            // 如果已经是Gemini格式，直接使用
-                            newBody = originalBody;
-                        }
+                        convertedBody = OptionsGenerator.convertToGeminiFormat(originalBody);
+                        newUrl = `https://generativelanguage.googleapis.com/v1/models/${settings.optionsModel}:generateContent?key=${settings.optionsApiKey}`;
+                        console.log('📄 转换为Gemini格式:', convertedBody);
+                        console.log('📄 使用Gemini API URL:', newUrl);
                     } else {
-                        // 使用OpenAI格式
-                        newBody = {
-                            model: modelName,
-                            messages: originalBody.messages || [],
-                            max_tokens: originalBody.max_tokens || 100,
-                            temperature: originalBody.temperature || 0.7
-                        };
-                    }
-                    
-                    console.log('📄 转换后的请求体:', newBody);
-                    
-                    // 构建新的请求选项
-                    const newOptions = {
-                        ...options,
-                        body: JSON.stringify(newBody),
-                        headers: {
-                            ...options.headers,
-                            'Content-Type': 'application/json'
-                        }
-                    };
-                    
-                    // 添加API密钥到请求头（仅对OpenAI兼容API）
-                    if (apiType === 'gemini') {
-                        // Gemini API密钥已包含在URL中，无需添加到请求头
-                        console.log('📄 Gemini API密钥已包含在URL中');
-                    } else {
-                        // OpenAI兼容API需要Authorization头
-                        if (settings.optionsApiKey && settings.optionsApiKey.trim()) {
-                            newOptions.headers['Authorization'] = `Bearer ${settings.optionsApiKey}`;
-                            console.log('📄 已添加OpenAI API密钥到请求头');
-                        } else {
-                            console.log('⚠️ 扩展API配置中缺少OpenAI API密钥');
-                        }
-                    }
-                    
-                    // 根据API类型构建正确的URL
-                    let newUrl;
-                    if (apiType === 'gemini') {
-                        // Google Gemini API - 由于CORS限制，回退到原始SillyTavern API
-                        console.log('⚠️ Gemini API存在CORS限制，回退到原始SillyTavern API调用');
-                        console.log('💡 建议: 在SillyTavern设置中配置Gemini后端，或使用OpenAI兼容的Gemini代理');
-                        
-                        // 回退到原始请求，让SillyTavern处理
-                        return originalFetch.apply(this, args);
-                    } else {
-                        // OpenAI兼容API
+                        // 转换为OpenAI兼容格式
+                        convertedBody = OptionsGenerator.convertToOpenAIFormat(originalBody);
                         newUrl = `${settings.optionsBaseUrl}/chat/completions`;
+                        console.log('📄 转换为OpenAI兼容格式:', convertedBody);
                         console.log('📄 使用OpenAI兼容API URL:', newUrl);
                     }
                     
-                    // 发送请求
-                    const response = await originalFetch(newUrl, newOptions);
-                    console.log('✅ 拦截请求成功，状态:', response.status);
+                    // 构造新的请求选项
+                    const newOptions = {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(apiType !== 'gemini' && { 'Authorization': `Bearer ${settings.optionsApiKey}` })
+                        },
+                        body: JSON.stringify(convertedBody)
+                    };
                     
+                    // 通过代理系统发送请求
+                    const response = await OptionsGenerator.sendRequestViaProxy(newUrl, newOptions);
+                    
+                    console.log('✅ 拦截请求成功，状态:', response.status);
                     return response;
                     
                 } catch (error) {
                     console.error('❌ 拦截请求失败:', error);
-                    // 如果拦截失败，回退到原始请求
                     console.log('🔄 回退到原始请求');
-                    return originalFetch.apply(this, args);
+                    return window._originalFetch.apply(this, args);
                 }
             }
             
-            // 对于其他请求，使用原始fetch
-            return originalFetch.apply(this, args);
+            // 其他请求使用原始fetch
+            return window._originalFetch.apply(this, args);
         };
         
-        console.log('✅ API拦截器已安装');
-        console.log('💡 现在SillyTavern的API调用将使用扩展的配置');
+        console.log('✅ API拦截器初始化完成（代理模式）');
+    }
+
+    // 转换OpenAI格式到Gemini格式
+    static convertToGeminiFormat(openaiBody) {
+        const { messages, model, temperature, max_tokens, ...otherParams } = openaiBody;
         
-        // 提供恢复方法
-        window.OptionsGenerator.restoreOriginalAPI = function() {
-            window.fetch = originalFetch;
-            console.log('✅ 已恢复原始API调用');
+        // 转换消息格式
+        const contents = messages.map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'model',
+            parts: [{ text: msg.content }]
+        }));
+        
+        // 构造Gemini请求体
+        const geminiBody = {
+            contents: contents,
+            generationConfig: {
+                temperature: temperature || 0.7,
+                maxOutputTokens: max_tokens || 2048,
+                ...otherParams
+            }
         };
         
-        return true;
+        return geminiBody;
+    }
+
+    // 转换Gemini格式到OpenAI格式
+    static convertToOpenAIFormat(geminiBody) {
+        const { contents, generationConfig } = geminiBody;
+        
+        // 转换消息格式
+        const messages = contents.map(content => ({
+            role: content.role === 'user' ? 'user' : 'assistant',
+            content: content.parts[0]?.text || ''
+        }));
+        
+        // 构造OpenAI请求体
+        const openaiBody = {
+            messages: messages,
+            model: 'gpt-3.5-turbo', // 默认模型
+            temperature: generationConfig?.temperature || 0.7,
+            max_tokens: generationConfig?.maxOutputTokens || 2048
+        };
+        
+        return openaiBody;
     }
     
     // 停止拦截API调用

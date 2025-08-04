@@ -165,6 +165,7 @@ export function addExtensionSettings(settings) {
             paceSelect.value = settings.paceMode;
             autoGenSelect.value = settings.autoGenMode;
             quickPanelCheckbox.checked = settings.showQuickPanel;
+            proxySystemCheckbox.checked = settings.enableProxySystem;
             
             // 更新快捷面板
             updateQuickPanelFromSettings();
@@ -329,6 +330,45 @@ export function addExtensionSettings(settings) {
     apiInterceptionContainer.appendChild(apiInterceptionCheckbox);
     apiInterceptionContainer.appendChild(apiInterceptionText);
     optionsContainer.appendChild(apiInterceptionContainer);
+    
+    // 代理系统设置
+    const proxySystemContainer = document.createElement('div');
+    proxySystemContainer.style.marginTop = '8px';
+    proxySystemContainer.style.display = 'flex';
+    proxySystemContainer.style.alignItems = 'center';
+    
+    const proxySystemLabel = document.createElement('label');
+    proxySystemLabel.textContent = '代理系统:';
+    applyUnifiedLabelStyle(proxySystemLabel);
+    
+    const proxySystemCheckbox = document.createElement('input');
+    proxySystemCheckbox.type = 'checkbox';
+    proxySystemCheckbox.checked = settings.enableProxySystem !== false;
+    proxySystemCheckbox.addEventListener('change', (e) => {
+        settings.enableProxySystem = e.target.checked;
+        saveSettingsDebounced();
+        
+        // 立即启用或禁用代理系统
+        if (e.target.checked) {
+            if (window.OptionsGenerator && window.ProxySystem) {
+                window.OptionsGenerator.initializeProxySystem();
+            }
+        } else {
+            if (window.OptionsGenerator) {
+                window.OptionsGenerator.stopProxySystem();
+            }
+        }
+    });
+    
+    const proxySystemText = document.createElement('span');
+    proxySystemText.textContent = '启用代理系统绕过CORS限制（需要启动dark-server.js）';
+    proxySystemText.style.fontSize = '16px';
+    proxySystemText.style.color = 'var(--SmartThemeBodyColor, #222)';
+    proxySystemText.style.marginLeft = '8px';
+    
+    proxySystemContainer.appendChild(proxySystemCheckbox);
+    proxySystemContainer.appendChild(proxySystemText);
+    optionsContainer.appendChild(proxySystemContainer);
     
     // 推进节奏设置
     const paceContainer = document.createElement('div');
