@@ -6,7 +6,7 @@
     "js": "index.js",
     "css": "style.css",
     "author": "TJPM",
-    "version": "1.2.5",
+    "version": "1.2.4",
     "homePage": "https://github.com/YJPM/AI",
     "auto_update": true
 }
