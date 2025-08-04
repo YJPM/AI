@@ -1511,21 +1511,32 @@ export class OptionsGenerator {
                         }
                     };
                     
-                    // 添加API密钥到请求头
-                    if (settings.optionsApiKey && settings.optionsApiKey.trim()) {
-                        if (apiType === 'gemini') {
-                            newOptions.headers['x-goog-api-key'] = settings.optionsApiKey;
-                        } else {
-                            newOptions.headers['Authorization'] = `Bearer ${settings.optionsApiKey}`;
-                        }
-                        console.log('📄 已添加API密钥到请求头');
+                    // 添加API密钥到请求头（仅对OpenAI兼容API）
+                    if (apiType === 'gemini') {
+                        // Gemini API密钥已包含在URL中，无需添加到请求头
+                        console.log('📄 Gemini API密钥已包含在URL中');
                     } else {
-                        console.log('⚠️ 扩展API配置中缺少API密钥');
+                        // OpenAI兼容API需要Authorization头
+                        if (settings.optionsApiKey && settings.optionsApiKey.trim()) {
+                            newOptions.headers['Authorization'] = `Bearer ${settings.optionsApiKey}`;
+                            console.log('📄 已添加OpenAI API密钥到请求头');
+                        } else {
+                            console.log('⚠️ 扩展API配置中缺少OpenAI API密钥');
+                        }
                     }
                     
-                    // 使用扩展的API URL
-                    const newUrl = `${settings.optionsBaseUrl}/chat/completions`;
-                    console.log('📄 使用扩展API URL:', newUrl);
+                    // 根据API类型构建正确的URL
+                    let newUrl;
+                    if (apiType === 'gemini') {
+                        // Google Gemini API - 直接使用官方API
+                        const modelName = settings.optionsApiModel || 'gemini-pro';
+                        newUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${settings.optionsApiKey}`;
+                        console.log('📄 使用Google Gemini API URL:', newUrl);
+                    } else {
+                        // OpenAI兼容API
+                        newUrl = `${settings.optionsBaseUrl}/chat/completions`;
+                        console.log('📄 使用OpenAI兼容API URL:', newUrl);
+                    }
                     
                     // 发送请求
                     const response = await originalFetch(newUrl, newOptions);
