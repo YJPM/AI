@@ -1168,15 +1168,37 @@ export class OptionsGenerator {
         
         // 1. 测试代理服务器连接
         console.log('\n🔍 测试代理服务器连接...');
+        const settings = getSettings();
+        const apiType = settings.optionsApiType || 'openai';
+        const modelName = settings.optionsApiModel || 'gpt-3.5-turbo';
+        
         try {
+            let testBody;
+            if (apiType === 'gemini') {
+                // 使用Gemini格式的测试请求
+                testBody = {
+                    contents: [{
+                        parts: [{
+                            text: 'test'
+                        }]
+                    }],
+                    generationConfig: {
+                        maxOutputTokens: 10,
+                    }
+                };
+            } else {
+                // 使用OpenAI格式的测试请求
+                testBody = {
+                    model: modelName,
+                    messages: [{ role: 'user', content: 'test' }],
+                    max_tokens: 10
+                };
+            }
+            
             const testResponse = await fetch('http://127.0.0.1:8001/api/backends/chat-completions/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: 'gpt-3.5-turbo',
-                    messages: [{ role: 'user', content: 'test' }],
-                    max_tokens: 10
-                })
+                body: JSON.stringify(testBody)
             });
             console.log('✅ 代理服务器连接成功，状态:', testResponse.status);
             const testText = await testResponse.text();
@@ -1187,7 +1209,6 @@ export class OptionsGenerator {
         
         // 2. 检查SillyTavern设置
         console.log('\n🔍 检查SillyTavern设置...');
-        const settings = getSettings();
         console.log('📄 当前API设置:');
         console.log('  - API类型:', settings.optionsApiType);
         console.log('  - 模型:', settings.optionsApiModel);
@@ -1239,6 +1260,11 @@ export class OptionsGenerator {
         console.log('2. 检查SillyTavern的API配置');
         console.log('3. 尝试减少上下文长度');
         console.log('4. 检查代理服务器的token限制');
+        if (apiType === 'gemini') {
+            console.log('5. 对于Gemini模型，检查API密钥是否正确');
+            console.log('6. 确认代理服务器支持Gemini API格式');
+            console.log('7. 检查gemini-2.5-pro模型是否在代理服务器中可用');
+        }
     }
 }
 
