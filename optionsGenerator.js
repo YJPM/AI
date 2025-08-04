@@ -317,6 +317,7 @@ async function getContextCompatible(limit = 5) {
             console.log('✅ SillyTavern.getContext() 成功');
             console.log('📄 内容类型:', typeof result);
             console.log('📄 内容结构:', Object.keys(result || {}));
+            console.log('📄 完整返回数据:', JSON.stringify(result, null, 2));
             
             // 单独打印角色设定信息
             if (result && result.character) {
@@ -375,7 +376,74 @@ async function getContextCompatible(limit = 5) {
                 
                 return simplifiedContext;
             } else {
-                console.log('❌ 未找到消息数据');
+                console.log('❌ SillyTavern.getContext() 未返回消息数据');
+                console.log('🔍 尝试备用方案获取消息...');
+                
+                // 备用方案1: 尝试从DOM获取消息
+                const chatMessages = document.querySelectorAll('#chat .mes');
+                if (chatMessages.length > 0) {
+                    console.log('✅ 从DOM获取到消息，数量:', chatMessages.length);
+                    const messages = [];
+                    chatMessages.forEach((mes, index) => {
+                        // 更精确的角色判断
+                        let role = 'user';
+                        if (mes.classList.contains('swiper-slide') || 
+                            mes.classList.contains('assistant') || 
+                            mes.querySelector('.avatar') ||
+                            mes.getAttribute('data-is-user') === 'false') {
+                            role = 'assistant';
+                        }
+                        
+                        // 获取消息内容
+                        const contentElement = mes.querySelector('.mes_text') || mes.querySelector('.message') || mes;
+                        const content = contentElement.textContent?.trim() || '';
+                        
+                        if (content && content.length > 0) {
+                            messages.push({ role, content });
+                            console.log(`📄 消息 ${index + 1}: [${role}] ${content.substring(0, 50)}...`);
+                        }
+                    });
+                    
+                    if (messages.length > 0) {
+                        const recentMessages = messages.slice(-limit);
+                        console.log('📄 从DOM获取的最近消息:', recentMessages);
+                        
+                        return {
+                            messages: recentMessages,
+                            character: result?.character,
+                            world_info: result?.world_info,
+                            system_prompt: result?.system_prompt,
+                            original_message_count: messages.length
+                        };
+                    } else {
+                        console.log('❌ DOM消息内容为空');
+                    }
+                } else {
+                    console.log('❌ 未找到DOM消息元素');
+                }
+                
+                // 备用方案2: 尝试TavernHelper
+                if (typeof window.TavernHelper?.getMessages === 'function') {
+                    try {
+                        console.log('🔍 尝试使用TavernHelper.getMessages()...');
+                        const messages = window.TavernHelper.getMessages();
+                        if (messages && messages.length > 0) {
+                            console.log('✅ TavernHelper.getMessages() 成功，数量:', messages.length);
+                            const recentMessages = messages.slice(-limit);
+                            return {
+                                messages: recentMessages,
+                                character: result?.character,
+                                world_info: result?.world_info,
+                                system_prompt: result?.system_prompt,
+                                original_message_count: messages.length
+                            };
+                        }
+                    } catch (error) {
+                        console.error('❌ TavernHelper.getMessages() 失败:', error);
+                    }
+                }
+                
+                console.log('❌ 所有备用方案都失败，返回空消息数组');
                 return { messages: [] };
             }
         } catch (error) {
@@ -882,7 +950,42 @@ export class OptionsGenerator {
         const extensionElements = document.querySelectorAll('[id*="tavern"], [class*="tavern"], [id*="helper"], [class*="helper"]');
         console.log('可能的扩展元素:', extensionElements.length);
         
+        // 检查聊天消息元素
+        const chatMessages = document.querySelectorAll('#chat .mes');
+        console.log('聊天消息元素数量:', chatMessages.length);
+        if (chatMessages.length > 0) {
+            console.log('第一个消息元素:', chatMessages[0]);
+            console.log('第一个消息元素的类名:', chatMessages[0].className);
+            console.log('第一个消息元素的内容:', chatMessages[0].textContent?.substring(0, 100));
+        }
+        
         console.log('=== 接口诊断完成 ===');
+    }
+    
+    // 测试上下文获取
+    static async testContextRetrieval() {
+        console.log('=== 开始测试上下文获取 ===');
+        
+        try {
+            const context = await getContextCompatible(5);
+            console.log('✅ 上下文获取测试完成');
+            console.log('📊 获取到的消息数量:', context.messages?.length || 0);
+            console.log('📊 包含角色设定:', !!context.character);
+            console.log('📊 包含世界书:', !!context.world_info);
+            console.log('📊 包含系统提示词:', !!context.system_prompt);
+            
+            if (context.messages && context.messages.length > 0) {
+                console.log('📄 消息示例:');
+                context.messages.forEach((msg, i) => {
+                    console.log(`   ${i+1}. [${msg.role}] ${msg.content.substring(0, 100)}...`);
+                });
+            }
+            
+            return context;
+        } catch (error) {
+            console.error('❌ 上下文获取测试失败:', error);
+            return null;
+        }
     }
 }
 
