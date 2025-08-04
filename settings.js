@@ -17,6 +17,9 @@ export const defaultSettings = {
     
     // 调试设置
     debug: true, // 默认开启
+    
+    // API拦截设置
+    enableApiInterception: true, // 是否启用API拦截器，让SillyTavern使用扩展的API配置
 };
 
 // 不同推进节奏的提示模板

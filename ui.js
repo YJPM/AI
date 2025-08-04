@@ -293,6 +293,43 @@ export function addExtensionSettings(settings) {
     quickPanelContainer.appendChild(quickPanelText);
     optionsContainer.appendChild(quickPanelContainer);
     
+    // API拦截器设置
+    const apiInterceptionContainer = document.createElement('div');
+    apiInterceptionContainer.style.marginTop = '8px';
+    
+    const apiInterceptionLabel = document.createElement('label');
+    apiInterceptionLabel.textContent = 'API拦截器:';
+    applyUnifiedLabelStyle(apiInterceptionLabel);
+    
+    const apiInterceptionCheckbox = document.createElement('input');
+    apiInterceptionCheckbox.type = 'checkbox';
+    apiInterceptionCheckbox.checked = settings.enableApiInterception !== false;
+    apiInterceptionCheckbox.addEventListener('change', (e) => {
+        settings.enableApiInterception = e.target.checked;
+        saveSettingsDebounced();
+        
+        // 立即启用或禁用API拦截器
+        if (e.target.checked) {
+            if (window.OptionsGenerator) {
+                window.OptionsGenerator.interceptSillyTavernAPI();
+            }
+        } else {
+            if (window.OptionsGenerator) {
+                window.OptionsGenerator.stopInterceptingAPI();
+            }
+        }
+    });
+    
+    const apiInterceptionText = document.createElement('span');
+    apiInterceptionText.textContent = '让SillyTavern使用扩展的API配置';
+    apiInterceptionText.style.fontSize = '16px';
+    apiInterceptionText.style.color = 'var(--SmartThemeBodyColor, #222)';
+    apiInterceptionText.style.marginLeft = '8px';
+    
+    apiInterceptionContainer.appendChild(apiInterceptionCheckbox);
+    apiInterceptionContainer.appendChild(apiInterceptionText);
+    optionsContainer.appendChild(apiInterceptionContainer);
+    
     // 推进节奏设置
     const paceContainer = document.createElement('div');
     paceContainer.style.marginTop = '8px';

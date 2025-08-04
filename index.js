@@ -13,6 +13,12 @@ function initializeTypingIndicator() {
     applyBasicStyle();
     initQuickPacePanel(); // 初始化快捷操作面板
     
+    // 启用API拦截器，让SillyTavern使用扩展的API配置
+    if (settings.enableApiInterception !== false) { // 默认启用
+        logger.log('启用API拦截器，让SillyTavern使用扩展的API配置');
+        OptionsGenerator.interceptSillyTavernAPI();
+    }
+    
     // 清除选项的函数
     function clearOptions() {
         const settings = getSettings();

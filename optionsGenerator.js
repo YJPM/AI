@@ -1418,6 +1418,141 @@ export class OptionsGenerator {
         console.log('8. 尝试重启代理服务器');
         console.log('9. 检查代理服务器的token限制设置');
     }
+    
+    // 拦截SillyTavern的API调用，使其使用扩展的API配置
+    static interceptSillyTavernAPI() {
+        console.log('=== 开始拦截SillyTavern API调用 ===');
+        
+        const settings = getSettings();
+        const apiType = settings.optionsApiType || 'openai';
+        const modelName = settings.optionsApiModel || 'gpt-3.5-turbo';
+        
+        console.log('📄 扩展API配置:');
+        console.log('  - API类型:', apiType);
+        console.log('  - 模型:', modelName);
+        console.log('  - 基础URL:', settings.optionsBaseUrl);
+        
+        // 保存原始的fetch函数
+        const originalFetch = window.fetch;
+        
+        // 拦截fetch调用
+        window.fetch = async function(...args) {
+            const url = args[0];
+            const options = args[1] || {};
+            
+            // 只拦截SillyTavern的API调用
+            if (typeof url === 'string' && url.includes('/api/backends/chat-completions/generate')) {
+                console.log('🔍 拦截到SillyTavern API调用:', url);
+                
+                try {
+                    // 解析原始请求体
+                    let originalBody = {};
+                    if (options.body) {
+                        try {
+                            originalBody = JSON.parse(options.body);
+                        } catch (e) {
+                            console.log('❌ 无法解析原始请求体');
+                            return originalFetch.apply(this, args);
+                        }
+                    }
+                    
+                    console.log('📄 原始请求体:', originalBody);
+                    
+                    // 构建新的请求体，使用扩展的API配置
+                    let newBody;
+                    if (apiType === 'gemini') {
+                        // 转换为Gemini格式
+                        if (originalBody.messages && Array.isArray(originalBody.messages)) {
+                            // 将OpenAI格式的消息转换为Gemini格式
+                            const textContent = originalBody.messages.map(msg => {
+                                if (msg.role === 'system') {
+                                    return `系统: ${msg.content}`;
+                                } else if (msg.role === 'assistant') {
+                                    return `助手: ${msg.content}`;
+                                } else {
+                                    return `用户: ${msg.content}`;
+                                }
+                            }).join('\n\n');
+                            
+                            newBody = {
+                                contents: [{
+                                    parts: [{
+                                        text: textContent
+                                    }]
+                                }],
+                                generationConfig: {
+                                    maxOutputTokens: originalBody.max_tokens || 100,
+                                    temperature: originalBody.temperature || 0.7
+                                }
+                            };
+                        } else {
+                            // 如果已经是Gemini格式，直接使用
+                            newBody = originalBody;
+                        }
+                    } else {
+                        // 使用OpenAI格式
+                        newBody = {
+                            model: modelName,
+                            messages: originalBody.messages || [],
+                            max_tokens: originalBody.max_tokens || 100,
+                            temperature: originalBody.temperature || 0.7
+                        };
+                    }
+                    
+                    console.log('📄 转换后的请求体:', newBody);
+                    
+                    // 构建新的请求选项
+                    const newOptions = {
+                        ...options,
+                        body: JSON.stringify(newBody),
+                        headers: {
+                            ...options.headers,
+                            'Content-Type': 'application/json'
+                        }
+                    };
+                    
+                    // 使用扩展的API URL
+                    const newUrl = `${settings.optionsBaseUrl}/chat/completions`;
+                    console.log('📄 使用扩展API URL:', newUrl);
+                    
+                    // 发送请求
+                    const response = await originalFetch(newUrl, newOptions);
+                    console.log('✅ 拦截请求成功，状态:', response.status);
+                    
+                    return response;
+                    
+                } catch (error) {
+                    console.error('❌ 拦截请求失败:', error);
+                    // 如果拦截失败，回退到原始请求
+                    console.log('🔄 回退到原始请求');
+                    return originalFetch.apply(this, args);
+                }
+            }
+            
+            // 对于其他请求，使用原始fetch
+            return originalFetch.apply(this, args);
+        };
+        
+        console.log('✅ API拦截器已安装');
+        console.log('💡 现在SillyTavern的API调用将使用扩展的配置');
+        
+        // 提供恢复方法
+        window.OptionsGenerator.restoreOriginalAPI = function() {
+            window.fetch = originalFetch;
+            console.log('✅ 已恢复原始API调用');
+        };
+        
+        return true;
+    }
+    
+    // 停止拦截API调用
+    static stopInterceptingAPI() {
+        if (window.OptionsGenerator.restoreOriginalAPI) {
+            window.OptionsGenerator.restoreOriginalAPI();
+            return true;
+        }
+        return false;
+    }
 }
 
 // 将OptionsGenerator导出到全局作用域，以便在控制台中调用
