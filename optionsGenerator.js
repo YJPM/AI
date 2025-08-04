@@ -305,253 +305,87 @@ async function displayOptions(options, isStreaming = false) {
     }
 }
 
-// 兼容型上下文提取 - 获取所有类型的上下文数据
-async function getContextCompatible(limit = 20) {
-    console.log('=== 开始获取完整上下文数据 ===');
+// 简化上下文提取 - 只使用SillyTavern.getContext()
+async function getContextCompatible(limit = 5) {
+    console.log('=== 开始获取SillyTavern上下文数据 ===');
     
-    const allContextData = {
-        sillyTavernContext: null,
-        tavernHelperContext: null,
-        tavernHelperChat: null,
-        sillyTavernChat: null,
-        tavernHelperMessages: null,
-        domMessages: null,
-        tavernHelperExtras: null
-    };
-    
-    // 1. 获取SillyTavern原生上下文
-    console.log('\n--- 1. SillyTavern原生上下文 ---');
+    // 获取SillyTavern原生上下文
+    console.log('\n--- 获取SillyTavern上下文 ---');
     if (typeof window.SillyTavern?.getContext === 'function') {
         try {
             const result = await window.SillyTavern.getContext({ tokenLimit: 8192 });
-            allContextData.sillyTavernContext = result;
             console.log('✅ SillyTavern.getContext() 成功');
             console.log('📄 内容类型:', typeof result);
             console.log('📄 内容结构:', Object.keys(result || {}));
+            
+            // 单独打印角色设定信息
+            if (result && result.character) {
+                console.log('\n--- 角色设定信息 ---');
+                console.log('📄 角色名称:', result.character.name || '未设置');
+                console.log('📄 角色描述:', result.character.description || '未设置');
+                console.log('📄 角色人格:', result.character.personality || '未设置');
+                console.log('📄 角色场景:', result.character.scenario || '未设置');
+                console.log('📄 角色第一印象:', result.character.first_mes || '未设置');
+                console.log('📄 角色消息示例:', result.character.mes_example || '未设置');
+                console.log('📄 完整角色信息:', JSON.stringify(result.character, null, 2));
+            }
+            
+            // 单独打印世界书信息
+            if (result && result.world_info) {
+                console.log('\n--- 世界书信息 ---');
+                console.log('📄 世界书数量:', result.world_info.length || 0);
+                if (result.world_info.length > 0) {
+                    result.world_info.forEach((world, index) => {
+                        console.log(`📄 世界书 ${index + 1}:`);
+                        console.log(`   名称: ${world.title || '未命名'}`);
+                        console.log(`   内容: ${world.content || '无内容'}`);
+                        console.log(`   关键词: ${world.keys || '无关键词'}`);
+                        console.log(`   优先级: ${world.priority || '默认'}`);
+                    });
+                }
+                console.log('📄 完整世界书信息:', JSON.stringify(result.world_info, null, 2));
+            }
+            
+            // 处理消息，只保留最近5条
             if (result && result.messages) {
-                console.log('📄 消息数量:', result.messages.length);
-                console.log('📄 前3条消息示例:');
-                result.messages.slice(0, 3).forEach((msg, i) => {
+                const recentMessages = result.messages.slice(-limit);
+                console.log('\n--- 最近对话消息 ---');
+                console.log('📄 原始消息数量:', result.messages.length);
+                console.log('📄 截取最近消息数量:', recentMessages.length);
+                console.log('📄 最近消息内容:');
+                recentMessages.forEach((msg, i) => {
                     console.log(`   ${i+1}. [${msg.role}] ${msg.content.substring(0, 100)}...`);
                 });
+                console.log('📄 完整最近消息:', JSON.stringify(recentMessages, null, 2));
+                
+                // 返回简化后的上下文
+                const simplifiedContext = {
+                    messages: recentMessages,
+                    character: result.character,
+                    world_info: result.world_info,
+                    system_prompt: result.system_prompt,
+                    original_message_count: result.messages.length
+                };
+                
+                console.log('\n=== 上下文数据获取完成 ===');
+                console.log('📊 返回消息数量:', recentMessages.length);
+                console.log('📊 包含角色设定:', !!result.character);
+                console.log('📊 包含世界书:', !!result.world_info);
+                console.log('📊 包含系统提示词:', !!result.system_prompt);
+                
+                return simplifiedContext;
+            } else {
+                console.log('❌ 未找到消息数据');
+                return { messages: [] };
             }
-            console.log('📄 完整内容:', JSON.stringify(result, null, 2));
         } catch (error) {
             console.error('❌ SillyTavern.getContext() 失败:', error);
+            return { messages: [] };
         }
     } else {
         console.log('❌ SillyTavern.getContext() 不可用');
+        return { messages: [] };
     }
-    
-    // 2. 获取TavernHelper上下文
-    console.log('\n--- 2. TavernHelper上下文 ---');
-    if (typeof window.TavernHelper?.getContext === 'function') {
-        try {
-            const result = await window.TavernHelper.getContext({ tokenLimit: 8192 });
-            allContextData.tavernHelperContext = result;
-            console.log('✅ TavernHelper.getContext() 成功');
-            console.log('📄 内容类型:', typeof result);
-            console.log('📄 内容结构:', Object.keys(result || {}));
-            if (result && result.messages) {
-                console.log('📄 消息数量:', result.messages.length);
-                console.log('📄 前3条消息示例:');
-                result.messages.slice(0, 3).forEach((msg, i) => {
-                    console.log(`   ${i+1}. [${msg.role}] ${msg.content.substring(0, 100)}...`);
-                });
-            }
-            console.log('📄 完整内容:', JSON.stringify(result, null, 2));
-        } catch (error) {
-            console.error('❌ TavernHelper.getContext() 失败:', error);
-        }
-    } else {
-        console.log('❌ TavernHelper.getContext() 不可用');
-    }
-    
-    // 3. 获取TavernHelper聊天数据
-    console.log('\n--- 3. TavernHelper聊天数据 ---');
-    if (typeof window.TavernHelper?.getChat === 'function') {
-        try {
-            const result = await window.TavernHelper.getChat();
-            allContextData.tavernHelperChat = result;
-            console.log('✅ TavernHelper.getChat() 成功');
-            console.log('📄 内容类型:', typeof result);
-            console.log('📄 内容长度:', Array.isArray(result) ? result.length : '非数组');
-            if (Array.isArray(result) && result.length > 0) {
-                console.log('📄 前3条消息示例:');
-                result.slice(0, 3).forEach((msg, i) => {
-                    console.log(`   ${i+1}.`, msg);
-                });
-            }
-            console.log('📄 完整内容:', JSON.stringify(result, null, 2));
-        } catch (error) {
-            console.error('❌ TavernHelper.getChat() 失败:', error);
-        }
-    } else {
-        console.log('❌ TavernHelper.getChat() 不可用');
-    }
-    
-    // 4. 获取SillyTavern聊天数组
-    console.log('\n--- 4. SillyTavern聊天数组 ---');
-    if (window.SillyTavern?.chat) {
-        try {
-            const messages = window.SillyTavern.chat.map(msg => ({
-                role: msg.is_user ? 'user' : 'assistant',
-                content: msg.mes,
-                timestamp: msg.timestamp,
-                id: msg.id
-            }));
-            allContextData.sillyTavernChat = messages;
-            console.log('✅ SillyTavern.chat 解析成功');
-            console.log('📄 消息数量:', messages.length);
-            console.log('📄 前3条消息示例:');
-            messages.slice(0, 3).forEach((msg, i) => {
-                console.log(`   ${i+1}. [${msg.role}] ${msg.content.substring(0, 100)}...`);
-            });
-            console.log('📄 完整内容:', JSON.stringify(messages, null, 2));
-        } catch (error) {
-            console.error('❌ SillyTavern.chat 解析失败:', error);
-        }
-    } else {
-        console.log('❌ SillyTavern.chat 不可用');
-    }
-    
-    // 5. 获取TavernHelper消息
-    console.log('\n--- 5. TavernHelper消息 ---');
-    if (typeof window.TavernHelper?.getMessages === 'function') {
-        try {
-            const result = await window.TavernHelper.getMessages();
-            allContextData.tavernHelperMessages = result;
-            console.log('✅ TavernHelper.getMessages() 成功');
-            console.log('📄 内容类型:', typeof result);
-            console.log('📄 内容长度:', Array.isArray(result) ? result.length : '非数组');
-            if (Array.isArray(result) && result.length > 0) {
-                console.log('📄 前3条消息示例:');
-                result.slice(0, 3).forEach((msg, i) => {
-                    console.log(`   ${i+1}.`, msg);
-                });
-            }
-            console.log('📄 完整内容:', JSON.stringify(result, null, 2));
-        } catch (error) {
-            console.error('❌ TavernHelper.getMessages() 失败:', error);
-        }
-    } else {
-        console.log('❌ TavernHelper.getMessages() 不可用');
-    }
-    
-    // 6. 获取TavernHelper额外信息
-    console.log('\n--- 6. TavernHelper额外信息 ---');
-    if (window.TavernHelper) {
-        try {
-            const extras = {};
-            
-            // 获取角色头像路径
-            if (typeof window.TavernHelper.getCharAvatarPath === 'function') {
-                extras.charAvatarPath = window.TavernHelper.getCharAvatarPath();
-                console.log('✅ 角色头像路径:', extras.charAvatarPath);
-            }
-            
-            // 获取世界书籍
-            if (typeof window.TavernHelper.getWorldBooks === 'function') {
-                extras.worldBooks = window.TavernHelper.getWorldBooks();
-                console.log('✅ 世界书籍:', extras.worldBooks);
-            }
-            
-            // 获取变量
-            if (typeof window.TavernHelper.getVariables === 'function') {
-                extras.variables = window.TavernHelper.getVariables();
-                console.log('✅ 变量:', extras.variables);
-            }
-            
-            allContextData.tavernHelperExtras = extras;
-            console.log('📄 完整额外信息:', JSON.stringify(extras, null, 2));
-        } catch (error) {
-            console.error('❌ 获取TavernHelper额外信息失败:', error);
-        }
-    }
-    
-    // 7. DOM解析备用方案
-    console.log('\n--- 7. DOM解析备用方案 ---');
-    try {
-        const messageElements = document.querySelectorAll('#chat .mes');
-        const messages = [];
-        messageElements.forEach((el, index) => {
-            const contentEl = el.querySelector('.mes_text');
-            if (contentEl) {
-                let role = 'system';
-                const isUserAttr = el.getAttribute('is_user');
-                if (isUserAttr === 'true') role = 'user';
-                else if (isUserAttr === 'false') role = 'assistant';
-                
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = contentEl.innerHTML.replace(/<br\s*\/?>/gi, '\n');
-                const content = (tempDiv.textContent || tempDiv.innerText || '').trim();
-                
-                if (content && (role === 'user' || role === 'assistant')) {
-                    messages.push({ role, content });
-                }
-            }
-        });
-        
-        allContextData.domMessages = messages.slice(-limit);
-        console.log('✅ DOM解析成功');
-        console.log('📄 消息数量:', allContextData.domMessages.length);
-        console.log('📄 前3条消息示例:');
-        allContextData.domMessages.slice(0, 3).forEach((msg, i) => {
-            console.log(`   ${i+1}. [${msg.role}] ${msg.content.substring(0, 100)}...`);
-        });
-        console.log('📄 完整内容:', JSON.stringify(allContextData.domMessages, null, 2));
-    } catch (error) {
-        console.error('❌ DOM解析失败:', error);
-    }
-    
-    // 8. 返回所有获取到的上下文数据
-    console.log('\n--- 8. 返回所有上下文数据 ---');
-    
-    // 选择最佳数据源作为主要消息
-    let primaryMessages = [];
-    if (allContextData.sillyTavernContext && allContextData.sillyTavernContext.messages) {
-        primaryMessages = allContextData.sillyTavernContext.messages;
-        console.log('✅ 使用 SillyTavern.getContext() 作为主要消息源');
-    } else if (allContextData.tavernHelperContext && allContextData.tavernHelperContext.messages) {
-        primaryMessages = allContextData.tavernHelperContext.messages;
-        console.log('✅ 使用 TavernHelper.getContext() 作为主要消息源');
-    } else if (allContextData.sillyTavernChat) {
-        primaryMessages = allContextData.sillyTavernChat.slice(-limit);
-        console.log('✅ 使用 SillyTavern.chat 作为主要消息源');
-    } else if (allContextData.tavernHelperChat) {
-        primaryMessages = allContextData.tavernHelperChat;
-        console.log('✅ 使用 TavernHelper.getChat() 作为主要消息源');
-    } else if (allContextData.tavernHelperMessages) {
-        primaryMessages = allContextData.tavernHelperMessages;
-        console.log('✅ 使用 TavernHelper.getMessages() 作为主要消息源');
-    } else if (allContextData.domMessages) {
-        primaryMessages = allContextData.domMessages;
-        console.log('✅ 使用 DOM解析 作为主要消息源');
-    } else {
-        console.log('❌ 所有数据源都失败，使用空消息数组');
-    }
-    
-    // 构建包含所有数据的完整上下文
-    const completeContext = {
-        messages: primaryMessages,
-        allContextData: allContextData, // 包含所有获取到的数据
-        summary: {
-            sillyTavernContext: !!allContextData.sillyTavernContext,
-            tavernHelperContext: !!allContextData.tavernHelperContext,
-            tavernHelperChat: !!allContextData.tavernHelperChat,
-            sillyTavernChat: !!allContextData.sillyTavernChat,
-            tavernHelperMessages: !!allContextData.tavernHelperMessages,
-            domMessages: !!allContextData.domMessages,
-            tavernHelperExtras: !!allContextData.tavernHelperExtras
-        }
-    };
-    
-    console.log('\n=== 上下文数据获取完成 ===');
-    console.log('📊 主要消息数量:', primaryMessages.length);
-    console.log('📊 数据源可用性:', completeContext.summary);
-    console.log('📊 完整上下文结构:', Object.keys(completeContext));
-    
-    return completeContext;
 }
 
 // 在建议生成/选择后定期分析
@@ -585,69 +419,52 @@ async function generateOptions() {
         const context = await getContextCompatible();
         console.log('[generateOptions] 上下文获取完成，消息数量:', context.messages.length);
         
-        // 构建包含所有上下文数据的完整提示词
+        // 构建简化的上下文提示词
         let fullContextText = '';
         
-        // 1. 添加主要对话消息
+        // 1. 添加角色设定信息
+        if (context.character) {
+            fullContextText += '## 角色设定\n';
+            fullContextText += `角色名称: ${context.character.name || '未设置'}\n`;
+            fullContextText += `角色描述: ${context.character.description || '未设置'}\n`;
+            fullContextText += `角色人格: ${context.character.personality || '未设置'}\n`;
+            fullContextText += `角色场景: ${context.character.scenario || '未设置'}\n`;
+            fullContextText += `角色第一印象: ${context.character.first_mes || '未设置'}\n`;
+            fullContextText += `角色消息示例: ${context.character.mes_example || '未设置'}\n\n`;
+        }
+        
+        // 2. 添加世界书信息
+        if (context.world_info && context.world_info.length > 0) {
+            fullContextText += '## 世界书信息\n';
+            context.world_info.forEach((world, index) => {
+                fullContextText += `世界书 ${index + 1}:\n`;
+                fullContextText += `名称: ${world.title || '未命名'}\n`;
+                fullContextText += `内容: ${world.content || '无内容'}\n`;
+                fullContextText += `关键词: ${world.keys || '无关键词'}\n`;
+                fullContextText += `优先级: ${world.priority || '默认'}\n\n`;
+            });
+        }
+        
+        // 3. 添加系统提示词
+        if (context.system_prompt) {
+            fullContextText += '## 系统提示词\n';
+            fullContextText += context.system_prompt + '\n\n';
+        }
+        
+        // 4. 添加最近对话消息
         if (context.messages && context.messages.length > 0) {
-            fullContextText += '## 主要对话历史\n';
+            fullContextText += '## 最近对话历史\n';
             fullContextText += context.messages.map(m => `[${m.role}] ${m.content}`).join('\n');
             fullContextText += '\n\n';
         }
         
-        // 2. 添加SillyTavern原生上下文数据
-        if (context.allContextData.sillyTavernContext) {
-            fullContextText += '## SillyTavern原生上下文数据\n';
-            fullContextText += JSON.stringify(context.allContextData.sillyTavernContext, null, 2);
-            fullContextText += '\n\n';
-        }
-        
-        // 3. 添加TavernHelper上下文数据
-        if (context.allContextData.tavernHelperContext) {
-            fullContextText += '## TavernHelper上下文数据\n';
-            fullContextText += JSON.stringify(context.allContextData.tavernHelperContext, null, 2);
-            fullContextText += '\n\n';
-        }
-        
-        // 4. 添加TavernHelper聊天数据
-        if (context.allContextData.tavernHelperChat) {
-            fullContextText += '## TavernHelper聊天数据\n';
-            fullContextText += JSON.stringify(context.allContextData.tavernHelperChat, null, 2);
-            fullContextText += '\n\n';
-        }
-        
-        // 5. 添加SillyTavern聊天数组
-        if (context.allContextData.sillyTavernChat) {
-            fullContextText += '## SillyTavern聊天数组\n';
-            fullContextText += JSON.stringify(context.allContextData.sillyTavernChat, null, 2);
-            fullContextText += '\n\n';
-        }
-        
-        // 6. 添加TavernHelper消息
-        if (context.allContextData.tavernHelperMessages) {
-            fullContextText += '## TavernHelper消息\n';
-            fullContextText += JSON.stringify(context.allContextData.tavernHelperMessages, null, 2);
-            fullContextText += '\n\n';
-        }
-        
-        // 7. 添加TavernHelper额外信息
-        if (context.allContextData.tavernHelperExtras) {
-            fullContextText += '## TavernHelper额外信息\n';
-            fullContextText += JSON.stringify(context.allContextData.tavernHelperExtras, null, 2);
-            fullContextText += '\n\n';
-        }
-        
-        // 8. 添加DOM解析消息
-        if (context.allContextData.domMessages) {
-            fullContextText += '## DOM解析消息\n';
-            fullContextText += JSON.stringify(context.allContextData.domMessages, null, 2);
-            fullContextText += '\n\n';
-        }
-        
-        // 9. 添加数据源摘要
-        fullContextText += '## 数据源摘要\n';
-        fullContextText += JSON.stringify(context.summary, null, 2);
-        fullContextText += '\n\n';
+        // 5. 添加统计信息
+        fullContextText += '## 上下文统计\n';
+        fullContextText += `原始消息总数: ${context.original_message_count || 0}\n`;
+        fullContextText += `当前使用消息数: ${context.messages ? context.messages.length : 0}\n`;
+        fullContextText += `包含角色设定: ${!!context.character}\n`;
+        fullContextText += `包含世界书: ${!!(context.world_info && context.world_info.length > 0)}\n`;
+        fullContextText += `包含系统提示词: ${!!context.system_prompt}\n\n`;
         
         const prompt = promptTemplate
             .replace(/{{context}}/g, fullContextText);
@@ -656,25 +473,73 @@ async function generateOptions() {
         
         const finalMessages = [{ role: 'user', content: prompt }];
         let content = '';
-        const apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
-        console.log('[generateOptions] API URL:', apiUrl);
-        console.log('[generateOptions] 模型:', settings.optionsApiModel);
+        
+        // 根据API类型构建不同的请求
+        const apiType = settings.optionsApiType || 'openai';
+        let apiUrl, requestBody, headers;
+        
+        if (apiType === 'gemini') {
+            // Google Gemini API
+            const modelName = settings.optionsApiModel || 'gemini-pro';
+            
+            if (settings.streamOptions) {
+                // 流式生成使用streamGenerateContent
+                apiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:streamGenerateContent?key=${settings.optionsApiKey}`;
+            } else {
+                // 非流式生成使用generateContent
+                apiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${settings.optionsApiKey}`;
+            }
+            
+            headers = {
+                'Content-Type': 'application/json',
+            };
+            
+            requestBody = {
+                contents: [{
+                    parts: [{
+                        text: prompt
+                    }]
+                }],
+                generationConfig: {
+                    temperature: 0.8,
+                    topK: 40,
+                    topP: 0.95,
+                    maxOutputTokens: 2048,
+                }
+            };
+            
+            console.log('[generateOptions] 使用Google Gemini API');
+            console.log('[generateOptions] API URL:', apiUrl);
+            console.log('[generateOptions] 模型:', modelName);
+            console.log('[generateOptions] 流式模式:', settings.streamOptions);
+        } else {
+            // OpenAI兼容API
+            apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
+            
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${settings.optionsApiKey}`,
+            };
+            
+            requestBody = {
+                model: settings.optionsApiModel,
+                messages: finalMessages,
+                temperature: 0.8,
+                stream: settings.streamOptions,
+            };
+            
+            console.log('[generateOptions] 使用OpenAI兼容API');
+            console.log('[generateOptions] API URL:', apiUrl);
+            console.log('[generateOptions] 模型:', settings.optionsApiModel);
+        }
         
         if (settings.streamOptions) {
             console.log('[generateOptions] 使用流式生成...');
             // 流式生成
             const response = await fetch(apiUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${settings.optionsApiKey}`,
-                },
-                body: JSON.stringify({
-                    model: settings.optionsApiModel,
-                    messages: finalMessages,
-                    temperature: 0.8,
-                    stream: true,
-                }),
+                headers: headers,
+                body: JSON.stringify(requestBody),
             });
             
             console.log('[generateOptions] API响应状态:', response.status);
@@ -690,27 +555,56 @@ async function generateOptions() {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
-                
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        if (data === '[DONE]') break;
+            if (apiType === 'gemini') {
+                // Gemini API的流式响应处理
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.trim() === '') continue;
                         
                         try {
-                            const parsed = JSON.parse(data);
-                            const delta = parsed.choices?.[0]?.delta?.content || '';
-                            content += delta;
-                            
-                            // 实时更新选项显示
-                            await displayOptionsStreaming(content);
+                            const parsed = JSON.parse(line);
+                            if (parsed.candidates && parsed.candidates[0] && parsed.candidates[0].content) {
+                                const delta = parsed.candidates[0].content.parts[0]?.text || '';
+                                content += delta;
+                                
+                                // 实时更新选项显示
+                                await displayOptionsStreaming(content);
+                            }
                         } catch (e) {
                             // 忽略解析错误
+                        }
+                    }
+                }
+            } else {
+                // OpenAI兼容API的流式响应处理
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') break;
+                            
+                            try {
+                                const parsed = JSON.parse(data);
+                                const delta = parsed.choices?.[0]?.delta?.content || '';
+                                content += delta;
+                                
+                                // 实时更新选项显示
+                                await displayOptionsStreaming(content);
+                            } catch (e) {
+                                // 忽略解析错误
+                            }
                         }
                     }
                 }
@@ -731,16 +625,8 @@ async function generateOptions() {
             // 非流式生成
             const response = await fetch(apiUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${settings.optionsApiKey}`,
-                },
-                body: JSON.stringify({
-                    model: settings.optionsApiModel,
-                    messages: finalMessages,
-                    temperature: 0.8,
-                    stream: false,
-                }),
+                headers: headers,
+                body: JSON.stringify(requestBody),
             });
             
             console.log('[generateOptions] API响应状态:', response.status);
@@ -753,7 +639,14 @@ async function generateOptions() {
             }
             
             const data = await response.json();
-            content = data.candidates?.[0]?.content?.parts?.[0]?.text || data.choices?.[0]?.message?.content || '';
+            
+            // 根据API类型解析响应
+            if (apiType === 'gemini') {
+                content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            } else {
+                content = data.choices?.[0]?.message?.content || '';
+            }
+            
             console.log('[generateOptions] 非流式生成完成，内容长度:', content.length);
             
             // 解析建议

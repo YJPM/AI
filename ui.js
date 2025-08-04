@@ -28,21 +28,34 @@ export function injectGlobalStyles() {
             justify-content: center !important;
             align-items: center !important;
             width: 100% !important;
-            padding: 8px 16px !important;
-            margin: 8px auto !important;
+            padding: 12px 20px !important;
+            margin: 12px auto !important;
             max-width: 90% !important;
             text-align: center !important;
-            color: var(--text_color) !important;
-            background-color: transparent !important;
+            color: #333 !important;
+            background-color: rgba(255, 255, 255, 0.95) !important;
             opacity: 1 !important;
             z-index: 1000 !important;
+            border-radius: 12px !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.05) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            border: 1px solid #e0e0e0 !important;
+            font-weight: 500 !important;
         }
         #ti-options-container {
             width: 100%;
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 12px;
             justify-content: center;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid #e0e0e0;
         }
         .ti-options-capsule {
             flex: 1;
@@ -50,7 +63,26 @@ export function injectGlobalStyles() {
             text-align: center;
             margin: 0 !important;
             height: auto;
-            min-width: 120px;
+            min-width: 140px;
+            padding: 12px 16px !important;
+            border-radius: 10px !important;
+            border: 1px solid #e0e0e0 !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            color: #333 !important;
+            font-weight: 500 !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08) !important;
+            backdrop-filter: blur(5px) !important;
+            -webkit-backdrop-filter: blur(5px) !important;
+        }
+        .ti-options-capsule:hover {
+            background: #f8f9fa !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+            transform: translateY(-1px) !important;
+        }
+        .ti-options-capsule:active {
+            transform: translateY(0) !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08) !important;
         }
     `;
     let styleTag = document.getElementById('typing-indicator-global-style');
@@ -569,16 +601,18 @@ export function createQuickPacePanel() {
         position: absolute;
         top: -25px;
         right: 10px;
-        border: 1px solid #333;
-        border-radius: 8px;
-        padding: 6px;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 8px 12px;
         display: flex;
-        gap: 3px;
+        gap: 6px;
         z-index: 1000;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.05);
         cursor: move;
         transition: all 0.3s ease;
-        background-color: transparent;
+        background-color: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
     `;
     
     // 添加拖动功能
@@ -618,7 +652,7 @@ export function createQuickPacePanel() {
     // 折叠面板函数
     const collapsePanel = () => {
         const modeButtons = panel.querySelectorAll('button[data-pace-mode]');
-        const separator = panel.querySelector('div[style*="background: var(--SmartThemeBorderColor"]');
+        const separator = panel.querySelector('div[style*="background: #e0e0e0"]');
         
         modeButtons.forEach(btn => {
             btn.style.display = 'none';
@@ -626,7 +660,7 @@ export function createQuickPacePanel() {
         
         if (separator) separator.style.display = 'none';
         
-        panel.style.background = '#1a1a1a';
+        panel.style.background = 'rgba(255, 255, 255, 0.8)';
         panel.style.opacity = '0.7';
         isCollapsed = true;
         savePanelState();
@@ -635,7 +669,7 @@ export function createQuickPacePanel() {
     // 展开面板函数
     const expandPanel = () => {
         const modeButtons = panel.querySelectorAll('button[data-pace-mode]');
-        const separator = panel.querySelector('div[style*="background: var(--SmartThemeBorderColor"]');
+        const separator = panel.querySelector('div[style*="background: #e0e0e0"]');
         
         modeButtons.forEach(btn => {
             btn.style.display = 'block';
@@ -643,7 +677,7 @@ export function createQuickPacePanel() {
         
         if (separator) separator.style.display = 'block';
         
-        panel.style.background = '#1a1a1a';
+        panel.style.background = 'rgba(255, 255, 255, 0.95)';
         panel.style.opacity = '1';
         isCollapsed = false;
         savePanelState();
@@ -729,20 +763,22 @@ export function createQuickPacePanel() {
         const isActive = settings.paceMode === mode.value;
         
         button.style.cssText = `
-            padding: 3px 6px;
+            padding: 6px 10px;
             border: 1px solid ${mode.color};
-            border-radius: 4px;
-            background: ${isActive ? mode.color : '#2d2d2d'};
+            border-radius: 8px;
+            background: ${isActive ? mode.color : 'rgba(255, 255, 255, 0.9)'};
             color: ${isActive ? 'white' : mode.color};
             cursor: pointer;
-            font-size: 10px;
-            font-weight: 500;
-            transition: all 0.2s;
-            min-width: 50px;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            min-width: 55px;
             text-align: center;
             line-height: 1.2;
-            margin: 2px;
-            box-shadow: ${isActive ? `0 0 5px ${mode.color}` : 'none'};
+            margin: 1px;
+            box-shadow: ${isActive ? `0 2px 8px ${mode.color}40` : '0 1px 3px rgba(0,0,0,0.1)'};
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
         `;
         
         button.addEventListener('click', () => {
@@ -756,9 +792,9 @@ export function createQuickPacePanel() {
                 
                 if (btnMode) {
                     const isBtnActive = settings.paceMode === btnMode.value;
-                    btn.style.background = isBtnActive ? btnMode.color : '#2d2d2d';
+                    btn.style.background = isBtnActive ? btnMode.color : 'rgba(255, 255, 255, 0.9)';
                     btn.style.color = isBtnActive ? 'white' : btnMode.color;
-                    btn.style.boxShadow = isBtnActive ? `0 0 5px ${btnMode.color}` : 'none';
+                    btn.style.boxShadow = isBtnActive ? `0 2px 8px ${btnMode.color}40` : '0 1px 3px rgba(0,0,0,0.1)';
                 }
             });
             
@@ -778,8 +814,10 @@ export function createQuickPacePanel() {
     const separator = document.createElement('div');
     separator.style.cssText = `
         width: 1px;
-        background: #444;
-        margin: 0 3px;
+        background: #e0e0e0;
+        margin: 0 6px;
+        height: 24px;
+        align-self: center;
     `;
     panel.appendChild(separator);
     
@@ -788,18 +826,22 @@ export function createQuickPacePanel() {
     refreshButton.textContent = '🔄';
     refreshButton.title = '重新获取选项';
     refreshButton.style.cssText = `
-        padding: 3px 6px;
-        border: 1px solid #888;
-        border-radius: 4px;
-        color: #fff;
+        padding: 6px 8px;
+        border: 1px solid #666;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.9);
+        color: #666;
         cursor: pointer;
-        font-size: 12px;
-        transition: all 0.2s;
-        min-width: 36px;
-        margin: 2px;
+        font-size: 14px;
+        transition: all 0.2s ease;
+        min-width: 40px;
+        margin: 1px;
         text-align: center;
         line-height: 1.2;
-        margin-left: 3px;
+        margin-left: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
     `;
     
     refreshButton.addEventListener('click', async () => {
@@ -825,16 +867,16 @@ export function createQuickPacePanel() {
     });
     
     refreshButton.addEventListener('mouseenter', () => {
-        refreshButton.style.background = '#4a4a4a';
-        refreshButton.style.color = '#fff';
-        refreshButton.style.boxShadow = '0 0 5px rgba(255,255,255,0.3)';
+        refreshButton.style.background = '#f5f5f5';
+        refreshButton.style.color = '#333';
+        refreshButton.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
         refreshButton.style.transform = 'scale(1.05)';
     });
     
     refreshButton.addEventListener('mouseleave', () => {
-        refreshButton.style.background = '#2d2d2d';
-        refreshButton.style.color = '#fff';
-        refreshButton.style.boxShadow = 'none';
+        refreshButton.style.background = 'rgba(255, 255, 255, 0.9)';
+        refreshButton.style.color = '#666';
+        refreshButton.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
         refreshButton.style.transform = 'scale(1)';
     });
     
