@@ -39,19 +39,20 @@ export const PACE_PROMPTS = {
 你是我的AI叙事导演。请根据最近对话，生成4条连续性行动建议。
 
 【输出要求】
-- 所有建议必须严格使用“我”的第一人称视角，只能描述我个人的具体行动或对话，禁止描述其他人的动作、对话、心理、反应等。
-- 先输出场景分析（JSON格式），再输出建议列表（每条用【】包裹，4条）。
+- 先输出场景分析（JSON格式，字段见下方），再输出建议列表（每条用【】包裹，4条）。
+- 场景分析字段必须包含：scene_type、user_mood、narrative_focus、character_motivation、relationship_dynamics、story_direction。
+- 建议必须严格使用“我”的第一人称视角，只能描述我个人的具体行动或对话，禁止描述其他人的动作、对话、心理、反应等。
 - 建议必须是我实际发生的具体动作或说的话，不得为心理活动或抽象描述。
 - 建议内容不得重复，每条都应推动剧情或角色关系发展。
 - 每条建议30字到50字左右。
 
-【分析维度】
-- 场景类型
-- 我的情绪
-- 叙事重点
-- 我的动机
-- 人物关系
-- 故事方向
+【场景分析字段说明】
+- scene_type: 当前场景类型（如社交对话、任务、探索等）
+- user_mood: 我的情绪（如好奇、紧张、平静等）
+- narrative_focus: 当前叙事重点
+- character_motivation: 我的动机或目标
+- relationship_dynamics: 当前人物关系状态
+- story_direction: 当前故事发展方向
 
 【示例输出】
 场景分析：
@@ -85,24 +86,23 @@ export const PACE_PROMPTS = {
 你是我的AI叙事导演。请根据最近对话，生成4条快速推进或时间转换的行动建议。
 
 【输出要求】
-- 所有建议必须严格使用“我”的第一人称视角，只能描述我个人的具体行动或对话，禁止描述其他人的动作、对话、心理、反应等。
-- 先输出场景分析（JSON格式），再输出建议列表（每条用【】包裹，4条）。
-- 建议必须是我实际发生的具体动作或说的话，不得为心理活动或抽象描述。
-- 建议内容不得重复，每条都应推动剧情或角色关系发展。
+- 先输出场景分析（JSON格式，字段见下方），再输出建议列表（每条用【】包裹，4条）。
+- 场景分析字段必须包含：scene_type、user_mood、narrative_focus、character_motivation、relationship_dynamics、story_direction、time_progression、scene_transition。
+- 建议必须严格使用“我”的第一人称视角，只能描述我个人的具体行动或对话，禁止描述其他人的动作、对话、心理、反应等。
 - 建议必须体现时间快速推进或场景转换，如“几小时后”、“第二天”、“换了个地方”等。
 - 建议可以是当前事件的快速完成，也可以是跳跃到新的时间点或场景。
+- 建议内容不得重复，每条都应推动剧情或角色关系发展。
 - 每条建议30字到50字左右。
 
-【分析维度】
-- 场景类型
-- 我的情绪
-- 叙事重点
-- 当前活动
-- 当前地点
-- 当前情绪
-- 时间推进跨度
-- 场景转换目标
-- 故事方向
+【场景分析字段说明】
+- scene_type: 当前场景类型
+- user_mood: 我的情绪
+- narrative_focus: 当前叙事重点
+- character_motivation: 我的动机或目标
+- relationship_dynamics: 当前人物关系状态
+- story_direction: 当前故事发展方向
+- time_progression: 时间推进跨度（如“几小时后”、“第二天”等）
+- scene_transition: 场景转换目标（如“任务执行现场”、“新地点”等）
 
 【示例输出】
 场景分析：
@@ -110,12 +110,11 @@ export const PACE_PROMPTS = {
   "scene_type": "任务准备",
   "user_mood": "专注且紧张",
   "narrative_focus": "准备执行重要任务",
-  "current_activity": "正在整理任务所需的装备和资料",
-  "current_location": "办公室或工作场所",
-  "current_emotion": "专注且有些压力",
+  "character_motivation": "尽快完成准备工作",
+  "relationship_dynamics": "独自行动",
+  "story_direction": "任务执行和结果",
   "time_progression": "几小时后",
-  "scene_transition": "任务执行现场",
-  "story_direction": "任务执行和结果"
+  "scene_transition": "任务执行现场"
 }
 
 建议列表：

@@ -285,12 +285,13 @@ class UIManager {
 
 
 
-async function displayOptions(sceneAnalysis, options, isStreaming = false) {
+async function displayOptions(options, isStreaming = false) {
     const oldContainer = document.getElementById('ti-options-container');
     if (oldContainer) oldContainer.remove();
     const sendForm = document.getElementById('send_form');
     if (!sendForm || !options || options.length === 0) {
         if (!options || options.length === 0) {
+            // 只有在没有其他提示时才显示错误提示
             const loadingContainer = document.getElementById('ti-loading-container');
             if (!loadingContainer) {
                 UIManager.showGeneratingUI('未能生成有效选项', 3000);
@@ -302,146 +303,113 @@ async function displayOptions(sceneAnalysis, options, isStreaming = false) {
     container.id = 'ti-options-container';
     sendForm.insertAdjacentElement('beforebegin', container);
     const sleep = ms => new Promise(res => setTimeout(res, ms));
-
-    // ===== 上下文可视化区域 =====
-    if (sceneAnalysis) {
-        const viz = document.createElement('div');
-        viz.className = 'context-viz';
-        viz.innerHTML = `
-            <div class="viz-header">📊 当前场景分析</div>
-            <div class="viz-content">
-                <div class="viz-item"><span class="label">场景类型:</span><span class="value">${sceneAnalysis.scene_type || ''}</span></div>
-                <div class="viz-item"><span class="label">我的情绪:</span><span class="value">${sceneAnalysis.user_mood || sceneAnalysis.my_mood || ''}</span></div>
-                <div class="viz-item"><span class="label">叙事重点:</span><span class="value">${sceneAnalysis.narrative_focus || ''}</span></div>
-                <div class="viz-item"><span class="label">故事方向:</span><span class="value">${sceneAnalysis.story_direction || ''}</span></div>
-            </div>
-        `;
-        container.appendChild(viz);
+    
+    // 获取当前发送模式
+    const settings = getSettings();
+    const sendMode = settings.sendMode || 'manual';
+    
+    // 在手动模式下，记录已选择的选项
+    if (sendMode === 'manual') {
+        // 重置选中的选项
+        OptionsGenerator.selectedOptions = [];
     }
-
-    // ===== 选项展示区域 =====
+    
+    // 设置容器样式，确保按钮布局
     container.style.cssText = `
         display: flex;
-        flex-direction: column;
-        gap: 12px;
+        flex-wrap: wrap;
+        gap: 8px;
         margin: 10px 0;
     `;
-    const optionsRow = document.createElement('div');
-    optionsRow.style.display = 'flex';
-    optionsRow.style.flexWrap = 'wrap';
-    optionsRow.style.gap = '8px';
-    container.appendChild(optionsRow);
-
-    // ===== 反馈统计面板（可选） =====
-    const feedbackStats = document.createElement('div');
-    feedbackStats.className = 'feedback-panel';
-    feedbackStats.style.display = 'none'; // 默认隐藏
-    feedbackStats.innerHTML = `
-        <div class="feedback-header"><b>📊 选项反馈统计</b></div>
-        <div class="feedback-stats">
-            <span>👍有用: <span id="useful-count">0</span></span>
-            <span>👎无用: <span id="useless-count">0</span></span>
-            <span>⚠️报告: <span id="report-count">0</span></span>
-        </div>
-    `;
-    container.appendChild(feedbackStats);
-
-    // ===== 选项按钮及反馈 =====
-    options.forEach((text, idx) => {
-        const btnWrap = document.createElement('div');
-        btnWrap.style.display = 'flex';
-        btnWrap.style.flexDirection = 'column';
-        btnWrap.style.alignItems = 'center';
-        btnWrap.style.margin = '4px';
-        btnWrap.style.flex = '0 0 calc(25% - 6px)';
-        // 选项按钮
+    
+    for (const text of options) {
         const btn = document.createElement('button');
         btn.className = 'qr--button menu_button interactable ti-options-capsule';
-        btn.textContent = text;
-        btn.style.cssText = `min-width: 150px; padding: 8px 12px; margin-bottom: 4px;`;
+        btn.style.cssText = `
+            flex: 0 0 calc(25% - 6px);
+            min-width: 150px;
+            padding: 8px 12px;
+            border: 1px solid var(--SmartThemeBorderColor, #ccc);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: none;
+            word-wrap: break-word;
+            white-space: normal;
+        `;
+        
+        // 添加轻微的hover效果
+        btn.addEventListener('mouseover', () => {
+            btn.style.borderColor = 'rgb(28 35 48)';
+            btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+        });
+        
+        btn.addEventListener('mouseout', () => {
+            btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+            btn.style.boxShadow = 'none';
+        });
+        container.appendChild(btn);
+        
+        if (isStreaming) {
+            // 流式显示：快速打字机效果
+            for (let i = 0; i < text.length; i++) {
+                btn.textContent = text.substring(0, i + 1);
+                await sleep(1); // 从15ms减少到5ms，加快速度
+            }
+        } else {
+            // 非流式显示：一次性显示完整文字
+            btn.textContent = text;
+        }
+        
         btn.onclick = () => {
             const textarea = document.querySelector('#send_textarea, .send_textarea');
             const sendButton = document.querySelector('#send_but, .send_but, button[onclick*="send"], button[onclick*="Send"]');
+            
             if (textarea) {
-                textarea.value = text;
-                textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                textarea.focus();
-                if (sendButton) sendButton.click();
-                container.remove();
+                if (sendMode === 'manual') {
+                    // 手动模式：多选功能
+                    const isSelected = OptionsGenerator.selectedOptions.includes(text);
+                    
+                    if (isSelected) {
+                        // 取消选择
+                        OptionsGenerator.selectedOptions = OptionsGenerator.selectedOptions.filter(option => option !== text);
+                        btn.style.background = 'var(--SmartThemeBackgroundColor, #fff)';
+                        btn.style.color = 'var(--SmartThemeBodyColor, #222)';
+                        btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
+                    } else {
+                        // 添加选择
+                        OptionsGenerator.selectedOptions.push(text);
+                        btn.style.background = 'var(--SmartThemeBlurple, #007bff)';
+                        btn.style.color = 'white';
+                        btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
+                    }
+                    
+                    // 拼接选中的选项到输入框
+                    if (OptionsGenerator.selectedOptions.length > 0) {
+                        textarea.value = OptionsGenerator.selectedOptions.join(' ');
+                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                        textarea.focus();
+                    } else {
+                        textarea.value = '';
+                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                        textarea.focus();
+                    }
+                    
+                    // 手动模式下不清除选项容器
+                } else {
+                    // 自动模式：原有行为
+                    textarea.value = text;
+                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    textarea.focus();
+                    
+                    // 根据发送模式决定是否自动发送
+                    if (sendMode === 'auto' && sendButton) {
+                        sendButton.click();
+                    }
+                    container.remove();
+                }
             }
         };
-        btnWrap.appendChild(btn);
-        // 反馈按钮
-        const feedbackDiv = document.createElement('div');
-        feedbackDiv.className = 'option-feedback';
-        feedbackDiv.style.display = 'flex';
-        feedbackDiv.style.gap = '4px';
-        feedbackDiv.innerHTML = `
-            <button class="feedback-btn useful" title="有用">👍</button>
-            <button class="feedback-btn useless" title="无用">👎</button>
-            <button class="feedback-btn report" title="报告">⚠️</button>
-        `;
-        feedbackDiv.querySelectorAll('button').forEach(btnEl => {
-            btnEl.onclick = (e) => {
-                const type = btnEl.classList.contains('useful') ? 'useful' : btnEl.classList.contains('useless') ? 'useless' : 'report';
-                submitFeedback(idx, text, type, sceneAnalysis);
-                btnEl.style.background = type === 'useful' ? '#4CAF50' : type === 'useless' ? '#f44336' : '#ff9800';
-                btnEl.style.color = 'white';
-                setTimeout(() => {
-                    btnEl.style.background = '';
-                    btnEl.style.color = '';
-                }, 1200);
-                updateFeedbackStats(feedbackStats);
-            };
-        });
-        btnWrap.appendChild(feedbackDiv);
-        optionsRow.appendChild(btnWrap);
-    });
-    // 初始统计
-    updateFeedbackStats(feedbackStats);
-}
-
-// ===== 反馈存储与统计 =====
-function submitFeedback(optionIndex, optionText, feedbackType, sceneAnalysis) {
-    const feedbackData = {
-        timestamp: Date.now(),
-        optionIndex,
-        optionText,
-        feedbackType,
-        sceneAnalysis,
-        userAgent: navigator.userAgent,
-        sessionId: getSessionId()
-    };
-    // 存储到本地
-    saveFeedbackLocally(feedbackData);
-    // 预留：可上传到服务器
-    // updateUserPreferences(feedbackData); // 预留自适应学习
-    console.log('📝 反馈已记录:', feedbackData);
-}
-function saveFeedbackLocally(feedbackData) {
-    const existing = JSON.parse(localStorage.getItem('ai_assistant_feedback') || '[]');
-    existing.push(feedbackData);
-    if (existing.length > 1000) existing.splice(0, existing.length - 1000);
-    localStorage.setItem('ai_assistant_feedback', JSON.stringify(existing));
-}
-function updateFeedbackStats(panel) {
-    if (!panel) return;
-    const feedback = JSON.parse(localStorage.getItem('ai_assistant_feedback') || '[]');
-    const useful = feedback.filter(f => f.feedbackType === 'useful').length;
-    const useless = feedback.filter(f => f.feedbackType === 'useless').length;
-    const report = feedback.filter(f => f.feedbackType === 'report').length;
-    panel.querySelector('#useful-count').textContent = useful;
-    panel.querySelector('#useless-count').textContent = useless;
-    panel.querySelector('#report-count').textContent = report;
-    panel.style.display = 'block';
-}
-function getSessionId() {
-    let sid = localStorage.getItem('ai_assistant_session_id');
-    if (!sid) {
-        sid = Math.random().toString(36).slice(2) + Date.now();
-        localStorage.setItem('ai_assistant_session_id', sid);
     }
-    return sid;
 }
 
 // 简化上下文提取 - 只获取最近10条消息，不传输角色卡和世界书
@@ -562,7 +530,158 @@ async function getContextCompatible(limit = 10) {
     return finalContext;
 }
 
-// 在建议生成/选择后定期分析
+// ===== 上下文可视化组件 =====
+class ContextVisualization {
+    constructor() {
+        this.currentContext = null;
+        this.visualizationContainer = null;
+    }
+    createMainVisualization() {
+        const container = document.createElement('div');
+        container.className = 'context-visualization';
+        container.innerHTML = `
+            <div class="viz-header">
+                <div class="viz-title">🎯 AI场景分析</div>
+                <div class="viz-controls">
+                    <button class="viz-toggle" title="切换显示">👁️</button>
+                    <button class="viz-refresh" title="刷新分析">🔄</button>
+                </div>
+            </div>
+            <div class="viz-content">
+                <div class="viz-section scene-analysis">
+                    <h4>📊 场景分析</h4>
+                    <div class="analysis-grid"></div>
+                </div>
+                <div class="viz-section conversation-flow">
+                    <h4>🔄 对话流程</h4>
+                    <div class="flow-timeline"></div>
+                </div>
+                <div class="viz-section option-reasoning">
+                    <h4>💡 选项推理</h4>
+                    <div class="reasoning-list"></div>
+                </div>
+            </div>
+        `;
+        this.visualizationContainer = container;
+        this.setupEventListeners();
+        return container;
+    }
+    updateSceneAnalysis(analysis) {
+        const analysisGrid = this.visualizationContainer.querySelector('.analysis-grid');
+        const analysisItems = [
+            { key: 'scene_type', label: '场景类型', icon: '🎭' },
+            { key: 'user_mood', label: '我的情绪', icon: '😊' },
+            { key: 'narrative_focus', label: '叙事重点', icon: '🎯' },
+            { key: 'character_motivation', label: '我的动机', icon: '💪' },
+            { key: 'relationship_dynamics', label: '关系状态', icon: '🤝' },
+            { key: 'story_direction', label: '故事方向', icon: '📈' },
+            { key: 'time_progression', label: '时间推进', icon: '⏩' },
+            { key: 'scene_transition', label: '场景转换', icon: '🚪' }
+        ];
+        analysisGrid.innerHTML = analysisItems.filter(item => analysis[item.key]).map(item => `
+            <div class="analysis-item">
+                <div class="analysis-icon">${item.icon}</div>
+                <div class="analysis-content">
+                    <div class="analysis-label">${item.label}</div>
+                    <div class="analysis-value" data-key="${item.key}">
+                        ${analysis[item.key] || '未分析'}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    updateConversationFlow(messages) {
+        const flowTimeline = this.visualizationContainer.querySelector('.flow-timeline');
+        const flowItems = messages.slice(-8).map((msg, index) => {
+            const isUser = msg.role === 'user';
+            const messagePreview = msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content;
+            return `
+                <div class="flow-item ${isUser ? 'user' : 'assistant'}">
+                    <div class="flow-marker">
+                        <div class="flow-avatar">${isUser ? '👤' : '🤖'}</div>
+                        <div class="flow-time">${index + 1}</div>
+                    </div>
+                    <div class="flow-content">
+                        <div class="flow-text">${messagePreview}</div>
+                        <div class="flow-meta">
+                            <span class="flow-role">${isUser ? '我' : 'AI'}</span>
+                            <span class="flow-length">${msg.content.length}字</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        flowTimeline.innerHTML = flowItems;
+    }
+    updateOptionReasoning(options, analysis) {
+        const reasoningList = this.visualizationContainer.querySelector('.reasoning-list');
+        const reasoningItems = options.map((option, index) => {
+            const explanation = this.generateExplanation(option, analysis);
+            return `
+                <div class="reasoning-item" data-option="${index}">
+                    <div class="reasoning-header">
+                        <span class="reasoning-number">选项 ${index + 1}</span>
+                    </div>
+                    <div class="reasoning-content">
+                        <div class="reasoning-text">${option}</div>
+                        <div class="reasoning-explanation">
+                            <div class="explanation-icon">💡</div>
+                            <div class="explanation-text">${explanation}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        reasoningList.innerHTML = reasoningItems;
+    }
+    generateExplanation(option, analysis) {
+        // 简单推理示例，可扩展为更复杂的逻辑
+        if (option.includes('出发') || option.includes('到达')) {
+            return '该选项体现了场景的推进或转换，有助于推动故事发展。';
+        }
+        if (option.includes('问') || option.includes('说')) {
+            return '该选项有助于对话深入，推动人物关系。';
+        }
+        if (option.includes('检查') || option.includes('准备')) {
+            return '该选项有助于任务或行动的顺利进行。';
+        }
+        return '该选项与当前场景分析相关，有助于剧情自然发展。';
+    }
+    setupEventListeners() {
+        const toggleBtn = this.visualizationContainer.querySelector('.viz-toggle');
+        const refreshBtn = this.visualizationContainer.querySelector('.viz-refresh');
+        toggleBtn.addEventListener('click', () => {
+            this.visualizationContainer.classList.toggle('collapsed');
+        });
+        refreshBtn.addEventListener('click', () => {
+            this.refreshVisualization();
+        });
+    }
+    refreshVisualization() {
+        if (this.currentContext) {
+            this.updateSceneAnalysis(this.currentContext.analysis);
+            this.updateConversationFlow(this.currentContext.messages);
+            this.updateOptionReasoning(this.currentContext.options, this.currentContext.analysis);
+        }
+    }
+    updateVisualization(context, options) {
+        this.currentContext = { ...context, options };
+        this.updateSceneAnalysis(context.analysis);
+        this.updateConversationFlow(context.messages);
+        this.updateOptionReasoning(options, context.analysis);
+    }
+}
+
+let contextVisualization = null;
+function initContextVisualization() {
+    if (!contextVisualization) {
+        contextVisualization = new ContextVisualization();
+        const vizContainer = contextVisualization.createMainVisualization();
+        document.body.appendChild(vizContainer);
+    }
+}
+
+// 修改 generateOptions 集成可视化
 async function generateOptions() {
     console.log('[generateOptions] 开始生成选项...');
     const settings = getSettings();
@@ -691,34 +810,30 @@ async function generateOptions() {
         
         console.log('[generateOptions] 非流式生成完成，内容长度:', content.length);
         
-        // 解析建议和场景分析
-        let sceneAnalysis = null;
-        let suggestions = [];
-        if (apiType === 'gemini') {
-            content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        } else {
-            content = data.choices?.[0]?.message?.content || '';
-        }
-        // 尝试提取场景分析（JSON）
-        const sceneMatch = content.match(/场景分析[：:]?\s*([\s\S]*?)建议列表[：:]?/);
-        if (sceneMatch) {
-            try {
-                // 兼容多种格式，尝试提取JSON
-                const jsonText = sceneMatch[1].trim();
-                sceneAnalysis = JSON.parse(jsonText);
-            } catch (e) {
-                // 解析失败，忽略
-            }
-        }
-        // 提取建议
-        suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+        // 解析AI返回内容，提取场景分析和建议
+        const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
         console.log('[generateOptions] 解析到选项数量:', suggestions.length);
         console.log('[generateOptions] 选项内容:', suggestions);
         
-
+        // 新增：解析场景分析
+        let analysis = {};
+        const analysisMatch = content.match(/场景分析[：:][\s\S]*?\{([\s\S]*?)\}/);
+        if (analysisMatch) {
+            try {
+                analysis = JSON.parse('{' + analysisMatch[1] + '}');
+            } catch (e) {
+                analysis = {};
+            }
+        }
+        // 初始化并更新可视化
+        initContextVisualization();
+        contextVisualization.updateVisualization({
+            analysis,
+            messages: context.messages
+        }, suggestions);
         
         // 等待选项完全显示后再隐藏loading
-        await displayOptions(sceneAnalysis, suggestions, false); // false表示非流式显示
+        await displayOptions(suggestions, false); // false表示非流式显示
         hidePacePanelLoading();
     } catch (error) {
         console.error('[generateOptions] 生成选项时出错:', error);
