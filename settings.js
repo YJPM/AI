@@ -9,8 +9,7 @@ export const CONSTANTS = {
     DEFAULT_PACE_MODE: 'normal',
     DEFAULT_SEND_MODE: 'auto',
     DEFAULT_AUTO_GEN_MODE: 'auto',
-    MAX_CONTEXT_MESSAGES: 5,
-    MAX_WORLD_INFO_ITEMS: 3,
+    MAX_CONTEXT_MESSAGES: 10,
     ANIMATION_DURATION: 2000,
     CACHE_DURATION: 5000
 };
@@ -18,163 +17,134 @@ export const CONSTANTS = {
 // 默认设置
 export const defaultSettings = {
     // 选项生成功能设置
-    optionsGenEnabled: true,
+    optionsGenEnabled: true, // 默认开启
     optionsApiType: CONSTANTS.DEFAULT_API_TYPE,
     optionsApiKey: '',
     optionsApiModel: CONSTANTS.DEFAULT_MODEL,
     optionsBaseUrl: CONSTANTS.DEFAULT_BASE_URL,
     sendMode: CONSTANTS.DEFAULT_SEND_MODE,
-    paceMode: CONSTANTS.DEFAULT_PACE_MODE,
-    autoGenMode: CONSTANTS.DEFAULT_AUTO_GEN_MODE,
+    paceMode: CONSTANTS.DEFAULT_PACE_MODE, // 推进节奏：normal=正常, fast=快速
+    autoGenMode: CONSTANTS.DEFAULT_AUTO_GEN_MODE, // 选项生成模式：auto=自动生成, manual=手动生成
     
     // 底部快捷面板设置
-    showQuickPanel: true,
+    showQuickPanel: true, // 是否显示底部快捷面板
+    
+    // 调试设置
+    debug: true, // 默认开启
 };
 
 // 不同推进节奏的提示模板
 export const PACE_PROMPTS = {
     normal: `
-你是我的AI叙事导演。分析最近对话，为我生成连续性行动建议。
+你是我的AI叙事导演。请根据最近对话，生成4条连续性行动建议。
 
-## 核心要求
-- 始终以我的第一人称视角
-- 每条建议不超过50字
-- 必须生成4个选项，每条用【】包裹
-- 保持当前场景的连续性和自然发展
-- 分析并考虑当前场景类型、我的情绪状态和叙事重点
-- 建议应该具体、可执行、符合角色设定
-- 选项必须是清晰明确的简要内容，不要出现任何"试图" "想要" "应该" "可以"，而是明确地东西
-- 必须参考当前故事方向
-- 给每个选项填充具体可以合理接续当前剧情的内容
-- 必须符合正常的作息条件和时间观
-- 选项不是我决定做什么，而是自然而然发生了什么
-- 选项的语言必须极度朴素，概括性，不带修辞
+【输出要求】
+- 所有建议必须严格使用“我”的第一人称视角，只能描述我个人的具体行动或对话，禁止描述其他人的动作、对话、心理、反应等。
+- 先输出场景分析（JSON格式），再输出建议列表（每条用【】包裹，4条）。
+- 建议必须是我实际发生的具体动作或说的话，不得为心理活动或抽象描述。
+- 建议内容不得重复，每条都应推动剧情或角色关系发展。
+- 建议语言极度朴素、简洁，不带修辞，不出现“我可以”“试图”等措辞。
+- 每条建议不超过50字。
 
-## 分析维度
-请从以下维度分析当前情况：
-1. **场景类型**: 对话、冲突、探索、日常、工作、社交等
-2. **情绪状态**: 平静、兴奋、担忧、好奇、紧张、放松等
-3. **叙事重点**: 人物关系、任务进展、环境探索、情感发展等
-4. **角色动机**: 我想要什么、我在担心什么、我在期待什么
-5. **故事方向**: 当前剧情的发展趋势和可能走向
+【分析维度】
+- 场景类型
+- 我的情绪
+- 叙事重点
+- 我的动机
+- 人物关系
+- 故事方向
 
-## 场景分析格式
-{
-    "scene_type": "当前场景类型",
-    "user_mood": "我的情绪状态",
-    "narrative_focus": "当前叙事重点",
-    "character_motivation": "我的主要动机或目标",
-    "relationship_dynamics": "当前人物关系状态",
-    "story_direction": "当前故事发展方向",
-    "time_context": "当前时间背景和作息条件"
-}
-
-## 示例输出
+【示例输出】
 场景分析：
 {
-    "scene_type": "社交对话",
-    "user_mood": "好奇且友好",
-    "narrative_focus": "建立新的人际关系",
-    "character_motivation": "想要了解对方并建立友谊",
-    "relationship_dynamics": "初次见面，互相试探阶段",
-    "story_direction": "向友谊发展",
-    "time_context": "下午茶时间，轻松氛围"
+  "scene_type": "社交对话",
+  "user_mood": "好奇且友好",
+  "narrative_focus": "建立新的人际关系",
+  "character_motivation": "想要了解对方并建立友谊",
+  "relationship_dynamics": "初次见面，互相试探阶段",
+  "story_direction": "向友谊发展"
 }
 
 建议列表：
-【她提到喜欢摄影，我分享手机里的旅行照片】
-【服务员送来咖啡，我们聊起各自的工作】
-【窗外下起小雨，我们转移到室内座位】
-【她收到朋友消息，邀请我一起参加周末聚会】
+【我拿出手机，向她展示我的旅行照片】
+【我微笑着问她最近在忙什么】
+【我端起咖啡，轻声说今天的天气真好】
+【我点头答应一起参加周末聚会】
 
-## 最近对话
+【最近对话】
 {{context}}
 
-## 输出格式
+【输出格式】
 场景分析：
 {JSON格式分析}
 
 建议列表：
-{每条建议单独一行，必须用【】包裹，共4条，描述自然发生的事件}
-
-## 开始
+{每条建议单独一行，必须用【】包裹，共4条}
 `.trim(),
-    
+
     fast: `
-你是我的AI叙事导演。分析最近对话，为我生成时间推进的行动建议。
+你是我的AI叙事导演。请根据最近对话，生成4条时间推进的连续性行动建议。
 
-## 核心要求
-- 始终以我的第一人称视角
-- 每条建议不超过50字
-- 必须生成4个选项，每条用【】包裹
-- 选项必须直接接续当前正在进行的剧情，而不是跳跃到新事件
-- 如果当前在准备做某事，选项应该是这件事的完成或进行过程
-- 如果当前在某个地点，选项应该是在该地点的后续发展
-- 如果当前在某个情绪状态，选项应该是该情绪的延续或转变
-- 时间推进应该自然，不要突兀地跳跃到完全不同的场景
-- 选项必须是清晰明确的简要内容，不要出现任何"试图" "想要" "应该" "可以"，而是明确地东西
-- 必须参考当前故事方向
-- 给每个选项填充具体可以合理接续当前剧情的内容
-- 必须符合正常的作息条件和时间观
-- 选项不是我决定做什么，而是自然而然发生了什么
-- 选项的语言必须极度朴素，概括性，不带修辞
+【输出要求】
+- 所有建议必须严格使用“我”的第一人称视角，只能描述我个人的具体行动或对话，禁止描述其他人的动作、对话、心理、反应等。
+- 先输出场景分析（JSON格式），再输出建议列表（每条用【】包裹，4条）。
+- 建议必须是我实际发生的具体动作或说的话，不得为心理活动或抽象描述。
+- 建议内容不得重复，每条都应推动剧情或角色关系发展。
+- 建议必须直接接续当前正在进行的剧情，而不是跳跃到新事件。
+- 如果当前事件未结束，建议应为该事件的后续发展。
+- 建议语言极度朴素、简洁，不带修辞，不出现“我可以”“试图”等措辞。
+- 每条建议不超过50字。
 
-## 剧情接续策略
-1. **任务延续**: 如果正在准备执行任务，选项应该是任务执行过程或结果
-2. **地点延续**: 如果正在某个地点，选项应该是在该地点的后续活动
-3. **情绪延续**: 如果处于某种情绪，选项应该是该情绪的延续或转变
-4. **时间推进**: 在保持剧情连续性的基础上推进时间
+【分析维度】
+- 场景类型
+- 我的情绪
+- 叙事重点
+- 当前活动
+- 当前地点
+- 当前情绪
+- 下一个逻辑步骤
+- 时间推进跨度
+- 故事方向
 
-## 场景分析格式
-{
-    "scene_type": "当前场景类型",
-    "user_mood": "我的情绪状态",
-    "narrative_focus": "当前叙事重点",
-    "current_activity": "当前正在进行的活动或准备做的事情",
-    "current_location": "当前所在位置或即将前往的地点",
-    "current_emotion": "当前的情绪状态",
-    "next_logical_step": "当前活动的下一个逻辑步骤",
-    "time_progression": "建议的时间推进跨度",
-    "story_direction": "当前故事发展方向",
-    "time_context": "当前时间背景和作息条件"
-}
-
-## 示例输出
+【示例输出】
 场景分析：
 {
-    "scene_type": "任务准备",
-    "user_mood": "专注且紧张",
-    "narrative_focus": "准备执行重要任务",
-    "current_activity": "正在整理任务所需的装备和资料",
-    "current_location": "办公室或工作场所",
-    "current_emotion": "专注且有些压力",
-    "next_logical_step": "开始执行任务或前往任务地点",
-    "time_progression": "1-2小时后",
-    "story_direction": "任务执行和结果",
-    "time_context": "工作时间，任务截止日期临近"
+  "scene_type": "任务准备",
+  "user_mood": "专注且紧张",
+  "narrative_focus": "准备执行重要任务",
+  "current_activity": "正在整理任务所需的装备和资料",
+  "current_location": "办公室或工作场所",
+  "current_emotion": "专注且有些压力",
+  "next_logical_step": "开始执行任务或前往任务地点",
+  "time_progression": "1-2小时后",
+  "story_direction": "任务执行和结果"
 }
 
 建议列表：
-【任务开始执行，我按照计划逐步推进各个步骤】
-【遇到第一个挑战，我冷静分析并找到解决方案】
-【任务进展顺利，我完成了第一个重要节点】
-【任务执行过程中，我发现了新的问题和机会】
+【我检查装备，确认所有物品齐全】
+【我深呼吸，调整自己的情绪】
+【我整理好资料，准备出发】
+【我给自己打气，提醒要专注完成任务】
 
-## 最近对话
+【最近对话】
 {{context}}
 
-## 输出格式
+【输出格式】
 场景分析：
 {JSON格式分析}
 
 建议列表：
-{每条建议单独一行，必须用【】包裹，共4条，直接接续当前剧情，不要跳跃到新事件}
-
-## 开始
+{每条建议单独一行，必须用【】包裹，共4条}
 `.trim(),
 };
 
-export const MERGED_DIRECTOR_PROMPT = PACE_PROMPTS.normal;
+export const MERGED_DIRECTOR_PROMPT = PACE_PROMPTS.normal; // 默认使用正常模式
+
+
+
+
+
+
 
 // 设置管理类
 class SettingsManager {
@@ -220,7 +190,7 @@ class SettingsManager {
     // 更新设置
     updateSettings(newSettings) {
         Object.assign(extension_settings[CONSTANTS.MODULE_NAME], newSettings);
-        this.clearCache();
+        this.clearCache(); // 清除缓存，确保下次获取最新设置
     }
 }
 
