@@ -936,7 +936,7 @@ export function createQuickPacePanel() {
         padding: 6px 8px;
         border: 1px solid #666;
         border-radius: 8px;
-        background: #f8f9fa;
+        background: #e9ecef;
         color: #666;
         cursor: pointer;
         font-size: 14px;
@@ -974,14 +974,14 @@ export function createQuickPacePanel() {
     });
     
     refreshButton.addEventListener('mouseenter', () => {
-        refreshButton.style.background = '#f5f5f5';
+        refreshButton.style.background = '#dee2e6';
         refreshButton.style.color = '#333';
         refreshButton.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
         refreshButton.style.transform = 'scale(1.05)';
     });
     
     refreshButton.addEventListener('mouseleave', () => {
-        refreshButton.style.background = '#f8f9fa';
+        refreshButton.style.background = '#e9ecef';
         refreshButton.style.color = '#666';
         refreshButton.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
         refreshButton.style.transform = 'scale(1)';
@@ -1051,7 +1051,7 @@ export function hidePacePanelLoading() {
     }
     refreshButton.disabled = false;
     refreshButton.style.opacity = '1';
-    refreshButton.style.background = '#f8f9fa';
+    refreshButton.style.background = '#e9ecef';
     refreshButton.style.color = '#666';
     refreshButton.style.border = '1px solid #666';
     refreshButton.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';

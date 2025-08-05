@@ -26,6 +26,7 @@
 - **简化模板系统**: 移除 EXPLORATION_PROMPTS，移除 PACE_PROMPTS 中的 jump 模式
 - **重新设计组合系统**: 推进节奏（2种）+ 剧情走向（3种）= 6种组合
 - **简化模板系统**: 删除 CONFLICT_PROMPTS 和 EMOTIONAL_PROMPTS，只保留 PACE_PROMPTS 和 PLOT_PROMPTS
+- **修复按钮颜色问题**: 将刷新按钮背景色从 #f8f9fa 改为 #e9ecef，确保不会看起来像白色
   - 更新 `diagnoseInterfaces()` 函数，专注于 SillyTavern 原生 API
   - **修复 worldInfo 类型错误**: 确保 worldInfo 始终是数组类型
   - 增强类型安全检查，防止 `worldInfo.map is not a function` 错误
