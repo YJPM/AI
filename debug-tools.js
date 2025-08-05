@@ -12,7 +12,6 @@ export class DebugTools {
         
         const apis = [
             'window.SillyTavern',
-            'window.TavernHelper',
             'window.CharacterHelper',
             'window.ChatHelper',
             'window.ContextHelper',
@@ -129,6 +128,87 @@ export class DebugTools {
                 console.log(`   ❌ ${selector}: 未找到`);
             }
         });
+        
+        // 新增：详细检查角色卡状态
+        console.log('\n📄 === 详细角色卡检查 ===');
+        this.checkCharacterCardStatus();
+        
+        // 新增：检查页面状态
+        console.log('\n📄 === 页面状态检查 ===');
+        this.checkPageStatus();
+    }
+    
+    // 新增：详细检查角色卡状态
+    static checkCharacterCardStatus() {
+        // 检查是否在角色选择页面
+        const isCharacterSelectPage = document.querySelector('#character_select, .character_select, .character-list');
+        console.log('📄 是否在角色选择页面:', !!isCharacterSelectPage);
+        
+        // 检查是否在聊天页面
+        const isChatPage = document.querySelector('#chat, .chat, #send_textarea');
+        console.log('📄 是否在聊天页面:', !!isChatPage);
+        
+        // 检查角色卡是否已加载
+        const characterLoaded = document.querySelector('#character_info, .character_info, .char_name');
+        console.log('📄 角色卡是否已加载:', !!characterLoaded);
+        
+        // 检查当前角色名称
+        const charNameElements = document.querySelectorAll('.char_name, .character_name, h1, h2, h3');
+        console.log('📄 可能的角色名称元素:');
+        charNameElements.forEach((el, index) => {
+            const text = el.textContent?.trim();
+            if (text && text.length > 0 && text.length < 100) {
+                console.log(`   ${index + 1}. "${text}" (${el.tagName}.${el.className})`);
+            }
+        });
+        
+        // 检查角色描述
+        const charDescElements = document.querySelectorAll('.char_desc, .character_description, .description, p');
+        console.log('📄 可能的角色描述元素:');
+        charDescElements.forEach((el, index) => {
+            const text = el.textContent?.trim();
+            if (text && text.length > 10 && text.length < 500) {
+                console.log(`   ${index + 1}. "${text.substring(0, 100)}..." (${el.tagName}.${el.className})`);
+            }
+        });
+    }
+    
+    // 新增：检查页面状态
+    static checkPageStatus() {
+        // 检查URL信息
+        console.log('📄 当前URL:', window.location.href);
+        console.log('📄 页面标题:', document.title);
+        
+        // 检查页面类型
+        const pageType = this.detectPageType();
+        console.log('📄 检测到的页面类型:', pageType);
+        
+        // 检查SillyTavern版本
+        const versionElement = document.querySelector('.version, .st-version, [data-version]');
+        if (versionElement) {
+            console.log('📄 SillyTavern版本:', versionElement.textContent || versionElement.getAttribute('data-version'));
+        }
+        
+        // 检查扩展状态
+        const extensionsElement = document.querySelector('.extensions, .extensions-list');
+        if (extensionsElement) {
+            console.log('📄 扩展管理区域:', '已找到');
+        }
+    }
+    
+    // 新增：检测页面类型
+    static detectPageType() {
+        if (document.querySelector('#character_select, .character_select')) {
+            return '角色选择页面';
+        } else if (document.querySelector('#chat, .chat')) {
+            return '聊天页面';
+        } else if (document.querySelector('#settings, .settings')) {
+            return '设置页面';
+        } else if (document.querySelector('#extensions, .extensions')) {
+            return '扩展管理页面';
+        } else {
+            return '未知页面';
+        }
     }
     
     // 测试SillyTavern API
@@ -167,59 +247,7 @@ export class DebugTools {
         }
     }
     
-    // 测试TavernHelper API
-    static testTavernHelperAPI() {
-        console.log('🔍 === 测试TavernHelper API ===');
-        
-        const results = {};
-        
-        // 测试getCharacter
-        if (typeof window.TavernHelper?.getCharacter === 'function') {
-            try {
-                console.log('📄 调用 TavernHelper.getCharacter()...');
-                const charData = window.TavernHelper.getCharacter();
-                console.log('✅ getCharacter() 成功');
-                console.log('📄 返回数据:', charData);
-                results.character = charData;
-            } catch (error) {
-                console.error('❌ getCharacter() 失败:', error);
-            }
-        } else {
-            console.log('❌ TavernHelper.getCharacter() 不可用');
-        }
-        
-        // 测试getWorldBooks
-        if (typeof window.TavernHelper?.getWorldBooks === 'function') {
-            try {
-                console.log('📄 调用 TavernHelper.getWorldBooks()...');
-                const worldBooks = window.TavernHelper.getWorldBooks();
-                console.log('✅ getWorldBooks() 成功');
-                console.log('📄 返回数据:', worldBooks);
-                results.worldBooks = worldBooks;
-            } catch (error) {
-                console.error('❌ getWorldBooks() 失败:', error);
-            }
-        } else {
-            console.log('❌ TavernHelper.getWorldBooks() 不可用');
-        }
-        
-        // 测试getMessages
-        if (typeof window.TavernHelper?.getMessages === 'function') {
-            try {
-                console.log('📄 调用 TavernHelper.getMessages()...');
-                const messages = window.TavernHelper.getMessages();
-                console.log('✅ getMessages() 成功');
-                console.log('📄 返回数据:', messages);
-                results.messages = messages;
-            } catch (error) {
-                console.error('❌ getMessages() 失败:', error);
-            }
-        } else {
-            console.log('❌ TavernHelper.getMessages() 不可用');
-        }
-        
-        return results;
-    }
+
     
     // 生成诊断报告
     static generateDiagnosticReport() {
@@ -235,7 +263,7 @@ export class DebugTools {
         };
         
         // 检查API可用性
-        const apis = ['SillyTavern', 'TavernHelper'];
+        const apis = ['SillyTavern'];
         apis.forEach(apiName => {
             const api = window[apiName];
             if (api) {
@@ -264,8 +292,8 @@ export class DebugTools {
         });
         
         // 生成建议
-        if (!report.apis.SillyTavern?.available && !report.apis.TavernHelper?.available) {
-            report.recommendations.push('建议安装TavernHelper扩展以获取更好的API支持');
+        if (!report.apis.SillyTavern?.available) {
+            report.recommendations.push('建议确保SillyTavern正常运行');
         }
         
         if (!report.dom.character.found) {
@@ -293,10 +321,7 @@ export class DebugTools {
         // 3. 测试SillyTavern API
         await this.testSillyTavernAPI();
         
-        // 4. 测试TavernHelper API
-        this.testTavernHelperAPI();
-        
-        // 5. 生成报告
+        // 4. 生成报告
         const report = this.generateDiagnosticReport();
         
         console.log('✅ === 诊断完成 ===');
@@ -310,7 +335,6 @@ window.debugAIAssistant = {
     checkAPIs: () => DebugTools.checkAvailableAPIs(),
     checkDOM: () => DebugTools.checkDOMStructure(),
     testSillyTavern: () => DebugTools.testSillyTavernAPI(),
-    testTavernHelper: () => DebugTools.testTavernHelperAPI(),
     generateReport: () => DebugTools.generateDiagnosticReport()
 };
 

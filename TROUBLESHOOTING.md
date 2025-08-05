@@ -9,7 +9,7 @@
 **可能原因**:
 1. 未加载角色卡
 2. SillyTavern版本不兼容
-3. 缺少TavernHelper扩展
+3. API权限问题
 
 **解决方案**:
 
@@ -18,9 +18,9 @@
 2. 确保角色卡包含基本信息（名称、描述等）
 3. 重新尝试生成选项
 
-#### 方案2: 安装TavernHelper扩展
-1. 在SillyTavern扩展管理器中搜索"TavernHelper"
-2. 安装并启用TavernHelper扩展
+#### 方案2: 检查API权限
+1. 确保SillyTavern正常运行
+2. 检查浏览器控制台是否有错误信息
 3. 重启SillyTavern
 4. 重新尝试生成选项
 
@@ -29,7 +29,6 @@
 ```javascript
 // 检查SillyTavern API
 console.log('SillyTavern:', window.SillyTavern);
-console.log('TavernHelper:', window.TavernHelper);
 
 // 检查DOM中的角色元素
 console.log('角色元素:', document.querySelector('#character_info, .character_info, .char_name'));
@@ -89,9 +88,6 @@ window.debugAIAssistant.checkDOM();
 ```javascript
 // 测试SillyTavern API
 window.debugAIAssistant.testSillyTavern();
-
-// 测试TavernHelper API
-window.debugAIAssistant.testTavernHelper();
 ```
 
 #### 方案3: 手动获取消息
@@ -124,7 +120,6 @@ window.debugAIAssistant.checkDOM();
 
 // 测试特定API
 window.debugAIAssistant.testSillyTavern();
-window.debugAIAssistant.testTavernHelper();
 
 // 生成诊断报告
 window.debugAIAssistant.generateReport();
@@ -140,8 +135,7 @@ window.debugAIAssistant.generateReport();
     userAgent: "...", // 浏览器信息
     url: "...", // 当前页面URL
     apis: {
-        SillyTavern: { available: true/false, methods: [...] },
-        TavernHelper: { available: true/false, methods: [...] }
+        SillyTavern: { available: true/false, methods: [...] }
     },
     dom: {
         character: { found: true/false, count: 0 },
@@ -197,7 +191,7 @@ window.debugAIAssistant.generateReport();
 ## 🎯 最佳实践
 
 ### 推荐配置
-1. **安装TavernHelper扩展**: 提供更好的API支持
+1. **确保SillyTavern正常运行**: 提供API支持
 2. **启用调试模式**: 便于问题诊断
 3. **定期更新**: 保持扩展和SillyTavern为最新版本
 4. **备份设置**: 定期备份重要配置

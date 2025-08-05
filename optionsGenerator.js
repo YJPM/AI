@@ -502,48 +502,52 @@ async function getContextCompatible(limit = 5) {
         console.log('❌ SillyTavern.getContext() 不可用');
     }
     
-    // 方案2: 尝试TavernHelper API
-    console.log('\n--- 方案2: 尝试TavernHelper API ---');
+    // 方案2: 尝试其他SillyTavern API
+    console.log('\n--- 方案2: 尝试其他SillyTavern API ---');
     
-    // 获取角色信息
-    if (!characterInfo && typeof window.TavernHelper?.getCharacter === 'function') {
-        try {
-            console.log('🔍 尝试TavernHelper.getCharacter()...');
-            const charData = window.TavernHelper.getCharacter();
-            if (charData) {
-                characterInfo = charData;
-                console.log('✅ TavernHelper.getCharacter() 成功');
+    // 尝试其他可能的SillyTavern方法
+    if (!characterInfo && window.SillyTavern) {
+        const stMethods = Object.keys(window.SillyTavern).filter(key => typeof window.SillyTavern[key] === 'function');
+        console.log('📄 可用的SillyTavern方法:', stMethods);
+        
+        // 尝试可能的角色获取方法
+        const possibleCharMethods = ['getCharacter', 'getCurrentCharacter', 'getCharacterData', 'character'];
+        for (const method of possibleCharMethods) {
+            if (typeof window.SillyTavern[method] === 'function') {
+                try {
+                    console.log(`🔍 尝试SillyTavern.${method}()...`);
+                    const charData = window.SillyTavern[method]();
+                    if (charData) {
+                        characterInfo = charData;
+                        console.log(`✅ SillyTavern.${method}() 成功`);
+                        break;
+                    }
+                } catch (error) {
+                    console.log(`❌ SillyTavern.${method}() 失败:`, error.message);
+                }
             }
-        } catch (error) {
-            console.error('❌ TavernHelper.getCharacter() 失败:', error);
         }
     }
     
-    // 获取世界书信息
-    if (!worldInfo && typeof window.TavernHelper?.getWorldBooks === 'function') {
+    // 尝试从SillyTavern全局变量获取角色信息
+    if (!characterInfo && window.character) {
         try {
-            console.log('🔍 尝试TavernHelper.getWorldBooks()...');
-            const worldBooks = window.TavernHelper.getWorldBooks();
-            if (worldBooks && Array.isArray(worldBooks) && worldBooks.length > 0) {
-                worldInfo = worldBooks;
-                console.log('✅ TavernHelper.getWorldBooks() 成功，数量:', worldBooks.length);
-            }
+            console.log('🔍 尝试从window.character获取...');
+            characterInfo = window.character;
+            console.log('✅ 从window.character获取成功');
         } catch (error) {
-            console.error('❌ TavernHelper.getWorldBooks() 失败:', error);
+            console.error('❌ 从window.character获取失败:', error);
         }
     }
     
-    // 获取消息
-    if (messages.length === 0 && typeof window.TavernHelper?.getMessages === 'function') {
+    // 尝试从SillyTavern全局变量获取世界书信息
+    if (!worldInfo && window.world_info) {
         try {
-            console.log('🔍 尝试TavernHelper.getMessages()...');
-            const allMessages = window.TavernHelper.getMessages();
-            if (allMessages && Array.isArray(allMessages)) {
-                messages = allMessages.slice(-limit);
-                console.log('✅ TavernHelper.getMessages() 成功，数量:', messages.length);
-            }
+            console.log('🔍 尝试从window.world_info获取...');
+            worldInfo = window.world_info;
+            console.log('✅ 从window.world_info获取成功，数量:', worldInfo.length);
         } catch (error) {
-            console.error('❌ TavernHelper.getMessages() 失败:', error);
+            console.error('❌ 从window.world_info获取失败:', error);
         }
     }
     
@@ -560,44 +564,104 @@ async function getContextCompatible(limit = 5) {
             '.char_name',
             '.character_name',
             '#char_name',
-            '.char_info'
+            '.char_info',
+            '.character-card',
+            '.char-card',
+            '.character_info_wrapper',
+            '.character_info_container',
+            '[id*="character"]',
+            '[class*="character"]',
+            '[class*="char"]'
         ];
         
         for (const selector of characterSelectors) {
-            const element = document.querySelector(selector);
-            if (element) {
-                console.log(`✅ 找到角色元素: ${selector}`);
+            const elements = document.querySelectorAll(selector);
+            if (elements.length > 0) {
+                console.log(`✅ 找到角色元素: ${selector} (${elements.length}个)`);
                 
-                // 尝试获取角色名称
-                const nameSelectors = ['.char_name', '.character_name', '.name', 'h1', 'h2', 'h3'];
-                let charName = null;
-                for (const nameSelector of nameSelectors) {
-                    const nameElement = element.querySelector(nameSelector);
-                    if (nameElement && nameElement.textContent.trim()) {
-                        charName = nameElement.textContent.trim();
+                for (const element of elements) {
+                    // 尝试获取角色名称
+                    const nameSelectors = [
+                        '.char_name', '.character_name', '.name', 'h1', 'h2', 'h3', 
+                        '.char-title', '.character-title', '.title',
+                        '[data-name]', '[data-character-name]'
+                    ];
+                    let charName = null;
+                    for (const nameSelector of nameSelectors) {
+                        const nameElement = element.querySelector(nameSelector);
+                        if (nameElement && nameElement.textContent.trim()) {
+                            charName = nameElement.textContent.trim();
+                            break;
+                        }
+                    }
+                    
+                    // 如果没有找到名称，尝试从元素本身获取
+                    if (!charName && element.textContent.trim()) {
+                        const text = element.textContent.trim();
+                        // 如果文本长度适中且不包含太多特殊字符，可能是角色名
+                        if (text.length > 0 && text.length < 50 && !text.includes('\n')) {
+                            charName = text;
+                        }
+                    }
+                    
+                    // 尝试获取角色描述
+                    const descSelectors = [
+                        '.char_desc', '.character_description', '.description', '.desc', 'p',
+                        '.char-personality', '.character-personality', '.personality',
+                        '.char-scenario', '.character-scenario', '.scenario',
+                        '[data-description]', '[data-character-desc]'
+                    ];
+                    let charDesc = null;
+                    for (const descSelector of descSelectors) {
+                        const descElement = element.querySelector(descSelector);
+                        if (descElement && descElement.textContent.trim()) {
+                            const text = descElement.textContent.trim();
+                            if (text.length > 10) {
+                                charDesc = text;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 如果没有找到描述，尝试从父元素或兄弟元素获取
+                    if (!charDesc) {
+                        const parent = element.parentElement;
+                        if (parent) {
+                            const parentText = parent.textContent.trim();
+                            if (parentText.length > 50 && parentText.length < 1000) {
+                                charDesc = parentText;
+                            }
+                        }
+                    }
+                    
+                    if (charName || charDesc) {
+                        characterInfo = {
+                            name: charName || '未知角色',
+                            description: charDesc || '无描述',
+                            personality: charDesc || '无描述',
+                            scenario: '从DOM解析获取'
+                        };
+                        console.log('✅ 从DOM获取到角色信息:', characterInfo);
                         break;
                     }
                 }
                 
-                // 尝试获取角色描述
-                const descSelectors = ['.char_desc', '.character_description', '.description', '.desc', 'p'];
-                let charDesc = null;
-                for (const descSelector of descSelectors) {
-                    const descElement = element.querySelector(descSelector);
-                    if (descElement && descElement.textContent.trim()) {
-                        charDesc = descElement.textContent.trim();
-                        break;
-                    }
-                }
-                
-                if (charName || charDesc) {
-                    characterInfo = {
-                        name: charName || '未知角色',
-                        description: charDesc || '无描述'
-                    };
-                    console.log('✅ 从DOM获取到角色信息:', characterInfo);
-                    break;
-                }
+                if (characterInfo) break;
+            }
+        }
+        
+        // 如果还是没有找到，尝试从页面标题或其他地方获取
+        if (!characterInfo) {
+            console.log('🔍 尝试从页面标题获取角色信息...');
+            const pageTitle = document.title;
+            if (pageTitle && pageTitle !== 'SillyTavern' && pageTitle.length < 100) {
+                characterInfo = {
+                    name: pageTitle,
+                    description: '从页面标题获取',
+                    personality: '从页面标题获取',
+                    scenario: '从页面标题获取'
+                };
+                console.log('✅ 从页面标题获取到角色信息:', characterInfo);
             }
         }
     }
@@ -610,7 +674,14 @@ async function getContextCompatible(limit = 5) {
             '[data-world-book]',
             '.world_info',
             '.worldbook',
-            '.world-info'
+            '.world-info',
+            '.world-book',
+            '.world_book_info',
+            '.world_info_wrapper',
+            '.world_info_container',
+            '[id*="world"]',
+            '[class*="world"]',
+            '[class*="worldbook"]'
         ];
         
         for (const selector of worldBookSelectors) {
@@ -621,7 +692,11 @@ async function getContextCompatible(limit = 5) {
                 
                 elements.forEach((element, index) => {
                     // 获取标题
-                    const titleSelectors = ['.title', '.world_title', '.name', 'h1', 'h2', 'h3'];
+                    const titleSelectors = [
+                        '.title', '.world_title', '.name', 'h1', 'h2', 'h3',
+                        '.world-name', '.worldbook-title', '.world-title',
+                        '[data-title]', '[data-world-title]'
+                    ];
                     let title = null;
                     for (const titleSelector of titleSelectors) {
                         const titleElement = element.querySelector(titleSelector);
@@ -632,13 +707,25 @@ async function getContextCompatible(limit = 5) {
                     }
                     
                     // 获取内容
-                    const contentSelectors = ['.content', '.world_content', '.text', '.description', 'p'];
+                    const contentSelectors = [
+                        '.content', '.world_content', '.text', '.description', 'p',
+                        '.world-text', '.worldbook-content', '.world-content',
+                        '[data-content]', '[data-world-content]'
+                    ];
                     let content = null;
                     for (const contentSelector of contentSelectors) {
                         const contentElement = element.querySelector(contentSelector);
                         if (contentElement && contentElement.textContent.trim()) {
                             content = contentElement.textContent.trim();
                             break;
+                        }
+                    }
+                    
+                    // 如果没有找到内容，尝试从元素本身获取
+                    if (!content && element.textContent.trim()) {
+                        const text = element.textContent.trim();
+                        if (text.length > 20) {
+                            content = text;
                         }
                     }
                     
@@ -656,6 +743,23 @@ async function getContextCompatible(limit = 5) {
                     console.log('✅ 从DOM获取到世界书信息，数量:', worldInfo.length);
                     break;
                 }
+            }
+        }
+        
+        // 如果还是没有找到，尝试从localStorage获取
+        if (!worldInfo) {
+            console.log('🔍 尝试从localStorage获取世界书信息...');
+            try {
+                const worldBooksData = localStorage.getItem('world_info') || localStorage.getItem('worldbooks');
+                if (worldBooksData) {
+                    const parsedData = JSON.parse(worldBooksData);
+                    if (Array.isArray(parsedData) && parsedData.length > 0) {
+                        worldInfo = parsedData;
+                        console.log('✅ 从localStorage获取到世界书信息，数量:', worldInfo.length);
+                    }
+                }
+            } catch (error) {
+                console.log('❌ 从localStorage获取世界书失败:', error.message);
             }
         }
     }
@@ -724,7 +828,6 @@ async function getContextCompatible(limit = 5) {
     // 尝试其他可能的全局对象
     const possibleAPIs = [
         'window.SillyTavern',
-        'window.TavernHelper', 
         'window.CharacterHelper',
         'window.ChatHelper',
         'window.ContextHelper'
@@ -1184,57 +1287,47 @@ export class OptionsGenerator {
     static generateOptions = generateOptions;
     static testApiConnection = testApiConnection;
     
-    // 测试TavernHelper接口
-    static async testTavernHelper() {
-        console.log('=== 开始测试TavernHelper接口 ===');
-        console.log('window.TavernHelper:', window.TavernHelper);
-        console.log('window.SillyTavern:', window.SillyTavern);
+    // 测试API连接
+    static async testApiConnection() {
+        console.log('=== 开始测试API连接 ===');
+        const settings = getSettings();
         
-        if (typeof window.TavernHelper !== 'undefined') {
-            console.log('TavernHelper 可用，测试其方法...');
-            
-            // 测试可用的方法
-            const methods = [
-                'getContext',
-                'getCharAvatarPath',
-                'getWorldBooks',
-                'getVariables'
-            ];
-            
-            for (const method of methods) {
-                if (typeof window.TavernHelper[method] === 'function') {
-                    console.log(`TavernHelper.${method} 可用`);
-                    try {
-                        if (method === 'getContext') {
-                            const result = await window.TavernHelper[method]({ tokenLimit: 1000 });
-                            console.log(`${method} 结果:`, result);
-                        } else {
-                            const result = window.TavernHelper[method]();
-                            console.log(`${method} 结果:`, result);
-                        }
-                    } catch (error) {
-                        console.error(`${method} 调用失败:`, error);
-                    }
-                } else {
-                    console.log(`TavernHelper.${method} 不可用`);
-                }
-            }
-        } else {
-            console.log('TavernHelper 不可用');
+        if (!settings.optionsApiKey) {
+            console.log('❌ 未设置API密钥');
+            return false;
         }
         
-        console.log('=== TavernHelper接口测试完成 ===');
+        try {
+            const response = await fetch(`${settings.optionsBaseUrl}/models`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${settings.optionsApiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ API连接成功');
+                console.log('📄 可用模型:', data.data?.map(m => m.id) || []);
+                return true;
+            } else {
+                console.log('❌ API连接失败:', response.status, response.statusText);
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ API连接错误:', error);
+            return false;
+        }
     }
     
     // 详细诊断接口问题
     static async diagnoseInterfaces() {
         console.log('=== 开始诊断接口问题 ===');
         
-        // 检查所有可能的全局对象
+        // 检查SillyTavern原生API
         const globalObjects = [
-            'TavernHelper',
             'SillyTavern',
-            'window.TavernHelper',
             'window.SillyTavern'
         ];
         
@@ -1261,7 +1354,7 @@ export class OptionsGenerator {
         }
         
         // 检查扩展相关的元素
-        const extensionElements = document.querySelectorAll('[id*="tavern"], [class*="tavern"], [id*="helper"], [class*="helper"]');
+        const extensionElements = document.querySelectorAll('[id*="tavern"], [class*="tavern"]');
         console.log('可能的扩展元素:', extensionElements.length);
         
         // 检查聊天消息元素
@@ -1342,32 +1435,6 @@ export class OptionsGenerator {
             }
         } else {
             console.log('❌ SillyTavern.getContext() 不可用');
-        }
-        
-        // 测试TavernHelper
-        if (typeof window.TavernHelper !== 'undefined') {
-            console.log('\n🔍 测试 TavernHelper...');
-            console.log('📄 TavernHelper 方法:', Object.keys(window.TavernHelper));
-            
-            if (typeof window.TavernHelper.getCharacter === 'function') {
-                try {
-                    const charData = window.TavernHelper.getCharacter();
-                    console.log('✅ TavernHelper.getCharacter() 成功:', charData);
-                } catch (error) {
-                    console.error('❌ TavernHelper.getCharacter() 失败:', error);
-                }
-            }
-            
-            if (typeof window.TavernHelper.getWorldBooks === 'function') {
-                try {
-                    const worldBooks = window.TavernHelper.getWorldBooks();
-                    console.log('✅ TavernHelper.getWorldBooks() 成功:', worldBooks);
-                } catch (error) {
-                    console.error('❌ TavernHelper.getWorldBooks() 失败:', error);
-                }
-            }
-        } else {
-            console.log('❌ TavernHelper 不可用');
         }
         
         // 测试DOM元素
