@@ -567,20 +567,14 @@ function updateQuickPanelFromSettings() {
     // 定义推进节奏模式
     const paceModes = [
         { value: 'normal', color: '#2196F3' },
-        { value: 'fast', color: '#4CAF50' },
-        { value: 'jump', color: '#9C27B0' }
+        { value: 'fast', color: '#4CAF50' }
     ];
     
-    // 定义模板类型模式
-    const templateModes = [
-        { value: 'discovery', text: '探索', color: '#FF9800' },
-        { value: 'mystery', text: '神秘', color: '#673AB7' },
-        { value: 'resolution', text: '解决', color: '#E91E63' },
-        { value: 'challenge', text: '挑战', color: '#F44336' },
-        { value: 'healing', text: '疗愈', color: '#4CAF50' },
-        { value: 'celebration', text: '庆祝', color: '#FFC107' },
-        { value: 'normal', text: '正常', color: '#2196F3' },
-        { value: 'twist', text: '转折', color: '#9C27B0' }
+    // 定义剧情走向模式
+    const plotModes = [
+        { value: 'normal', color: '#2196F3' },
+        { value: 'twist', color: '#9C27B0' },
+        { value: 'nsfw', color: '#E91E63' }
     ];
     
     // 更新推进节奏按钮状态
@@ -590,20 +584,22 @@ function updateQuickPanelFromSettings() {
         
         if (btnMode) {
             const isBtnActive = settings.paceMode === btnMode.value;
-            btn.style.background = isBtnActive ? btnMode.color : 'transparent';
+            btn.style.background = isBtnActive ? btnMode.color : 'rgba(255, 255, 255, 0.9)';
             btn.style.color = isBtnActive ? 'white' : btnMode.color;
+            btn.style.boxShadow = isBtnActive ? `0 2px 8px ${btnMode.color}40` : '0 1px 3px rgba(0,0,0,0.1)';
         }
     });
     
-    // 更新模板类型按钮状态
-    panel.querySelectorAll('button[data-template-mode]').forEach((btn) => {
-        const btnTemplateMode = btn.getAttribute('data-template-mode');
-        const btnMode = templateModes.find(m => m.value === btnTemplateMode);
+    // 更新剧情走向按钮状态
+    panel.querySelectorAll('button[data-plot-mode]').forEach((btn) => {
+        const btnPlotMode = btn.getAttribute('data-plot-mode');
+        const btnMode = plotModes.find(m => m.value === btnPlotMode);
         
         if (btnMode) {
-            const isBtnActive = settings.templateMode === btnMode.value;
-            btn.style.background = isBtnActive ? btnMode.color : 'transparent';
+            const isBtnActive = settings.plotMode === btnMode.value;
+            btn.style.background = isBtnActive ? btnMode.color : 'rgba(255, 255, 255, 0.9)';
             btn.style.color = isBtnActive ? 'white' : btnMode.color;
+            btn.style.boxShadow = isBtnActive ? `0 2px 8px ${btnMode.color}40` : '0 1px 3px rgba(0,0,0,0.1)';
         }
     });
 }
@@ -676,14 +672,14 @@ export function createQuickPacePanel() {
     // 折叠面板函数
     const collapsePanel = () => {
         const paceButtons = panel.querySelectorAll('button[data-pace-mode]');
-        const templateButtons = panel.querySelectorAll('button[data-template-mode]');
+        const plotButtons = panel.querySelectorAll('button[data-plot-mode]');
         const separators = panel.querySelectorAll('div[style*="background: #e0e0e0"]');
         
         paceButtons.forEach(btn => {
             btn.style.display = 'none';
         });
         
-        templateButtons.forEach(btn => {
+        plotButtons.forEach(btn => {
             btn.style.display = 'none';
         });
         
@@ -702,14 +698,14 @@ export function createQuickPacePanel() {
     // 展开面板函数
     const expandPanel = () => {
         const paceButtons = panel.querySelectorAll('button[data-pace-mode]');
-        const templateButtons = panel.querySelectorAll('button[data-template-mode]');
+        const plotButtons = panel.querySelectorAll('button[data-plot-mode]');
         const separators = panel.querySelectorAll('div[style*="background: #e0e0e0"]');
         
         paceButtons.forEach(btn => {
             btn.style.display = 'inline-block';
         });
         
-        templateButtons.forEach(btn => {
+        plotButtons.forEach(btn => {
             btn.style.display = 'inline-block';
         });
         
@@ -789,8 +785,7 @@ export function createQuickPacePanel() {
     // 创建推进节奏按钮
     const paceModes = [
         { value: 'normal', text: '正常', color: '#2196F3' },
-        { value: 'fast', text: '快速', color: '#4CAF50' },
-        { value: 'jump', text: '跳跃', color: '#9C27B0' }
+        { value: 'fast', text: '快速', color: '#4CAF50' }
     ];
     
     // 创建推进节奏按钮
@@ -822,11 +817,12 @@ export function createQuickPacePanel() {
         `;
         
         button.addEventListener('click', () => {
+            // 推进节奏是单选
             settings.paceMode = mode.value;
             saveSettingsDebounced();
             
-            // 更新所有按钮状态
-            panel.querySelectorAll('button').forEach((btn) => {
+            // 更新所有推进节奏按钮状态
+            panel.querySelectorAll('button[data-pace-mode]').forEach((btn) => {
                 const btnPaceMode = btn.getAttribute('data-pace-mode');
                 const btnMode = paceModes.find(m => m.value === btnPaceMode);
                 
@@ -861,25 +857,22 @@ export function createQuickPacePanel() {
     `;
     panel.appendChild(separator2);
     
-    // 创建模板类型按钮
-    const templateModes = [
-        { value: 'discovery', text: '探索', color: '#FF9800' },
-        { value: 'mystery', text: '神秘', color: '#673AB7' },
-        { value: 'resolution', text: '解决', color: '#E91E63' },
-        { value: 'challenge', text: '挑战', color: '#F44336' },
-        { value: 'healing', text: '疗愈', color: '#4CAF50' },
-        { value: 'celebration', text: '庆祝', color: '#FFC107' }
+    // 创建剧情走向按钮
+    const plotModes = [
+        { value: 'normal', text: '正常', color: '#2196F3' },
+        { value: 'twist', text: '转折', color: '#9C27B0' },
+        { value: 'nsfw', text: '成人', color: '#E91E63' }
     ];
     
-    // 创建模板类型按钮
-    templateModes.forEach((mode) => {
+    // 创建剧情走向按钮
+    plotModes.forEach((mode) => {
         const button = document.createElement('button');
         button.textContent = mode.text;
-        button.setAttribute('data-template-mode', mode.value);
-        button.title = `模板类型: ${mode.text}`;
+        button.setAttribute('data-plot-mode', mode.value);
+        button.title = `剧情走向: ${mode.text}`;
         
         // 检查当前设置是否匹配这个模式
-        const isActive = settings.templateMode === mode.value;
+        const isActive = settings.plotMode === mode.value;
         
         button.style.cssText = `
             padding: 6px 10px;
@@ -901,23 +894,24 @@ export function createQuickPacePanel() {
         `;
         
         button.addEventListener('click', () => {
-            settings.templateMode = mode.value;
+            // 剧情走向是单选
+            settings.plotMode = mode.value;
             saveSettingsDebounced();
             
-            // 更新所有模板类型按钮状态
-            panel.querySelectorAll('button[data-template-mode]').forEach((btn) => {
-                const btnTemplateMode = btn.getAttribute('data-template-mode');
-                const btnMode = templateModes.find(m => m.value === btnTemplateMode);
+            // 更新所有剧情走向按钮状态
+            panel.querySelectorAll('button[data-plot-mode]').forEach((btn) => {
+                const btnPlotMode = btn.getAttribute('data-plot-mode');
+                const btnMode = plotModes.find(m => m.value === btnPlotMode);
                 
                 if (btnMode) {
-                    const isBtnActive = settings.templateMode === btnMode.value;
+                    const isBtnActive = settings.plotMode === btnMode.value;
                     btn.style.background = isBtnActive ? btnMode.color : 'rgba(255, 255, 255, 0.9)';
                     btn.style.color = isBtnActive ? 'white' : btnMode.color;
                     btn.style.boxShadow = isBtnActive ? `0 2px 8px ${btnMode.color}40` : '0 1px 3px rgba(0,0,0,0.1)';
                 }
             });
             
-            console.log('[templateMode] 已切换到:', mode.text, '(', mode.value, ')');
+            console.log('[plotMode] 已切换到:', mode.text, '(', mode.value, ')');
         });
         
         panel.appendChild(button);
@@ -942,7 +936,7 @@ export function createQuickPacePanel() {
         padding: 6px 8px;
         border: 1px solid #666;
         border-radius: 8px;
-        background: rgba(255, 255, 255, 0.9);
+        background: #f8f9fa;
         color: #666;
         cursor: pointer;
         font-size: 14px;
@@ -987,7 +981,7 @@ export function createQuickPacePanel() {
     });
     
     refreshButton.addEventListener('mouseleave', () => {
-        refreshButton.style.background = 'rgba(255, 255, 255, 0.9)';
+        refreshButton.style.background = '#f8f9fa';
         refreshButton.style.color = '#666';
         refreshButton.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
         refreshButton.style.transform = 'scale(1)';
@@ -1057,7 +1051,7 @@ export function hidePacePanelLoading() {
     }
     refreshButton.disabled = false;
     refreshButton.style.opacity = '1';
-    refreshButton.style.background = 'rgba(255, 255, 255, 0.9)';
+    refreshButton.style.background = '#f8f9fa';
     refreshButton.style.color = '#666';
     refreshButton.style.border = '1px solid #666';
     refreshButton.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';

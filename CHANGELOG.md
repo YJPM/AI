@@ -22,6 +22,10 @@
 - **新增聊天摘要获取**: 支持获取聊天摘要信息
 - **增强消息处理**: 记录最新消息信息，支持多种消息获取方式
 - **修复 PLOT_PROMPTS 使用**: 添加对 normal 和 twist 模板类型的支持
+- **修复按钮样式问题**: 解决刷新按钮在加载后背景变白的问题
+- **简化模板系统**: 移除 EXPLORATION_PROMPTS，移除 PACE_PROMPTS 中的 jump 模式
+- **重新设计组合系统**: 推进节奏（2种）+ 剧情走向（3种）= 6种组合
+- **简化模板系统**: 删除 CONFLICT_PROMPTS 和 EMOTIONAL_PROMPTS，只保留 PACE_PROMPTS 和 PLOT_PROMPTS
   - 更新 `diagnoseInterfaces()` 函数，专注于 SillyTavern 原生 API
   - **修复 worldInfo 类型错误**: 确保 worldInfo 始终是数组类型
   - 增强类型安全检查，防止 `worldInfo.map is not a function` 错误

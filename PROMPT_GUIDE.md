@@ -58,73 +58,43 @@
 - **输出**: 4个神秘探索建议
 - **示例**: 调查事件、解开谜题
 
-### ⚔️ 冲突型模板 (CONFLICT_PROMPTS)
 
-#### 1. **resolution** - 冲突解决
-- **适用场景**: 化解矛盾、修复关系
-- **特点**: 沟通、协商、和谐
-- **输出**: 4个冲突解决建议
-- **示例**: 人际冲突、关系修复
-
-#### 2. **challenge** - 挑战应对
-- **适用场景**: 面对困难、克服挑战
-- **特点**: 勇气、决心、成长
-- **输出**: 4个挑战应对建议
-- **示例**: 职业挑战、个人困难
-
-### 💝 情感型模板 (EMOTIONAL_PROMPTS)
-
-#### 1. **healing** - 情感疗愈
-- **适用场景**: 情感低谷、心理恢复
-- **特点**: 自我关爱、心理支持
-- **输出**: 4个疗愈建议
-- **示例**: 情感困境、心理恢复
-
-#### 2. **celebration** - 庆祝喜悦
-- **适用场景**: 成功时刻、分享喜悦
-- **特点**: 感恩、分享、正能量
-- **输出**: 4个庆祝建议
-- **示例**: 成就庆祝、快乐分享
 
 ## 🎯 如何选择合适的模板
 
-### 1. **根据当前情绪状态选择**
-- **积极情绪**: `normal`, `celebration`, `discovery`
-- **消极情绪**: `healing`, `resolution`, `challenge`
-- **好奇探索**: `discovery`, `mystery`
-- **紧张压力**: `fast`, `challenge`
+### 1. **根据推进节奏选择**
+- **连续性发展**: `PACE_PROMPTS.normal` - 正常节奏
+- **快速推进**: `PACE_PROMPTS.fast` - 快速节奏
 
-### 2. **根据场景类型选择**
-- **日常对话**: `PACE_PROMPTS.normal`
-- **工作项目**: `PACE_PROMPTS.fast`
-- **生活规划**: `PACE_PROMPTS.jump`
-- **关系发展**: `PLOT_PROMPTS.normal`
-- **浪漫场景**: `PLOT_PROMPTS.nsfw`
-- **冲突情况**: `CONFLICT_PROMPTS.resolution`
+### 2. **根据剧情走向选择**
+- **健康发展**: `PLOT_PROMPTS.normal` - 正常剧情
+- **戏剧转折**: `PLOT_PROMPTS.twist` - 转折剧情
+- **成人内容**: `PLOT_PROMPTS.nsfw` - 成人剧情
 
-### 3. **根据叙事需求选择**
-- **平稳发展**: 推进节奏模板
-- **戏剧变化**: 剧情走向模板
-- **探索发现**: 探索型模板
-- **解决问题**: 冲突型模板
-- **情感处理**: 情感型模板
+### 3. **组合使用**
+- **正常节奏 + 正常剧情**: 连续性健康发展
+- **正常节奏 + 转折剧情**: 连续性戏剧转折
+- **正常节奏 + 成人剧情**: 连续性成人发展
+- **快速节奏 + 正常剧情**: 快速推进健康剧情
+- **快速节奏 + 转折剧情**: 快速推进戏剧转折
+- **快速节奏 + 成人剧情**: 快速推进成人剧情
 
 ## 📝 模板使用技巧
 
 ### 1. **组合使用**
-可以结合多个模板类型，创造更丰富的叙事体验：
+推进节奏和剧情走向可以组合使用，创造更丰富的叙事体验：
 ```javascript
-// 示例：先解决冲突，再庆祝成功
-const conflictResolution = CONFLICT_PROMPTS.resolution;
-const celebration = EMOTIONAL_PROMPTS.celebration;
+// 示例：正常节奏 + 转折剧情
+const paceTemplate = PACE_PROMPTS.normal;
+const plotTemplate = PLOT_PROMPTS.twist;
 ```
 
 ### 2. **动态切换**
-根据故事发展动态切换模板：
-- 开始时使用 `normal` 建立基础
-- 遇到冲突时切换到 `resolution`
-- 成功时使用 `celebration`
-- 需要探索时使用 `discovery`
+根据故事发展动态切换组合：
+- 开始时使用 `normal + normal` 建立基础
+- 遇到转折时切换到 `normal + twist`
+- 需要快速推进时使用 `fast + normal`
+- 成人场景时使用 `normal + nsfw`
 
 ### 3. **个性化调整**
 每个模板都可以根据具体需求进行调整：
