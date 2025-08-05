@@ -6,6 +6,22 @@
 - 完全移除对 TavernHelper 扩展的依赖
 - 优化上下文获取逻辑，增强与 SillyTavern 原生 API 的兼容性
 - 改进错误处理和诊断功能
+- 新增多种提示模板类型（探索型、冲突型、情感型）
+
+### 🔧 修改
+- **optionsGenerator.js**:
+  - 移除 `testTavernHelper()` 函数
+  - 优化 `getContextCompatible()` 函数，移除 TavernHelper 相关代码
+  - 更新 `diagnoseInterfaces()` 函数，专注于 SillyTavern 原生 API
+  - **修复 worldInfo 类型错误**: 确保 worldInfo 始终是数组类型
+  - 增强类型安全检查，防止 `worldInfo.map is not a function` 错误
+
+- **settings.js**:
+  - 优化所有提示模板的结构和内容
+  - 新增探索型模板 (EXPLORATION_PROMPTS)
+  - 新增冲突型模板 (CONFLICT_PROMPTS)  
+  - 新增情感型模板 (EMOTIONAL_PROMPTS)
+  - 改进模板的指导性和可操作性
 
 ### 🔧 修改
 - **optionsGenerator.js**:
@@ -28,10 +44,14 @@
 ### 🐛 修复
 - 修复在某些环境下因缺少 TavernHelper 导致的错误
 - 改进错误提示信息，提供更准确的诊断建议
+- **修复 worldInfo 类型错误**: 解决 `TypeError: worldInfo.map is not a function` 问题
+- 增强类型安全检查，确保 worldInfo 始终是数组类型
 
 ### 📝 文档
 - 更新故障排除指南，移除 TavernHelper 相关内容
 - 添加新的诊断命令和工具使用说明
+- 新增提示模板使用指南 (PROMPT_GUIDE.md)
+- 添加模板类型说明和使用技巧
 
 ### ⚠️ 重要变更
 - **不再需要安装 TavernHelper 扩展**

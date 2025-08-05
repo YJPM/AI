@@ -544,8 +544,13 @@ async function getContextCompatible(limit = 5) {
     if (!worldInfo && window.world_info) {
         try {
             console.log('🔍 尝试从window.world_info获取...');
-            worldInfo = window.world_info;
-            console.log('✅ 从window.world_info获取成功，数量:', worldInfo.length);
+            const worldInfoData = window.world_info;
+            if (Array.isArray(worldInfoData)) {
+                worldInfo = worldInfoData;
+                console.log('✅ 从window.world_info获取成功，数量:', worldInfo.length);
+            } else {
+                console.log('⚠️ window.world_info不是数组格式');
+            }
         } catch (error) {
             console.error('❌ 从window.world_info获取失败:', error);
         }
@@ -845,11 +850,14 @@ async function getContextCompatible(limit = 5) {
         }
     }
     
+    // 确保 worldInfo 始终是数组
+    const safeWorldInfo = Array.isArray(worldInfo) ? worldInfo : [];
+    
     // 返回最终结果
     const finalContext = {
         messages: messages,
         character: characterInfo,
-        world_info: worldInfo,
+        world_info: safeWorldInfo,
         system_prompt: systemPrompt,
         original_message_count: messages.length
     };
@@ -858,15 +866,15 @@ async function getContextCompatible(limit = 5) {
     console.log('📊 最终结果:');
     console.log('  - 消息数量:', messages.length);
     console.log('  - 角色信息:', !!characterInfo);
-    console.log('  - 世界书数量:', worldInfo ? worldInfo.length : 0);
+    console.log('  - 世界书数量:', safeWorldInfo.length);
     console.log('  - 系统提示词:', !!systemPrompt);
     
     if (characterInfo) {
         console.log('  - 角色名称:', characterInfo.name || '未设置');
     }
     
-    if (worldInfo && worldInfo.length > 0) {
-        console.log('  - 世界书标题:', worldInfo.map(w => w.title || '未命名').join(', '));
+    if (safeWorldInfo.length > 0) {
+        console.log('  - 世界书标题:', safeWorldInfo.map(w => w.title || '未命名').join(', '));
     }
     
     return finalContext;
@@ -919,7 +927,7 @@ async function generateOptions() {
         }
         
         // 2. 添加世界书信息
-        if (context.world_info && context.world_info.length > 0) {
+        if (context.world_info && Array.isArray(context.world_info) && context.world_info.length > 0) {
             fullContextText += '## 世界书信息\n';
             context.world_info.forEach((world, index) => {
                 fullContextText += `世界书 ${index + 1}:\n`;
@@ -948,7 +956,7 @@ async function generateOptions() {
         fullContextText += `原始消息总数: ${context.original_message_count || 0}\n`;
         fullContextText += `当前使用消息数: ${context.messages ? context.messages.length : 0}\n`;
         fullContextText += `包含角色设定: ${!!context.character}\n`;
-        fullContextText += `包含世界书: ${!!(context.world_info && context.world_info.length > 0)}\n`;
+        fullContextText += `包含世界书: ${!!(context.world_info && Array.isArray(context.world_info) && context.world_info.length > 0)}\n`;
         fullContextText += `包含系统提示词: ${!!context.system_prompt}\n\n`;
         
         const prompt = promptTemplate
