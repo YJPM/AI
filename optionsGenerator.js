@@ -535,6 +535,9 @@ class ContextVisualization {
     constructor() {
         this.currentContext = null;
         this.visualizationContainer = null;
+        this.isDragging = false;
+        this.offsetX = 0;
+        this.offsetY = 0;
     }
     createMainVisualization() {
         const container = document.createElement('div');
@@ -564,7 +567,36 @@ class ContextVisualization {
         `;
         this.visualizationContainer = container;
         this.setupEventListeners();
+        this.setupDrag();
         return container;
+    }
+    setupDrag() {
+        const header = this.visualizationContainer.querySelector('.viz-header');
+        let startX, startY, startLeft, startTop;
+        header.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            this.isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            const rect = this.visualizationContainer.getBoundingClientRect();
+            startLeft = rect.left;
+            startTop = rect.top;
+            document.body.style.userSelect = 'none';
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!this.isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            this.visualizationContainer.style.left = (startLeft + dx) + 'px';
+            this.visualizationContainer.style.top = (startTop + dy) + 'px';
+            this.visualizationContainer.style.right = 'auto';
+        });
+        document.addEventListener('mouseup', () => {
+            if (this.isDragging) {
+                this.isDragging = false;
+                document.body.style.userSelect = '';
+            }
+        });
     }
     updateSceneAnalysis(analysis) {
         const analysisGrid = this.visualizationContainer.querySelector('.analysis-grid');
@@ -652,9 +684,14 @@ class ContextVisualization {
         const refreshBtn = this.visualizationContainer.querySelector('.viz-refresh');
         toggleBtn.addEventListener('click', () => {
             this.visualizationContainer.classList.toggle('collapsed');
+            toggleBtn.textContent = this.visualizationContainer.classList.contains('collapsed') ? '🔍' : '👁️';
         });
         refreshBtn.addEventListener('click', () => {
-            this.refreshVisualization();
+            if (typeof window.OptionsGenerator?.generateOptions === 'function') {
+                window.OptionsGenerator.generateOptions();
+            } else {
+                this.refreshVisualization();
+            }
         });
     }
     refreshVisualization() {
@@ -670,6 +707,13 @@ class ContextVisualization {
         this.updateConversationFlow(context.messages);
         this.updateOptionReasoning(options, context.analysis);
     }
+    clear() {
+        if (this.visualizationContainer && this.visualizationContainer.parentNode) {
+            this.visualizationContainer.parentNode.removeChild(this.visualizationContainer);
+        }
+        this.visualizationContainer = null;
+        this.currentContext = null;
+    }
 }
 
 let contextVisualization = null;
@@ -678,6 +722,12 @@ function initContextVisualization() {
         contextVisualization = new ContextVisualization();
         const vizContainer = contextVisualization.createMainVisualization();
         document.body.appendChild(vizContainer);
+    }
+}
+function clearContextVisualization() {
+    if (contextVisualization) {
+        contextVisualization.clear();
+        contextVisualization = null;
     }
 }
 
@@ -1159,3 +1209,11 @@ export class OptionsGenerator {
 
 // 将OptionsGenerator导出到全局作用域，以便在控制台中调用
 window.OptionsGenerator = OptionsGenerator;
+
+// 输入消息后自动清除面板和选项
+if (typeof eventSource !== 'undefined' && eventSource.on) {
+    eventSource.on(event_types.MESSAGE_SENT, () => {
+        clearContextVisualization();
+        // 选项清除已由原有逻辑处理
+    });
+}
