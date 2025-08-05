@@ -571,13 +571,35 @@ function updateQuickPanelFromSettings() {
         { value: 'jump', color: '#9C27B0' }
     ];
     
-    // 更新所有按钮状态
-    panel.querySelectorAll('button').forEach((btn) => {
+    // 定义模板类型模式
+    const templateModes = [
+        { value: 'discovery', text: '探索', color: '#FF9800' },
+        { value: 'mystery', text: '神秘', color: '#673AB7' },
+        { value: 'resolution', text: '解决', color: '#E91E63' },
+        { value: 'challenge', text: '挑战', color: '#F44336' },
+        { value: 'healing', text: '疗愈', color: '#4CAF50' },
+        { value: 'celebration', text: '庆祝', color: '#FFC107' }
+    ];
+    
+    // 更新推进节奏按钮状态
+    panel.querySelectorAll('button[data-pace-mode]').forEach((btn) => {
         const btnPaceMode = btn.getAttribute('data-pace-mode');
         const btnMode = paceModes.find(m => m.value === btnPaceMode);
         
         if (btnMode) {
             const isBtnActive = settings.paceMode === btnMode.value;
+            btn.style.background = isBtnActive ? btnMode.color : 'transparent';
+            btn.style.color = isBtnActive ? 'white' : btnMode.color;
+        }
+    });
+    
+    // 更新模板类型按钮状态
+    panel.querySelectorAll('button[data-template-mode]').forEach((btn) => {
+        const btnTemplateMode = btn.getAttribute('data-template-mode');
+        const btnMode = templateModes.find(m => m.value === btnTemplateMode);
+        
+        if (btnMode) {
+            const isBtnActive = settings.templateMode === btnMode.value;
             btn.style.background = isBtnActive ? btnMode.color : 'transparent';
             btn.style.color = isBtnActive ? 'white' : btnMode.color;
         }
@@ -651,11 +673,20 @@ export function createQuickPacePanel() {
     
     // 折叠面板函数
     const collapsePanel = () => {
-        const modeButtons = panel.querySelectorAll('button[data-pace-mode]');
-        const separator = panel.querySelector('div[style*="background: #e0e0e0"]');
+        const paceButtons = panel.querySelectorAll('button[data-pace-mode]');
+        const templateButtons = panel.querySelectorAll('button[data-template-mode]');
+        const separators = panel.querySelectorAll('div[style*="background: #e0e0e0"]');
         
-        modeButtons.forEach(btn => {
+        paceButtons.forEach(btn => {
             btn.style.display = 'none';
+        });
+        
+        templateButtons.forEach(btn => {
+            btn.style.display = 'none';
+        });
+        
+        separators.forEach(sep => {
+            sep.style.display = 'none';
         });
         
         if (separator) separator.style.display = 'none';
@@ -668,14 +699,21 @@ export function createQuickPacePanel() {
     
     // 展开面板函数
     const expandPanel = () => {
-        const modeButtons = panel.querySelectorAll('button[data-pace-mode]');
-        const separator = panel.querySelector('div[style*="background: #e0e0e0"]');
+        const paceButtons = panel.querySelectorAll('button[data-pace-mode]');
+        const templateButtons = panel.querySelectorAll('button[data-template-mode]');
+        const separators = panel.querySelectorAll('div[style*="background: #e0e0e0"]');
         
-        modeButtons.forEach(btn => {
-            btn.style.display = 'block';
+        paceButtons.forEach(btn => {
+            btn.style.display = 'inline-block';
         });
         
-        if (separator) separator.style.display = 'block';
+        templateButtons.forEach(btn => {
+            btn.style.display = 'inline-block';
+        });
+        
+        separators.forEach(sep => {
+            sep.style.display = 'block';
+        });
         
         panel.style.background = 'rgba(255, 255, 255, 0.95)';
         panel.style.opacity = '1';
@@ -805,6 +843,79 @@ export function createQuickPacePanel() {
             }
             
             console.log('[paceMode] 已切换到:', mode.text, '(', mode.value, ')');
+        });
+        
+        panel.appendChild(button);
+    });
+    
+    // 添加第二个分隔符
+    const separator2 = document.createElement('div');
+    separator2.style.cssText = `
+        width: 1px;
+        background: #e0e0e0;
+        margin: 0 6px;
+        height: 24px;
+        align-self: center;
+    `;
+    panel.appendChild(separator2);
+    
+    // 创建模板类型按钮
+    const templateModes = [
+        { value: 'discovery', text: '探索', color: '#FF9800' },
+        { value: 'mystery', text: '神秘', color: '#673AB7' },
+        { value: 'resolution', text: '解决', color: '#E91E63' },
+        { value: 'challenge', text: '挑战', color: '#F44336' },
+        { value: 'healing', text: '疗愈', color: '#4CAF50' },
+        { value: 'celebration', text: '庆祝', color: '#FFC107' }
+    ];
+    
+    // 创建模板类型按钮
+    templateModes.forEach((mode) => {
+        const button = document.createElement('button');
+        button.textContent = mode.text;
+        button.setAttribute('data-template-mode', mode.value);
+        button.title = `模板类型: ${mode.text}`;
+        
+        // 检查当前设置是否匹配这个模式
+        const isActive = settings.templateMode === mode.value;
+        
+        button.style.cssText = `
+            padding: 6px 10px;
+            border: 1px solid ${mode.color};
+            border-radius: 8px;
+            background: ${isActive ? mode.color : 'rgba(255, 255, 255, 0.9)'};
+            color: ${isActive ? 'white' : mode.color};
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            min-width: 55px;
+            text-align: center;
+            line-height: 1.2;
+            margin: 1px;
+            box-shadow: ${isActive ? `0 2px 8px ${mode.color}40` : '0 1px 3px rgba(0,0,0,0.1)'};
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        `;
+        
+        button.addEventListener('click', () => {
+            settings.templateMode = mode.value;
+            saveSettingsDebounced();
+            
+            // 更新所有模板类型按钮状态
+            panel.querySelectorAll('button[data-template-mode]').forEach((btn) => {
+                const btnTemplateMode = btn.getAttribute('data-template-mode');
+                const btnMode = templateModes.find(m => m.value === btnTemplateMode);
+                
+                if (btnMode) {
+                    const isBtnActive = settings.templateMode === btnMode.value;
+                    btn.style.background = isBtnActive ? btnMode.color : 'rgba(255, 255, 255, 0.9)';
+                    btn.style.color = isBtnActive ? 'white' : btnMode.color;
+                    btn.style.boxShadow = isBtnActive ? `0 2px 8px ${btnMode.color}40` : '0 1px 3px rgba(0,0,0,0.1)';
+                }
+            });
+            
+            console.log('[templateMode] 已切换到:', mode.text, '(', mode.value, ')');
         });
         
         panel.appendChild(button);

@@ -27,6 +27,7 @@ export const defaultSettings = {
     streamOptions: false, // true=流式, false=非流式
     paceMode: CONSTANTS.DEFAULT_PACE_MODE, // 推进节奏：normal=正常, fast=快速, jump=跳跃
     autoGenMode: CONSTANTS.DEFAULT_AUTO_GEN_MODE, // 选项生成模式：auto=自动生成, manual=手动生成
+    templateMode: 'discovery', // 模板类型：discovery=探索, mystery=神秘, resolution=解决, challenge=挑战, healing=疗愈, celebration=庆祝
     
     // 底部快捷面板设置
     showQuickPanel: true, // 是否显示底部快捷面板

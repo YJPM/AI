@@ -1,4 +1,4 @@
-import { getSettings, PACE_PROMPTS, CONSTANTS } from './settings.js';
+import { getSettings, PACE_PROMPTS, EXPLORATION_PROMPTS, CONFLICT_PROMPTS, EMOTIONAL_PROMPTS, CONSTANTS } from './settings.js';
 import { logger } from './logger.js';
 import { saveSettingsDebounced } from '../../../../script.js';
 import { showPacePanelLoading, hidePacePanelLoading } from './ui.js';
@@ -899,13 +899,24 @@ async function generateOptions() {
     OptionsGenerator.isGenerating = true;
     
     try {
-        // 根据推进节奏选择提示模板
+        // 根据推进节奏和模板类型选择提示模板
         const paceMode = settings.paceMode || 'normal';
+        const templateMode = settings.templateMode || 'discovery';
         console.log('[generateOptions] 当前推进节奏:', paceMode);
+        console.log('[generateOptions] 当前模板类型:', templateMode);
         let promptTemplate;
         
-        // 根据推进节奏选择模板
-        promptTemplate = PACE_PROMPTS[paceMode] || PACE_PROMPTS.normal;
+        // 根据模板类型选择模板
+        if (templateMode === 'discovery' || templateMode === 'mystery') {
+            promptTemplate = EXPLORATION_PROMPTS[templateMode] || EXPLORATION_PROMPTS.discovery;
+        } else if (templateMode === 'resolution' || templateMode === 'challenge') {
+            promptTemplate = CONFLICT_PROMPTS[templateMode] || CONFLICT_PROMPTS.resolution;
+        } else if (templateMode === 'healing' || templateMode === 'celebration') {
+            promptTemplate = EMOTIONAL_PROMPTS[templateMode] || EMOTIONAL_PROMPTS.healing;
+        } else {
+            // 默认使用推进节奏模板
+            promptTemplate = PACE_PROMPTS[paceMode] || PACE_PROMPTS.normal;
+        }
         
         // 组装合并prompt
         console.log('[generateOptions] 开始获取上下文...');
