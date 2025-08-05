@@ -547,17 +547,12 @@ class ContextVisualization {
                 <div class="viz-title">🎯 AI场景分析</div>
                 <div class="viz-controls" style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
                     <button class="viz-toggle" title="切换显示">👁️</button>
-                    <button class="viz-refresh" title="刷新分析">🔄</button>
                 </div>
             </div>
             <div class="viz-content">
                 <div class="viz-section scene-analysis">
                     <h4>📊 场景分析</h4>
                     <div class="analysis-grid"></div>
-                </div>
-                <div class="viz-section conversation-flow">
-                    <h4>🔄 对话流程</h4>
-                    <div class="flow-timeline"></div>
                 </div>
                 <div class="viz-section option-reasoning">
                     <h4>💡 选项推理</h4>
@@ -673,55 +668,71 @@ class ContextVisualization {
     updateOptionReasoning(options, analysis) {
         const reasoningList = this.visualizationContainer.querySelector('.reasoning-list');
         const reasoningItems = options.map((option, index) => {
-            const explanation = this.generateExplanation(option, analysis);
+            const detail = this.generateDetailedExplanation(option, analysis);
             return `
                 <div class="reasoning-item" data-option="${index}">
                     <div class="reasoning-header">
                         <span class="reasoning-number">选项 ${index + 1}</span>
                     </div>
                     <div class="reasoning-content">
-                        <div class="reasoning-text">${option}</div>
+                        <button class="reasoning-text option-insert-btn" data-option-text="${option.replace(/"/g, '&quot;')}">${option}</button>
                         <div class="reasoning-explanation">
                             <div class="explanation-icon">💡</div>
-                            <div class="explanation-text">${explanation}</div>
+                            <div class="explanation-text">${detail}</div>
                         </div>
                     </div>
                 </div>
             `;
         }).join('');
         reasoningList.innerHTML = reasoningItems;
+        // 绑定点击事件，点击选项填写到输入框
+        reasoningList.querySelectorAll('.option-insert-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const text = btn.getAttribute('data-option-text');
+                const textarea = document.querySelector('#send_textarea, .send_textarea');
+                if (textarea) {
+                    textarea.value = text;
+                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    textarea.focus();
+                }
+            });
+        });
     }
-    generateExplanation(option, analysis) {
-        // 简单推理示例，可扩展为更复杂的逻辑
-        if (option.includes('出发') || option.includes('到达')) {
-            return '该选项体现了场景的推进或转换，有助于推动故事发展。';
+    generateDetailedExplanation(option, analysis) {
+        // 更详细的推理说明
+        let reasons = [];
+        if (option.includes('出发') || option.includes('到达') || option.includes('现场')) {
+            reasons.push('该选项体现了场景的推进或转换，有助于推动故事发展。');
         }
-        if (option.includes('问') || option.includes('说')) {
-            return '该选项有助于对话深入，推动人物关系。';
+        if (option.includes('问') || option.includes('说') || option.includes('答应')) {
+            reasons.push('该选项有助于对话深入，推动人物关系。');
         }
-        if (option.includes('检查') || option.includes('准备')) {
-            return '该选项有助于任务或行动的顺利进行。';
+        if (option.includes('检查') || option.includes('准备') || option.includes('整理')) {
+            reasons.push('该选项有助于任务或行动的顺利进行。');
         }
-        return '该选项与当前场景分析相关，有助于剧情自然发展。';
+        if (analysis.user_mood) {
+            reasons.push(`当前情绪为「${analysis.user_mood}」，该选项与情绪状态相符。`);
+        }
+        if (analysis.narrative_focus) {
+            reasons.push(`叙事重点为「${analysis.narrative_focus}」，该选项有助于突出重点。`);
+        }
+        if (analysis.story_direction) {
+            reasons.push(`故事方向为「${analysis.story_direction}」，该选项有助于剧情自然发展。`);
+        }
+        if (reasons.length === 0) {
+            reasons.push('该选项与当前场景分析相关，有助于剧情自然发展。');
+        }
+        return reasons.map(r => `<div>• ${r}</div>`).join('');
     }
     setupEventListeners() {
         const toggleBtn = this.visualizationContainer.querySelector('.viz-toggle');
-        const refreshBtn = this.visualizationContainer.querySelector('.viz-refresh');
         toggleBtn.addEventListener('click', () => {
             this.visualizationContainer.classList.toggle('collapsed');
             toggleBtn.textContent = this.visualizationContainer.classList.contains('collapsed') ? '👁️' : '👁️';
-            // 展开时吸附右上角
             if (!this.visualizationContainer.classList.contains('collapsed')) {
                 this.visualizationContainer.style.top = '80px';
                 this.visualizationContainer.style.right = '24px';
                 this.visualizationContainer.style.left = '';
-            }
-        });
-        refreshBtn.addEventListener('click', () => {
-            if (typeof window.OptionsGenerator?.generateOptions === 'function') {
-                window.OptionsGenerator.generateOptions();
-            } else {
-                this.refreshVisualization();
             }
         });
     }
@@ -906,12 +917,16 @@ async function generateOptions() {
                 analysis = {};
             }
         }
-        // 初始化并更新可视化
-        initContextVisualization();
-        contextVisualization.updateVisualization({
-            analysis,
-            messages: context.messages
-        }, suggestions);
+        // 重新获取选项时先清空面板
+        clearContextVisualization();
+        // 初始化并更新可视化（获得选项后再展示）
+        setTimeout(() => {
+            initContextVisualization();
+            contextVisualization.updateVisualization({
+                analysis,
+                messages: context.messages
+            }, suggestions);
+        }, 0);
         
         // 等待选项完全显示后再隐藏loading
         await displayOptions(suggestions, false); // false表示非流式显示
