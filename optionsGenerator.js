@@ -545,19 +545,15 @@ class ContextVisualization {
         container.innerHTML = `
             <div class="viz-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <div class="viz-title">🎯 AI场景分析</div>
-                <div class="viz-controls" style="display: flex; gap: 8px; align-items: center;">
-                    <button class="viz-toggle" title="切换显示">👁️</button>
+                <div class="viz-controls" style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
                     <button class="viz-refresh" title="刷新分析">🔄</button>
+                    <button class="viz-toggle" title="切换显示">👁️</button>
                 </div>
             </div>
             <div class="viz-content">
                 <div class="viz-section scene-analysis">
                     <h4>📊 场景分析</h4>
                     <div class="analysis-grid"></div>
-                </div>
-                <div class="viz-section conversation-flow">
-                    <h4>🔄 对话流程</h4>
-                    <div class="flow-timeline"></div>
                 </div>
                 <div class="viz-section option-reasoning">
                     <h4>💡 选项推理</h4>
@@ -572,24 +568,25 @@ class ContextVisualization {
     }
     setupDrag() {
         const header = this.visualizationContainer.querySelector('.viz-header');
-        let startX, startY, startLeft, startTop;
+        let startX, startY, startLeft, startBottom;
         let dragging = false;
         const onMouseMove = (e) => {
             if (!dragging) return;
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
             let newLeft = startLeft + dx;
-            let newTop = startTop + dy;
+            let newBottom = startBottom - dy;
             // 限制在窗口内
             const minLeft = 0;
-            const minTop = 0;
+            const minBottom = 0;
             const maxLeft = window.innerWidth - this.visualizationContainer.offsetWidth;
-            const maxTop = window.innerHeight - this.visualizationContainer.offsetHeight;
+            const maxBottom = window.innerHeight - this.visualizationContainer.offsetHeight;
             newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
-            newTop = Math.max(minTop, Math.min(newTop, maxTop));
+            newBottom = Math.max(minBottom, Math.min(newBottom, maxBottom));
             this.visualizationContainer.style.left = newLeft + 'px';
-            this.visualizationContainer.style.top = newTop + 'px';
+            this.visualizationContainer.style.bottom = newBottom + 'px';
             this.visualizationContainer.style.right = 'auto';
+            this.visualizationContainer.style.top = 'auto';
         };
         header.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return;
@@ -598,7 +595,7 @@ class ContextVisualization {
             startY = e.clientY;
             const rect = this.visualizationContainer.getBoundingClientRect();
             startLeft = rect.left;
-            startTop = rect.top;
+            startBottom = window.innerHeight - rect.bottom;
             document.body.style.userSelect = 'none';
             document.addEventListener('mousemove', onMouseMove);
         });
@@ -634,35 +631,12 @@ class ContextVisualization {
             </div>
         `).join('');
     }
-    updateConversationFlow(messages) {
-        const flowTimeline = this.visualizationContainer.querySelector('.flow-timeline');
-        const flowItems = messages.slice(-8).map((msg, index) => {
-            const isUser = msg.role === 'user';
-            const messagePreview = msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content;
-            return `
-                <div class="flow-item ${isUser ? 'user' : 'assistant'}">
-                    <div class="flow-marker">
-                        <div class="flow-avatar">${isUser ? '👤' : '🤖'}</div>
-                        <div class="flow-time">${index + 1}</div>
-                    </div>
-                    <div class="flow-content">
-                        <div class="flow-text">${messagePreview}</div>
-                        <div class="flow-meta">
-                            <span class="flow-role">${isUser ? '我' : 'AI'}</span>
-                            <span class="flow-length">${msg.content.length}字</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        flowTimeline.innerHTML = flowItems;
-    }
     updateOptionReasoning(options, analysis) {
         const reasoningList = this.visualizationContainer.querySelector('.reasoning-list');
         const reasoningItems = options.map((option, index) => {
             const explanation = this.generateExplanation(option, analysis);
             return `
-                <div class="reasoning-item" data-option="${index}">
+                <div class="reasoning-item" data-option="${index}" style="cursor:pointer;">
                     <div class="reasoning-header">
                         <span class="reasoning-number">选项 ${index + 1}</span>
                     </div>
@@ -677,6 +651,17 @@ class ContextVisualization {
             `;
         }).join('');
         reasoningList.innerHTML = reasoningItems;
+        // 绑定点击事件：点击填入输入框
+        reasoningList.querySelectorAll('.reasoning-item').forEach((item, idx) => {
+            item.addEventListener('click', () => {
+                const inputEl = document.querySelector('#send_textarea, .send_textarea, textarea[name="send_textarea"]');
+                if (inputEl) {
+                    inputEl.value = options[idx];
+                    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    inputEl.focus();
+                }
+            });
+        });
     }
     generateExplanation(option, analysis) {
         // 简单推理示例，可扩展为更复杂的逻辑
@@ -709,14 +694,12 @@ class ContextVisualization {
     refreshVisualization() {
         if (this.currentContext) {
             this.updateSceneAnalysis(this.currentContext.analysis);
-            this.updateConversationFlow(this.currentContext.messages);
             this.updateOptionReasoning(this.currentContext.options, this.currentContext.analysis);
         }
     }
     updateVisualization(context, options) {
         this.currentContext = { ...context, options };
         this.updateSceneAnalysis(context.analysis);
-        this.updateConversationFlow(context.messages);
         this.updateOptionReasoning(options, context.analysis);
     }
     clear() {
@@ -724,6 +707,16 @@ class ContextVisualization {
             this.visualizationContainer.parentNode.removeChild(this.visualizationContainer);
         }
         this.visualizationContainer = null;
+        this.currentContext = null;
+    }
+    clearContent() {
+        if (this.visualizationContainer) {
+            // 只清空内容，不移除面板
+            const analysisGrid = this.visualizationContainer.querySelector('.analysis-grid');
+            if (analysisGrid) analysisGrid.innerHTML = '';
+            const reasoningList = this.visualizationContainer.querySelector('.reasoning-list');
+            if (reasoningList) reasoningList.innerHTML = '';
+        }
         this.currentContext = null;
     }
 }
@@ -1166,8 +1159,8 @@ export class OptionsGenerator {
             if (context?.messages) {
                 console.log('📄 消息数量:', context.messages.length);
                 console.log('📄 最新消息:', context.messages[context.messages.length - 1]?.content?.substring(0, 100) + '...');
-            }
-        } catch (error) {
+                }
+            } catch (error) {
             console.error('❌ 简化上下文获取失败:', error);
         }
         
@@ -1227,5 +1220,6 @@ if (typeof eventSource !== 'undefined' && eventSource.on) {
     eventSource.on(event_types.MESSAGE_SENT, () => {
         clearContextVisualization();
         // 选项清除已由原有逻辑处理
+        if (contextVisualization) contextVisualization.clearContent();
     });
 }

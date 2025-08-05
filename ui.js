@@ -1018,3 +1018,178 @@ export function initQuickPacePanel() {
         }
     }
 }
+
+// ===== AI选项自动补全功能 =====
+(function setupAIAutocomplete() {
+    // 支持多种输入框选择器
+    function getInputEl() {
+        return document.querySelector('#send_textarea, .send_textarea, textarea[name="send_textarea"]');
+    }
+    let autocompleteTimer = null;
+    let lastValue = '';
+    let suggestionBox = null;
+    let currentSuggestion = '';
+
+    function showAutocomplete(suggestion, inputEl) {
+        if (!suggestionBox) {
+            suggestionBox = document.createElement('div');
+            suggestionBox.className = 'ai-autocomplete-box';
+            Object.assign(suggestionBox.style, {
+                position: 'absolute',
+                left: inputEl.offsetLeft + 'px',
+                top: (inputEl.offsetTop + inputEl.offsetHeight) + 'px',
+                minWidth: inputEl.offsetWidth + 'px',
+                background: '#fff',
+                color: '#888',
+                border: '1px solid #e0e0e0',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontSize: '13px',
+                zIndex: 9999,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            });
+            document.body.appendChild(suggestionBox);
+        }
+        suggestionBox.textContent = suggestion;
+        suggestionBox.style.display = suggestion ? 'block' : 'none';
+        // 重新定位
+        const rect = inputEl.getBoundingClientRect();
+        suggestionBox.style.left = rect.left + window.scrollX + 'px';
+        suggestionBox.style.top = rect.bottom + window.scrollY + 'px';
+        suggestionBox.style.minWidth = rect.width + 'px';
+        currentSuggestion = suggestion;
+    }
+    function hideAutocomplete() {
+        if (suggestionBox) suggestionBox.style.display = 'none';
+        currentSuggestion = '';
+    }
+    function acceptAutocomplete(inputEl) {
+        if (currentSuggestion && inputEl) {
+            inputEl.value = inputEl.value + currentSuggestion;
+            inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+            hideAutocomplete();
+        }
+    }
+    async function requestAutocomplete(userInput, inputEl) {
+        if (!userInput) { hideAutocomplete(); return; }
+        // 获取最近5条消息
+        let context = [];
+        try {
+            if (window.getContextCompatible) {
+                const ctx = await window.getContextCompatible(5);
+                context = ctx.messages || [];
+            }
+        } catch {}
+        const prompt = `基于以下对话和我的输入片段，补全一句自然的下一步行动或对话，保持第一人称：\n【最近对话】\n${context.map(m => `[${m.role}] ${m.content}`).join('\\n')}\n【我的输入片段】\n${userInput}\n【补全建议】`;
+        // 用主API接口
+        let suggestion = '';
+        try {
+            const settings = window.getSettings ? window.getSettings() : {};
+            const apiUrl = settings.optionsApiType === 'gemini'
+                ? `https://generativelanguage.googleapis.com/v1/models/${settings.optionsApiModel || 'gemini-pro'}:generateContent?key=${settings.optionsApiKey}`
+                : `${settings.optionsBaseUrl?.replace(/\/$/, '') || 'https://api.openai.com/v1'}/chat/completions`;
+            let body, headers;
+            if (settings.optionsApiType === 'gemini') {
+                headers = { 'Content-Type': 'application/json' };
+                body = JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.7, maxOutputTokens: 60 }
+                });
+            } else {
+                headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${settings.optionsApiKey}`
+                };
+                body = JSON.stringify({
+                    model: settings.optionsApiModel,
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.7,
+                    max_tokens: 60,
+                    stream: false
+                });
+            }
+            const resp = await fetch(apiUrl, { method: 'POST', headers, body });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (settings.optionsApiType === 'gemini') {
+                    suggestion = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                } else {
+                    suggestion = data.choices?.[0]?.message?.content || '';
+                }
+                suggestion = suggestion.replace(/^【补全建议】/g, '').replace(/^\n+/, '').trim();
+            }
+        } catch {}
+        if (suggestion) {
+            // 只显示第一行或第一句
+            suggestion = suggestion.split(/\n|。|！|!|\?|？/)[0].trim();
+            if (suggestion.startsWith(userInput)) suggestion = suggestion.slice(userInput.length);
+        }
+        showAutocomplete(suggestion, inputEl);
+    }
+    function bindAutocomplete(inputEl) {
+        if (!inputEl) return;
+        inputEl.addEventListener('input', (e) => {
+            clearTimeout(autocompleteTimer);
+            const value = e.target.value.trim();
+            lastValue = value;
+            if (value.length > 0) {
+                autocompleteTimer = setTimeout(() => {
+                    requestAutocomplete(value, inputEl);
+                }, 350);
+            } else {
+                hideAutocomplete();
+            }
+        });
+        inputEl.addEventListener('keydown', (e) => {
+            if (currentSuggestion && (e.key === 'Tab' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+                acceptAutocomplete(inputEl);
+            } else if (e.key === 'Escape') {
+                hideAutocomplete();
+            }
+        });
+        if (!suggestionBox) {
+            document.body.addEventListener('mousedown', (e) => {
+                if (suggestionBox && !suggestionBox.contains(e.target)) hideAutocomplete();
+            });
+        }
+        if (suggestionBox) {
+            suggestionBox.onclick = () => acceptAutocomplete(inputEl);
+        }
+    }
+    // 初始化绑定
+    function tryBind() {
+        const inputEl = getInputEl();
+        if (inputEl && !inputEl._ai_autocomplete_bound) {
+            bindAutocomplete(inputEl);
+            inputEl._ai_autocomplete_bound = true;
+        }
+    }
+    setInterval(tryBind, 1000); // 兼容动态渲染
+
+    // 样式
+    if (!document.getElementById('ai-autocomplete-style')) {
+        const style = document.createElement('style');
+        style.id = 'ai-autocomplete-style';
+        style.textContent = `
+        .ai-autocomplete-box {
+            position: absolute;
+            background: #fff;
+            color: #888;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 13px;
+            z-index: 9999;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            cursor: pointer;
+            margin-top: 2px;
+        }
+        .ai-autocomplete-box:hover {
+            background: #f5f5f5;
+            color: #333;
+        }
+        `;
+        document.head.appendChild(style);
+    }
+})();

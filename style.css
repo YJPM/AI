@@ -37,8 +37,8 @@
 /* ===== AI场景分析可视化面板 ===== */
 .context-visualization {
     position: fixed;
-    top: 80px;
-    right: 24px;
+    left: 24px;
+    bottom: 24px;
     width: 360px;
     max-height: 70vh;
     min-height: 60px;
@@ -50,17 +50,19 @@
     border: 1px solid #eee;
     font-size: 13px;
     color: #222;
-    transition: width 0.2s, height 0.2s, top 0.2s, right 0.2s, left 0.2s;
-    left: auto;
+    transition: width 0.2s, height 0.2s, top 0.2s, left 0.2s, bottom 0.2s;
+    right: auto;
+    top: auto;
 }
 .context-visualization.collapsed {
     width: 48px;
     height: 48px;
     min-height: 0;
     max-height: 48px;
-    top: 80px;
-    right: 24px;
-    left: auto;
+    left: 24px;
+    bottom: 24px;
+    right: auto;
+    top: auto;
     border-radius: 50%;
     overflow: hidden;
     padding: 0;
@@ -69,22 +71,6 @@
 .context-visualization.collapsed .viz-title,
 .context-visualization.collapsed .viz-controls button:not(.viz-toggle) {
     display: none !important;
-}
-.context-visualization .viz-toggle {
-    font-size: 18px;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.3);
-    border: none;
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.context-visualization .viz-toggle:hover {
-    background: rgba(255,255,255,0.5);
 }
 .viz-header {
     display: flex;
@@ -98,14 +84,29 @@
     user-select: none;
 }
 .viz-title { font-weight: 600; font-size: 14px; }
-.viz-controls { display: flex; gap: 8px; }
+.viz-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
+}
 .viz-controls button {
     background: rgba(255,255,255,0.2);
     border: none;
     border-radius: 6px;
-    padding: 6px 8px;
+    padding: 0;
+    width: 32px;
+    height: 32px;
     color: white;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: background 0.2s;
+}
+.viz-controls button:hover {
+    background: rgba(255,255,255,0.5);
 }
 .viz-content { padding: 16px; }
 .viz-section { margin-bottom: 18px; }
