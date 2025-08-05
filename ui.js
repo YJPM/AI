@@ -1080,13 +1080,15 @@ export function initQuickPacePanel() {
                 context = ctx.messages || [];
             }
         } catch {}
+        const settings = window.getSettings ? window.getSettings() : {};
+        const apiKey = settings.optionsApiKey;
+        if (!apiKey) { hideAutocomplete(); return; }
         const prompt = `基于以下对话和我的输入片段，补全一句自然的下一步行动或对话，保持第一人称：\n【最近对话】\n${context.map(m => `[${m.role}] ${m.content}`).join('\\n')}\n【我的输入片段】\n${userInput}\n【补全建议】`;
         // 用主API接口
         let suggestion = '';
         try {
-            const settings = window.getSettings ? window.getSettings() : {};
             const apiUrl = settings.optionsApiType === 'gemini'
-                ? `https://generativelanguage.googleapis.com/v1/models/${settings.optionsApiModel || 'gemini-pro'}:generateContent?key=${settings.optionsApiKey}`
+                ? `https://generativelanguage.googleapis.com/v1/models/${settings.optionsApiModel || 'gemini-pro'}:generateContent?key=${apiKey}`
                 : `${settings.optionsBaseUrl?.replace(/\/$/, '') || 'https://api.openai.com/v1'}/chat/completions`;
             let body, headers;
             if (settings.optionsApiType === 'gemini') {
@@ -1098,7 +1100,7 @@ export function initQuickPacePanel() {
             } else {
                 headers = {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${settings.optionsApiKey}`
+                    'Authorization': `Bearer ${apiKey}`
                 };
                 body = JSON.stringify({
                     model: settings.optionsApiModel,

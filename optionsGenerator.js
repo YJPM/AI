@@ -711,11 +711,16 @@ class ContextVisualization {
     }
     clearContent() {
         if (this.visualizationContainer) {
-            // 只清空内容，不移除面板
+            // 只清空内容，不移除面板和header，header和👁️按钮始终可见
             const analysisGrid = this.visualizationContainer.querySelector('.analysis-grid');
             if (analysisGrid) analysisGrid.innerHTML = '';
             const reasoningList = this.visualizationContainer.querySelector('.reasoning-list');
             if (reasoningList) reasoningList.innerHTML = '';
+            // 内容区显示暂无数据（可选）
+            const vizContent = this.visualizationContainer.querySelector('.viz-content');
+            if (vizContent) {
+                vizContent.classList.add('empty');
+            }
         }
         this.currentContext = null;
     }
