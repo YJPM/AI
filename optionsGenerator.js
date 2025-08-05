@@ -1002,6 +1002,13 @@ async function generateOptions() {
         
         // 构建简化的上下文提示词 - 只包含世界书和角色设定
         let fullContextText = '';
+        let contextSummary = {
+            characterInfo: false,
+            worldBooks: 0,
+            messages: 0,
+            characterDetails: {},
+            worldBookDetails: []
+        };
         
         // 1. 添加角色设定信息
         if (context.character) {
@@ -1012,6 +1019,23 @@ async function generateOptions() {
             fullContextText += `角色场景: ${context.character.scenario || '未设置'}\n`;
             fullContextText += `角色第一印象: ${context.character.first_mes || '未设置'}\n`;
             fullContextText += `角色消息示例: ${context.character.mes_example || '未设置'}\n\n`;
+            
+            contextSummary.characterInfo = true;
+            contextSummary.characterDetails = {
+                name: context.character.name || '未设置',
+                description: context.character.description || '未设置',
+                personality: context.character.personality || '未设置',
+                scenario: context.character.scenario || '未设置'
+            };
+            
+            console.log('[generateOptions] ✅ 角色设定已包含:', {
+                name: context.character.name || '未设置',
+                hasDescription: !!context.character.description,
+                hasPersonality: !!context.character.personality,
+                hasScenario: !!context.character.scenario
+            });
+        } else {
+            console.log('[generateOptions] ❌ 未找到角色设定信息');
         }
         
         // 2. 添加世界书信息
@@ -1023,7 +1047,21 @@ async function generateOptions() {
                 fullContextText += `内容: ${world.content || '无内容'}\n`;
                 fullContextText += `关键词: ${world.keys || '无关键词'}\n`;
                 fullContextText += `优先级: ${world.priority || '默认'}\n\n`;
+                
+                contextSummary.worldBookDetails.push({
+                    title: world.title || '未命名',
+                    content: world.content || '无内容',
+                    keys: world.keys || '无关键词'
+                });
             });
+            
+            contextSummary.worldBooks = context.world_info.length;
+            console.log('[generateOptions] ✅ 世界书信息已包含:', {
+                count: context.world_info.length,
+                titles: context.world_info.map(w => w.title || '未命名')
+            });
+        } else {
+            console.log('[generateOptions] ❌ 未找到世界书信息');
         }
         
         // 3. 添加最近对话消息（保持原有的消息处理）
@@ -1031,6 +1069,14 @@ async function generateOptions() {
             fullContextText += '## 最近对话历史\n';
             fullContextText += context.messages.map(m => `[${m.role}] ${m.content}`).join('\n');
             fullContextText += '\n\n';
+            
+            contextSummary.messages = context.messages.length;
+            console.log('[generateOptions] ✅ 对话消息已包含:', {
+                count: context.messages.length,
+                latestMessage: context.messages[context.messages.length - 1]?.content?.substring(0, 100) + '...'
+            });
+        } else {
+            console.log('[generateOptions] ❌ 未找到对话消息');
         }
         
         const prompt = promptTemplate
@@ -1126,6 +1172,22 @@ async function generateOptions() {
         const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
         console.log('[generateOptions] 解析到选项数量:', suggestions.length);
         console.log('[generateOptions] 选项内容:', suggestions);
+        
+        // 解析引用说明
+        const referenceMatch = content.match(/## 引用说明\s*\n(.*?)(?=\n##|$)/s);
+        if (referenceMatch) {
+            const referenceText = referenceMatch[1].trim();
+            console.log('[generateOptions] 引用说明:', referenceText);
+        }
+        
+        // 记录上下文传输情况
+        console.log('[generateOptions] 📊 上下文传输总结:', {
+            characterInfo: contextSummary.characterInfo,
+            worldBooks: contextSummary.worldBooks,
+            messages: contextSummary.messages,
+            characterDetails: contextSummary.characterDetails,
+            worldBookDetails: contextSummary.worldBookDetails
+        });
         
         // 等待选项完全显示后再隐藏loading
         await displayOptions(suggestions, false); // false表示非流式显示
@@ -1440,6 +1502,48 @@ export class OptionsGenerator {
         }
         
         console.log('=== 角色卡和世界书测试完成 ===');
+    }
+    
+    // 测试上下文传输情况
+    static async testContextTransmission() {
+        console.log('=== 开始测试上下文传输情况 ===');
+        
+        try {
+            const context = await getContextCompatible(10);
+            console.log('📊 上下文获取结果:');
+            console.log('  - 角色设定:', !!context.character);
+            console.log('  - 世界书数量:', context.world_info?.length || 0);
+            console.log('  - 消息数量:', context.messages?.length || 0);
+            
+            if (context.character) {
+                console.log('📄 角色设定详情:');
+                console.log('  - 名称:', context.character.name || '未设置');
+                console.log('  - 描述长度:', context.character.description?.length || 0);
+                console.log('  - 人格长度:', context.character.personality?.length || 0);
+                console.log('  - 场景长度:', context.character.scenario?.length || 0);
+            }
+            
+            if (context.world_info && context.world_info.length > 0) {
+                console.log('📄 世界书详情:');
+                context.world_info.forEach((world, index) => {
+                    console.log(`  - 世界书 ${index + 1}: ${world.title || '未命名'}`);
+                    console.log(`    内容长度: ${world.content?.length || 0}`);
+                    console.log(`    关键词: ${world.keys || '无'}`);
+                });
+            }
+            
+            if (context.messages && context.messages.length > 0) {
+                console.log('📄 消息详情:');
+                console.log('  - 最新消息:', context.messages[context.messages.length - 1]?.content?.substring(0, 100) + '...');
+                console.log('  - 消息角色分布:', context.messages.map(m => m.role).join(', '));
+            }
+            
+            console.log('✅ 上下文传输测试完成');
+            return context;
+        } catch (error) {
+            console.error('❌ 上下文传输测试失败:', error);
+            return null;
+        }
     }
 }
 

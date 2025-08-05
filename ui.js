@@ -913,13 +913,13 @@ export function showPacePanelLoading() {
     // 保存原始内容
     refreshButton.setAttribute('data-original-html', refreshButton.innerHTML);
     // 替换为loading图标
-    refreshButton.innerHTML = '<div style="display:inline-block;animation:spin 1s linear infinite;font-size:16px;font-weight:bold;color:#fff;text-shadow:0 0 8px rgba(255,255,255,0.5);">⟳</div>';
+    refreshButton.innerHTML = '<div style="display:inline-block;animation:spin 1s linear infinite;font-size:16px;font-weight:bold;color:#667eea;text-shadow:0 0 8px rgba(102, 126, 234, 0.6);filter:drop-shadow(0 0 4px rgba(102, 126, 234, 0.4));">⟳</div>';
     refreshButton.disabled = true;
     refreshButton.style.opacity = '1';
-    refreshButton.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-    refreshButton.style.color = '#fff';
+    refreshButton.style.background = '#ffffff';
+    refreshButton.style.color = '#667eea';
     refreshButton.style.border = '1px solid #667eea';
-    refreshButton.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4), 0 2px 8px rgba(118, 75, 162, 0.3)';
+    refreshButton.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.2), 0 2px 8px rgba(118, 75, 162, 0.1)';
     refreshButton.style.transform = 'scale(1.05)';
     // 添加旋转动画样式
     if (!document.getElementById('pace-loading-style')) {
@@ -931,9 +931,9 @@ export function showPacePanelLoading() {
                 to { transform: rotate(360deg); }
             }
             @keyframes pulse {
-                0% { box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4), 0 2px 8px rgba(118, 75, 162, 0.3); }
-                50% { box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6), 0 4px 12px rgba(118, 75, 162, 0.5); }
-                100% { box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4), 0 2px 8px rgba(118, 75, 162, 0.3); }
+                0% { box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2), 0 2px 8px rgba(118, 75, 162, 0.1); }
+                50% { box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(118, 75, 162, 0.3); }
+                100% { box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2), 0 2px 8px rgba(118, 75, 162, 0.1); }
             }
         `;
         document.head.appendChild(style);
@@ -963,6 +963,8 @@ export function hidePacePanelLoading() {
     refreshButton.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
     refreshButton.style.transform = 'scale(1)';
     refreshButton.style.animation = 'none';
+    // 移除可能残留的样式
+    refreshButton.style.removeProperty('border-color');
 }
 
 // 初始化快捷操作面板
