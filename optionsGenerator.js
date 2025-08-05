@@ -642,29 +642,6 @@ class ContextVisualization {
             </div>
         `).join('');
     }
-    updateConversationFlow(messages) {
-        const flowTimeline = this.visualizationContainer.querySelector('.flow-timeline');
-        const flowItems = messages.slice(-8).map((msg, index) => {
-            const isUser = msg.role === 'user';
-            const messagePreview = msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content;
-            return `
-                <div class="flow-item ${isUser ? 'user' : 'assistant'}">
-                    <div class="flow-marker">
-                        <div class="flow-avatar">${isUser ? '👤' : '🤖'}</div>
-                        <div class="flow-time">${index + 1}</div>
-                    </div>
-                    <div class="flow-content">
-                        <div class="flow-text">${messagePreview}</div>
-                        <div class="flow-meta">
-                            <span class="flow-role">${isUser ? '我' : 'AI'}</span>
-                            <span class="flow-length">${msg.content.length}字</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        flowTimeline.innerHTML = flowItems;
-    }
     updateOptionReasoning(options, analysis) {
         const reasoningList = this.visualizationContainer.querySelector('.reasoning-list');
         const reasoningItems = options.map((option, index) => {
@@ -739,14 +716,12 @@ class ContextVisualization {
     refreshVisualization() {
         if (this.currentContext) {
             this.updateSceneAnalysis(this.currentContext.analysis);
-            this.updateConversationFlow(this.currentContext.messages);
             this.updateOptionReasoning(this.currentContext.options, this.currentContext.analysis);
         }
     }
     updateVisualization(context, options) {
         this.currentContext = { ...context, options };
         this.updateSceneAnalysis(context.analysis);
-        this.updateConversationFlow(context.messages);
         this.updateOptionReasoning(options, context.analysis);
     }
     clear() {
