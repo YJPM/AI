@@ -18,20 +18,17 @@ export const CONSTANTS = {
 // 默认设置
 export const defaultSettings = {
     // 选项生成功能设置
-    optionsGenEnabled: true, // 默认开启
+    optionsGenEnabled: true,
     optionsApiType: CONSTANTS.DEFAULT_API_TYPE,
     optionsApiKey: '',
     optionsApiModel: CONSTANTS.DEFAULT_MODEL,
     optionsBaseUrl: CONSTANTS.DEFAULT_BASE_URL,
     sendMode: CONSTANTS.DEFAULT_SEND_MODE,
-    paceMode: CONSTANTS.DEFAULT_PACE_MODE, // 推进节奏：normal=正常, fast=快速
-    autoGenMode: CONSTANTS.DEFAULT_AUTO_GEN_MODE, // 选项生成模式：auto=自动生成, manual=手动生成
+    paceMode: CONSTANTS.DEFAULT_PACE_MODE,
+    autoGenMode: CONSTANTS.DEFAULT_AUTO_GEN_MODE,
     
     // 底部快捷面板设置
-    showQuickPanel: true, // 是否显示底部快捷面板
-    
-    // 调试设置
-    debug: true, // 默认开启
+    showQuickPanel: true,
 };
 
 // 不同推进节奏的提示模板
@@ -99,18 +96,6 @@ export const PACE_PROMPTS = {
 
 建议列表：
 {每条建议单独一行，必须用【】包裹，共4条，描述自然发生的事件}
-
-## 引用说明
-请在生成选项后，详细说明你参考了角色设定和世界书中的哪些具体内容来生成这些选项。
-
-**引用格式要求：**
-1. **角色设定引用**: 说明引用了角色的哪些具体特征、性格、背景等
-2. **世界书引用**: 具体说明引用了哪个世界书条目（按名称或编号），以及该条目中的哪些具体内容
-3. **内容关联**: 解释这些引用内容如何影响了选项的生成
-
-**示例格式：**
-- 角色设定：参考了角色的[具体特征]，影响了[具体选项]
-- 世界书引用：参考了"世界书条目名称"中的[具体内容]，用于[具体用途]
 
 ## 开始
 `.trim(),
@@ -185,29 +170,11 @@ export const PACE_PROMPTS = {
 建议列表：
 {每条建议单独一行，必须用【】包裹，共4条，直接接续当前剧情，不要跳跃到新事件}
 
-## 引用说明
-请在生成选项后，详细说明你参考了角色设定和世界书中的哪些具体内容来生成这些选项。
-
-**引用格式要求：**
-1. **角色设定引用**: 说明引用了角色的哪些具体特征、性格、背景等
-2. **世界书引用**: 具体说明引用了哪个世界书条目（按名称或编号），以及该条目中的哪些具体内容
-3. **内容关联**: 解释这些引用内容如何影响了选项的生成
-
-**示例格式：**
-- 角色设定：参考了角色的[具体特征]，影响了[具体选项]
-- 世界书引用：参考了"世界书条目名称"中的[具体内容]，用于[具体用途]
-
 ## 开始
 `.trim(),
 };
 
-export const MERGED_DIRECTOR_PROMPT = PACE_PROMPTS.normal; // 默认使用正常模式
-
-
-
-
-
-
+export const MERGED_DIRECTOR_PROMPT = PACE_PROMPTS.normal;
 
 // 设置管理类
 class SettingsManager {
@@ -253,7 +220,7 @@ class SettingsManager {
     // 更新设置
     updateSettings(newSettings) {
         Object.assign(extension_settings[CONSTANTS.MODULE_NAME], newSettings);
-        this.clearCache(); // 清除缓存，确保下次获取最新设置
+        this.clearCache();
     }
 }
 
