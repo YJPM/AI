@@ -3,7 +3,6 @@ import { defaultSettings, getSettings, CONSTANTS } from './settings.js';
 import { logger } from './logger.js';
 import { OptionsGenerator } from './optionsGenerator.js';
 import { applyBasicStyle, injectGlobalStyles, addExtensionSettings, initQuickPacePanel } from './ui.js';
-import { DebugTools } from './debug-tools.js';
 
 const MODULE = 'typing_indicator';
 
@@ -145,13 +144,6 @@ function initializeTypingIndicator() {
         // 初始化事件处理器
         const eventHandler = new EventHandler();
         eventHandler.init();
-        
-        // 在调试模式下运行诊断
-        if (settings.debug) {
-            setTimeout(() => {
-                DebugTools.runFullDiagnostic();
-            }, 3000);
-        }
         
         logger.info('AI智能助手初始化完成');
     } catch (error) {
