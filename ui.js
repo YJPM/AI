@@ -578,7 +578,9 @@ function updateQuickPanelFromSettings() {
         { value: 'resolution', text: '解决', color: '#E91E63' },
         { value: 'challenge', text: '挑战', color: '#F44336' },
         { value: 'healing', text: '疗愈', color: '#4CAF50' },
-        { value: 'celebration', text: '庆祝', color: '#FFC107' }
+        { value: 'celebration', text: '庆祝', color: '#FFC107' },
+        { value: 'normal', text: '正常', color: '#2196F3' },
+        { value: 'twist', text: '转折', color: '#9C27B0' }
     ];
     
     // 更新推进节奏按钮状态

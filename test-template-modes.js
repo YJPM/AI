@@ -65,7 +65,8 @@ function testTemplateSelection() {
         { templateMode: 'challenge', expectedType: 'CONFLICT_PROMPTS' },
         { templateMode: 'healing', expectedType: 'EMOTIONAL_PROMPTS' },
         { templateMode: 'celebration', expectedType: 'EMOTIONAL_PROMPTS' },
-        { templateMode: 'normal', expectedType: 'PACE_PROMPTS' },
+        { templateMode: 'normal', expectedType: 'PLOT_PROMPTS' },
+        { templateMode: 'twist', expectedType: 'PLOT_PROMPTS' },
         { templateMode: 'fast', expectedType: 'PACE_PROMPTS' },
         { templateMode: 'jump', expectedType: 'PACE_PROMPTS' }
     ];
@@ -81,6 +82,8 @@ function testTemplateSelection() {
             selectedTemplate = 'CONFLICT_PROMPTS';
         } else if (testCase.templateMode === 'healing' || testCase.templateMode === 'celebration') {
             selectedTemplate = 'EMOTIONAL_PROMPTS';
+        } else if (testCase.templateMode === 'normal' || testCase.templateMode === 'twist') {
+            selectedTemplate = 'PLOT_PROMPTS';
         } else {
             selectedTemplate = 'PACE_PROMPTS';
         }

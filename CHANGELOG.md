@@ -21,6 +21,7 @@
 - **新增条目查找功能**: 使用 `findentry` 命令查找特定世界书条目
 - **新增聊天摘要获取**: 支持获取聊天摘要信息
 - **增强消息处理**: 记录最新消息信息，支持多种消息获取方式
+- **修复 PLOT_PROMPTS 使用**: 添加对 normal 和 twist 模板类型的支持
   - 更新 `diagnoseInterfaces()` 函数，专注于 SillyTavern 原生 API
   - **修复 worldInfo 类型错误**: 确保 worldInfo 始终是数组类型
   - 增强类型安全检查，防止 `worldInfo.map is not a function` 错误

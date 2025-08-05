@@ -1,4 +1,4 @@
-import { getSettings, PACE_PROMPTS, EXPLORATION_PROMPTS, CONFLICT_PROMPTS, EMOTIONAL_PROMPTS, CONSTANTS } from './settings.js';
+import { getSettings, PACE_PROMPTS, PLOT_PROMPTS, EXPLORATION_PROMPTS, CONFLICT_PROMPTS, EMOTIONAL_PROMPTS, CONSTANTS } from './settings.js';
 import { logger } from './logger.js';
 import { saveSettingsDebounced } from '../../../../script.js';
 import { showPacePanelLoading, hidePacePanelLoading } from './ui.js';
@@ -1038,6 +1038,8 @@ async function generateOptions() {
             promptTemplate = CONFLICT_PROMPTS[templateMode] || CONFLICT_PROMPTS.resolution;
         } else if (templateMode === 'healing' || templateMode === 'celebration') {
             promptTemplate = EMOTIONAL_PROMPTS[templateMode] || EMOTIONAL_PROMPTS.healing;
+        } else if (templateMode === 'normal' || templateMode === 'twist') {
+            promptTemplate = PLOT_PROMPTS[templateMode] || PLOT_PROMPTS.normal;
         } else {
             // 默认使用推进节奏模板
             promptTemplate = PACE_PROMPTS[paceMode] || PACE_PROMPTS.normal;
