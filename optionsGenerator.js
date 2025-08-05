@@ -543,9 +543,9 @@ class ContextVisualization {
         const container = document.createElement('div');
         container.className = 'context-visualization';
         container.innerHTML = `
-            <div class="viz-header">
+            <div class="viz-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <div class="viz-title">🎯 AI场景分析</div>
-                <div class="viz-controls">
+                <div class="viz-controls" style="display: flex; gap: 8px; align-items: center;">
                     <button class="viz-toggle" title="切换显示">👁️</button>
                     <button class="viz-refresh" title="刷新分析">🔄</button>
                 </div>
@@ -573,28 +573,40 @@ class ContextVisualization {
     setupDrag() {
         const header = this.visualizationContainer.querySelector('.viz-header');
         let startX, startY, startLeft, startTop;
+        let dragging = false;
+        const onMouseMove = (e) => {
+            if (!dragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            let newLeft = startLeft + dx;
+            let newTop = startTop + dy;
+            // 限制在窗口内
+            const minLeft = 0;
+            const minTop = 0;
+            const maxLeft = window.innerWidth - this.visualizationContainer.offsetWidth;
+            const maxTop = window.innerHeight - this.visualizationContainer.offsetHeight;
+            newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
+            newTop = Math.max(minTop, Math.min(newTop, maxTop));
+            this.visualizationContainer.style.left = newLeft + 'px';
+            this.visualizationContainer.style.top = newTop + 'px';
+            this.visualizationContainer.style.right = 'auto';
+        };
         header.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return;
-            this.isDragging = true;
+            dragging = true;
             startX = e.clientX;
             startY = e.clientY;
             const rect = this.visualizationContainer.getBoundingClientRect();
             startLeft = rect.left;
             startTop = rect.top;
             document.body.style.userSelect = 'none';
-        });
-        document.addEventListener('mousemove', (e) => {
-            if (!this.isDragging) return;
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-            this.visualizationContainer.style.left = (startLeft + dx) + 'px';
-            this.visualizationContainer.style.top = (startTop + dy) + 'px';
-            this.visualizationContainer.style.right = 'auto';
+            document.addEventListener('mousemove', onMouseMove);
         });
         document.addEventListener('mouseup', () => {
-            if (this.isDragging) {
-                this.isDragging = false;
+            if (dragging) {
+                dragging = false;
                 document.body.style.userSelect = '';
+                document.removeEventListener('mousemove', onMouseMove);
             }
         });
     }
