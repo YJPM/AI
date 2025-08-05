@@ -900,11 +900,14 @@ export function showPacePanelLoading() {
     // 保存原始内容
     refreshButton.setAttribute('data-original-html', refreshButton.innerHTML);
     // 替换为loading图标
-    refreshButton.innerHTML = '<div style="display:inline-block;animation:spin 1s linear infinite;font-size:14px;font-weight:bold;color:#fff;">⟳</div>';
+    refreshButton.innerHTML = '<div style="display:inline-block;animation:spin 1s linear infinite;font-size:16px;font-weight:bold;color:#fff;text-shadow:0 0 8px rgba(255,255,255,0.5);">⟳</div>';
     refreshButton.disabled = true;
-    refreshButton.style.opacity = '0.8';
-    refreshButton.style.background = '#2d2d2d';
-    refreshButton.style.boxShadow = '0 0 5px rgba(255,255,255,0.2)';
+    refreshButton.style.opacity = '1';
+    refreshButton.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    refreshButton.style.color = '#fff';
+    refreshButton.style.border = '1px solid #667eea';
+    refreshButton.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4), 0 2px 8px rgba(118, 75, 162, 0.3)';
+    refreshButton.style.transform = 'scale(1.05)';
     // 添加旋转动画样式
     if (!document.getElementById('pace-loading-style')) {
         const style = document.createElement('style');
@@ -914,9 +917,16 @@ export function showPacePanelLoading() {
                 from { transform: rotate(0deg); }
                 to { transform: rotate(360deg); }
             }
+            @keyframes pulse {
+                0% { box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4), 0 2px 8px rgba(118, 75, 162, 0.3); }
+                50% { box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6), 0 4px 12px rgba(118, 75, 162, 0.5); }
+                100% { box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4), 0 2px 8px rgba(118, 75, 162, 0.3); }
+            }
         `;
         document.head.appendChild(style);
     }
+    // 添加脉冲动画
+    refreshButton.style.animation = 'pulse 2s ease-in-out infinite';
 }
 
 // 隐藏loading状态
@@ -934,9 +944,12 @@ export function hidePacePanelLoading() {
     }
     refreshButton.disabled = false;
     refreshButton.style.opacity = '1';
-    refreshButton.style.background = '#2d2d2d';
-    refreshButton.style.color = '#fff';
-    refreshButton.style.boxShadow = 'none';
+    refreshButton.style.background = 'rgba(255, 255, 255, 0.9)';
+    refreshButton.style.color = '#666';
+    refreshButton.style.border = '1px solid #666';
+    refreshButton.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+    refreshButton.style.transform = 'scale(1)';
+    refreshButton.style.animation = 'none';
 }
 
 // 初始化快捷操作面板

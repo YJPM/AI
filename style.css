@@ -1,3 +1,6 @@
+/* AI智能助手 - 样式文件 */
+
+/* ===== 基础样式 ===== */
 .typing_indicator {
     position: sticky;
     bottom: 10px;
@@ -7,9 +10,65 @@
     order: 9999;
 }
 
-/* 底部快捷面板深色背景 */
+/* ===== 快捷面板样式 ===== */
 #ti-options-container {
     border-radius: 0 !important;
     margin: 0 !important;
     padding: 10px !important;
+}
+
+/* ===== 动画定义 ===== */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* ===== 响应式设计 ===== */
+@media (max-width: 768px) {
+    .typing_indicator {
+        margin: 5px;
+        font-size: 14px;
+    }
+    
+    #ti-options-container {
+        padding: 8px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .typing_indicator {
+        margin: 3px;
+        font-size: 12px;
+    }
+    
+    #ti-options-container {
+        padding: 5px !important;
+    }
+}
+
+/* ===== 深色主题适配 ===== */
+@media (prefers-color-scheme: dark) {
+    .typing_indicator {
+        opacity: 0.9;
+    }
+}
+
+/* ===== 高对比度模式 ===== */
+@media (prefers-contrast: high) {
+    .typing_indicator {
+        opacity: 1;
+        text-shadow: none;
+        border: 1px solid currentColor;
+    }
 }

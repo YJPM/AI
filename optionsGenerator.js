@@ -1,92 +1,305 @@
-import { getSettings, PACE_PROMPTS } from './settings.js';
+import { getSettings, PACE_PROMPTS, CONSTANTS } from './settings.js';
 import { logger } from './logger.js';
 import { saveSettingsDebounced } from '../../../../script.js';
 import { showPacePanelLoading, hidePacePanelLoading } from './ui.js';
 
-function showGeneratingUI(message, duration = null) {
-    logger.log(`showGeneratingUI: 尝试显示提示: "${message}"`);
-    let container = document.getElementById('ti-loading-container');
-    const chat = document.getElementById('chat');
-    if (!chat) {
-        logger.log('showGeneratingUI: chat 未找到，无法显示。');
-        return;
-    }
-    if (!container) {
-        logger.log('showGeneratingUI: 未找到现有容器，创建新容器。');
-        container = document.createElement('div');
-        container.id = 'ti-loading-container';
-        container.classList.add('typing_indicator');
-        container.style.display = 'flex';
-        container.style.justifyContent = 'center';
-        container.style.alignItems = 'center';
-        container.style.width = '100%';
-        container.style.padding = '8px 16px';
-        container.style.margin = '8px auto';
-        container.style.maxWidth = '90%';
-        container.style.textAlign = 'center';
-        container.style.color = 'var(--text_color)';
-        container.style.backgroundColor = 'transparent';
-        chat.appendChild(container);
-        logger.log('showGeneratingUI: 容器已附加到 chat。');
-    } else {
-        logger.log('showGeneratingUI: 找到现有容器，更新内容并尝试显示。');
-    }
-    
-    container.innerHTML = `
-        <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
-            <div>${message}</div>
-        </div>
-    `;
-    container.style.display = 'flex';
-    logger.log(`showGeneratingUI: 最终容器 display 属性: ${container.style.display}`);
-    if (duration) {
-        logger.log(`showGeneratingUI: 将在 ${duration}ms 后隐藏。`);
-        setTimeout(() => {
-            hideGeneratingUI();
-        }, duration);
-    }
-}
+// 常量定义
+const OPTIONS_CONSTANTS = {
+    CONTAINER_ID: 'ti-loading-container',
+    OPTIONS_CONTAINER_ID: 'ti-options-container',
+    CHAT_SELECTOR: '#chat',
+    SEND_FORM_SELECTOR: '#send_form',
+    OPTION_BUTTON_CLASS: 'qr--button menu_button interactable ti-options-capsule',
+    MAX_RETRIES: 3,
+    RETRY_DELAY: 1000,
+    STREAM_CHUNK_SIZE: 1024,
+    API_TIMEOUT: 30000
+};
 
-function hideGeneratingUI() {
-    const container = document.getElementById('ti-loading-container');
-    if (container) {
-        container.remove();
-        logger.log('hideGeneratingUI: 隐藏提示。');
-    }
-}
-
-async function displayOptionsStreaming(content) {
-    const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+// 工具函数
+const Utils = {
+    // 安全的DOM查询
+    safeQuerySelector(selector, parent = document) {
+        try {
+            return parent.querySelector(selector);
+        } catch (error) {
+            logger.error('DOM查询失败:', selector, error);
+            return null;
+        }
+    },
     
-    // 如果还没有容器，创建容器
-    let container = document.getElementById('ti-options-container');
-    if (!container) {
-        const oldContainer = document.getElementById('ti-options-container');
-        if (oldContainer) oldContainer.remove();
-        const sendForm = document.getElementById('send_form');
-        if (!sendForm) return;
+    // 安全的DOM创建
+    safeCreateElement(tagName, attributes = {}) {
+        try {
+            const element = document.createElement(tagName);
+            Object.entries(attributes).forEach(([key, value]) => {
+                if (key === 'className') {
+                    element.className = value;
+                } else if (key === 'textContent') {
+                    element.textContent = value;
+                } else {
+                    element.setAttribute(key, value);
+                }
+            });
+            return element;
+        } catch (error) {
+            logger.error('DOM元素创建失败:', tagName, error);
+            return null;
+        }
+    },
+    
+    // 防抖函数
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    },
+    
+    // 节流函数
+    throttle(func, limit) {
+        let inThrottle;
+        return function() {
+            const args = arguments;
+            const context = this;
+            if (!inThrottle) {
+                func.apply(context, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
+    },
+    
+    // 安全的JSON解析
+    safeJsonParse(str, defaultValue = null) {
+        try {
+            return JSON.parse(str);
+        } catch (error) {
+            logger.warn('JSON解析失败:', str, error);
+            return defaultValue;
+        }
+    },
+    
+    // 提取建议选项
+    extractSuggestions(content) {
+        try {
+            return (content.match(/【(.*?)】/g) || [])
+                .map(m => m.replace(/[【】]/g, '').trim())
+                .filter(Boolean);
+        } catch (error) {
+            logger.error('提取建议选项失败:', error);
+            return [];
+        }
+    }
+};
+
+// UI管理类
+class UIManager {
+    static showGeneratingUI(message, duration = null) {
+        logger.log(`显示生成提示: "${message}"`);
         
-        container = document.createElement('div');
-        container.id = 'ti-options-container';
-        container.style.cssText = `
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin: 10px;
+        const chat = Utils.safeQuerySelector(OPTIONS_CONSTANTS.CHAT_SELECTOR);
+        if (!chat) {
+            logger.log('聊天容器未找到，无法显示提示');
+            return;
+        }
+        
+        let container = document.getElementById(OPTIONS_CONSTANTS.CONTAINER_ID);
+        if (!container) {
+            logger.log('创建新的提示容器');
+            container = Utils.safeCreateElement('div', {
+                id: OPTIONS_CONSTANTS.CONTAINER_ID,
+                className: 'typing_indicator'
+            });
+            
+            if (!container) {
+                logger.error('无法创建提示容器');
+                return;
+            }
+            
+            // 设置样式
+            Object.assign(container.style, {
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                width: '100%',
+                padding: '8px 16px',
+                margin: '8px auto',
+                maxWidth: '90%',
+                textAlign: 'center',
+                color: 'var(--text_color)',
+                backgroundColor: 'transparent'
+            });
+            
+            chat.appendChild(container);
+        }
+        
+        // 更新内容
+        container.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
+                <div>${message}</div>
+            </div>
         `;
-        sendForm.insertAdjacentElement('beforebegin', container);
+        container.style.display = 'flex';
         
-        // 在流式生成过程中，不隐藏思考提示
-        // 只有在流式生成完成后才隐藏
+        // 设置自动隐藏
+        if (duration) {
+            logger.log(`将在 ${duration}ms 后自动隐藏提示`);
+            setTimeout(() => {
+                UIManager.hideGeneratingUI();
+            }, duration);
+        }
+    }
+    
+    static hideGeneratingUI() {
+        const container = document.getElementById(OPTIONS_CONSTANTS.CONTAINER_ID);
+        if (container) {
+            container.remove();
+            logger.log('隐藏生成提示');
+        }
+    }
+    
+    static createOptionsContainer() {
+        const oldContainer = document.getElementById(OPTIONS_CONSTANTS.OPTIONS_CONTAINER_ID);
+        if (oldContainer) {
+            oldContainer.remove();
+        }
+        
+        const sendForm = Utils.safeQuerySelector(OPTIONS_CONSTANTS.SEND_FORM_SELECTOR);
+        if (!sendForm) {
+            logger.error('发送表单未找到');
+            return null;
+        }
+        
+        const container = Utils.safeCreateElement('div', {
+            id: OPTIONS_CONSTANTS.OPTIONS_CONTAINER_ID
+        });
+        
+        if (!container) {
+            logger.error('无法创建选项容器');
+            return null;
+        }
+        
+        Object.assign(container.style, {
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '8px',
+            margin: '10px'
+        });
+        
+        sendForm.insertAdjacentElement('beforebegin', container);
+        return container;
+    }
+    
+    static createOptionButton(text, index, sendMode) {
+        const btn = Utils.safeCreateElement('button', {
+            className: OPTIONS_CONSTANTS.OPTION_BUTTON_CLASS,
+            'data-option-index': index
+        });
+        
+        if (!btn) {
+            logger.error('无法创建选项按钮');
+            return null;
+        }
+        
+        btn.textContent = text;
+        
+        // 设置样式
+        Object.assign(btn.style, {
+            flex: '1',
+            whiteSpace: 'normal',
+            textAlign: 'center',
+            margin: '0',
+            height: 'auto',
+            minWidth: '140px',
+            padding: '12px 16px',
+            borderRadius: '10px',
+            border: '1px solid #e0e0e0',
+            background: 'rgba(255, 255, 255, 0.9)',
+            color: '#333',
+            fontWeight: '500',
+            transition: 'all 0.2s ease',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+            backdropFilter: 'blur(5px)',
+            WebkitBackdropFilter: 'blur(5px)'
+        });
+        
+        // 添加事件监听器
+        btn.addEventListener('mouseover', () => {
+            btn.style.background = '#f8f9fa';
+            btn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
+            btn.style.transform = 'translateY(-1px)';
+        });
+        
+        btn.addEventListener('mouseout', () => {
+            btn.style.background = 'rgba(255, 255, 255, 0.9)';
+            btn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.08)';
+            btn.style.transform = 'translateY(0)';
+        });
+        
+        btn.addEventListener('click', () => {
+            UIManager.handleOptionClick(btn, text, sendMode);
+        });
+        
+        return btn;
+    }
+    
+    static handleOptionClick(btn, text, sendMode) {
+        const settings = getSettings();
+        
+        if (sendMode === 'manual') {
+            // 手动模式：切换选中状态
+            const isSelected = btn.classList.contains('selected');
+            if (isSelected) {
+                btn.classList.remove('selected');
+                btn.style.background = 'rgba(255, 255, 255, 0.9)';
+                btn.style.color = '#333';
+                OptionsGenerator.selectedOptions = OptionsGenerator.selectedOptions.filter(option => option !== text);
+            } else {
+                btn.classList.add('selected');
+                btn.style.background = 'var(--SmartThemeBlurple, #007bff)';
+                btn.style.color = 'white';
+                OptionsGenerator.selectedOptions.push(text);
+            }
+        } else {
+            // 自动模式：直接发送
+            const textarea = Utils.safeQuerySelector('#send_textarea, .send_textarea');
+            if (textarea) {
+                textarea.value = text;
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                // 触发发送
+                const sendButton = Utils.safeQuerySelector('#send_but, .send_but');
+                if (sendButton) {
+                    sendButton.click();
+                }
+            }
+        }
+    }
+}
+
+// 流式选项显示函数
+async function displayOptionsStreaming(content) {
+    const suggestions = Utils.extractSuggestions(content);
+    
+    // 获取或创建容器
+    let container = document.getElementById(OPTIONS_CONSTANTS.OPTIONS_CONTAINER_ID);
+    if (!container) {
+        container = UIManager.createOptionsContainer();
+        if (!container) return;
     }
     
     // 获取当前发送模式
     const settings = getSettings();
     const sendMode = settings.sendMode || 'manual';
     
-    // 在手动模式下，记录已选择的选项
+    // 在手动模式下，重置选中的选项
     if (sendMode === 'manual') {
-        // 重置选中的选项
         OptionsGenerator.selectedOptions = [];
     }
     
@@ -94,83 +307,17 @@ async function displayOptionsStreaming(content) {
     suggestions.forEach((text, index) => {
         let btn = container.querySelector(`[data-option-index="${index}"]`);
         if (!btn) {
-            // 创建新按钮
-            btn = document.createElement('button');
-            btn.className = 'qr--button menu_button interactable ti-options-capsule';
-            btn.setAttribute('data-option-index', index);
-            btn.style.cssText = `
-                flex: 0 0 calc(25% - 6px);
-                min-width: 150px;
-                padding: 8px;
-                border: 1px solid var(--SmartThemeBorderColor, #ccc);
-                border-radius: 6px;
-                cursor: pointer;
-                transition: none;
-                word-wrap: break-word;
-                white-space: normal;
-            `;
-            container.appendChild(btn);
-            
-            // 设置点击事件
-            btn.onclick = () => {
-                const textarea = document.querySelector('#send_textarea, .send_textarea');
-                const sendButton = document.querySelector('#send_but, .send_but, button[onclick*="send"], button[onclick*="Send"]');
-                
-                if (textarea) {
-                    if (sendMode === 'manual') {
-                        // 手动模式：多选功能
-                        const isSelected = OptionsGenerator.selectedOptions.includes(text);
-                        
-                        if (isSelected) {
-                            // 取消选择
-                            OptionsGenerator.selectedOptions = OptionsGenerator.selectedOptions.filter(option => option !== text);
-                            btn.style.background = 'var(--SmartThemeBackgroundColor, #fff)';
-                            btn.style.color = 'var(--SmartThemeBodyColor, #222)';
-                            btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
-                        } else {
-                            // 添加选择
-                            OptionsGenerator.selectedOptions.push(text);
-                            btn.style.background = 'var(--SmartThemeBlurple, #007bff)';
-                            btn.style.color = 'white';
-                            btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
-                        }
-                        
-                        // 拼接选中的选项到输入框
-                        if (OptionsGenerator.selectedOptions.length > 0) {
-                            textarea.value = OptionsGenerator.selectedOptions.join(' ');
-                            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                            textarea.focus();
-                        } else {
-                            textarea.value = '';
-                            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                            textarea.focus();
-                        }
-                        
-                        // 手动模式下不清除选项容器
-                    } else {
-                        // 自动模式：原有行为
-                        textarea.value = text;
-                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                        textarea.focus();
-                        
-                        // 根据发送模式决定是否自动发送
-                        if (sendMode === 'auto' && sendButton) {
-                            sendButton.click();
-                        }
-                        container.remove();
-                    }
-                }
-            };
-        }
-        
-        // 更新按钮文字（只在文字变化时更新，避免跳动）
-        if (btn.textContent !== text) {
+            btn = UIManager.createOptionButton(text, index, sendMode);
+            if (btn) {
+                container.appendChild(btn);
+            }
+        } else {
             btn.textContent = text;
         }
     });
     
     // 移除多余的按钮
-    const existingButtons = container.querySelectorAll('[data-option-index]');
+    const existingButtons = container.querySelectorAll('button');
     existingButtons.forEach((btn, index) => {
         if (index >= suggestions.length) {
             btn.remove();
@@ -187,7 +334,7 @@ async function displayOptions(options, isStreaming = false) {
             // 只有在没有其他提示时才显示错误提示
             const loadingContainer = document.getElementById('ti-loading-container');
             if (!loadingContainer) {
-                showGeneratingUI('未能生成有效选项', 3000);
+                UIManager.showGeneratingUI('未能生成有效选项', 3000);
             }
         }
         return;
@@ -309,239 +456,318 @@ async function displayOptions(options, isStreaming = false) {
 async function getContextCompatible(limit = 5) {
     console.log('=== 开始获取SillyTavern上下文数据 ===');
     
-    // 获取SillyTavern原生上下文
-    console.log('\n--- 获取SillyTavern上下文 ---');
+    // 初始化结果对象
+    let characterInfo = null;
+    let worldInfo = null;
+    let messages = [];
+    let systemPrompt = null;
+    
+    // 方案1: 尝试SillyTavern原生API
+    console.log('\n--- 方案1: 尝试SillyTavern原生API ---');
     if (typeof window.SillyTavern?.getContext === 'function') {
         try {
             const result = await window.SillyTavern.getContext({ tokenLimit: 8192 });
             console.log('✅ SillyTavern.getContext() 成功');
-            console.log('📄 内容类型:', typeof result);
-            console.log('📄 内容结构:', Object.keys(result || {}));
-            console.log('📄 完整返回数据:', JSON.stringify(result, null, 2));
+            console.log('📄 返回数据类型:', typeof result);
+            console.log('📄 返回数据结构:', Object.keys(result || {}));
             
-            // 检查角色设定信息
-            console.log('\n--- 检查角色设定信息 ---');
-            console.log('📄 result.character 存在:', !!result?.character);
-            console.log('📄 result.character 类型:', typeof result?.character);
+            // 提取角色信息
             if (result?.character) {
-                console.log('📄 角色设定字段:', Object.keys(result.character));
-                console.log('📄 角色名称:', result.character.name || '未设置');
-                console.log('📄 角色描述:', result.character.description || '未设置');
-                console.log('📄 角色人格:', result.character.personality || '未设置');
-                console.log('📄 角色场景:', result.character.scenario || '未设置');
-                console.log('📄 角色第一印象:', result.character.first_mes || '未设置');
-                console.log('📄 角色消息示例:', result.character.mes_example || '未设置');
-                console.log('📄 完整角色信息:', JSON.stringify(result.character, null, 2));
-            } else {
-                console.log('❌ 未找到角色设定信息');
+                characterInfo = result.character;
+                console.log('✅ 从SillyTavern获取到角色信息');
             }
             
-            // 检查世界书信息
-            console.log('\n--- 检查世界书信息 ---');
-            console.log('📄 result.world_info 存在:', !!result?.world_info);
-            console.log('📄 result.world_info 类型:', typeof result?.world_info);
-            if (result?.world_info) {
-                console.log('📄 世界书数量:', result.world_info.length || 0);
-                if (result.world_info.length > 0) {
-                    result.world_info.forEach((world, index) => {
-                        console.log(`📄 世界书 ${index + 1}:`);
-                        console.log(`   名称: ${world.title || '未命名'}`);
-                        console.log(`   内容: ${world.content || '无内容'}`);
-                        console.log(`   关键词: ${world.keys || '无关键词'}`);
-                        console.log(`   优先级: ${world.priority || '默认'}`);
-                    });
-                }
-                console.log('📄 完整世界书信息:', JSON.stringify(result.world_info, null, 2));
-            } else {
-                console.log('❌ 未找到世界书信息');
+            // 提取世界书信息
+            if (result?.world_info && Array.isArray(result.world_info)) {
+                worldInfo = result.world_info;
+                console.log('✅ 从SillyTavern获取到世界书信息，数量:', worldInfo.length);
             }
             
-            // 备用方案：尝试其他方式获取角色卡和世界书
-            let characterInfo = result?.character;
-            let worldInfo = result?.world_info;
-            
-            // 如果SillyTavern没有返回角色卡，尝试其他方式
-            if (!characterInfo) {
-                console.log('\n--- 尝试备用方案获取角色卡 ---');
-                
-                // 备用方案1: 尝试从DOM获取角色卡
-                const characterCard = document.querySelector('#character_info, .character_info, [data-character]');
-                if (characterCard) {
-                    console.log('✅ 从DOM找到角色卡元素');
-                    const charName = characterCard.querySelector('.char_name, .character_name')?.textContent?.trim();
-                    const charDesc = characterCard.querySelector('.char_desc, .character_description')?.textContent?.trim();
-                    if (charName || charDesc) {
-                        characterInfo = {
-                            name: charName || '未知角色',
-                            description: charDesc || '无描述'
-                        };
-                        console.log('📄 从DOM获取的角色卡:', characterInfo);
-                    }
-                }
-                
-                // 备用方案2: 尝试TavernHelper
-                if (!characterInfo && typeof window.TavernHelper?.getCharacter === 'function') {
-                    try {
-                        console.log('🔍 尝试使用TavernHelper.getCharacter()...');
-                        const charData = window.TavernHelper.getCharacter();
-                        if (charData) {
-                            characterInfo = charData;
-                            console.log('✅ TavernHelper.getCharacter() 成功:', characterInfo);
-                        }
-                    } catch (error) {
-                        console.error('❌ TavernHelper.getCharacter() 失败:', error);
-                    }
-                }
+            // 提取消息
+            if (result?.messages && Array.isArray(result.messages)) {
+                messages = result.messages.slice(-limit);
+                console.log('✅ 从SillyTavern获取到消息，数量:', messages.length);
             }
             
-            // 如果SillyTavern没有返回世界书，尝试其他方式
-            if (!worldInfo) {
-                console.log('\n--- 尝试备用方案获取世界书 ---');
-                
-                // 备用方案1: 尝试TavernHelper
-                if (typeof window.TavernHelper?.getWorldBooks === 'function') {
-                    try {
-                        console.log('🔍 尝试使用TavernHelper.getWorldBooks()...');
-                        const worldBooks = window.TavernHelper.getWorldBooks();
-                        if (worldBooks && worldBooks.length > 0) {
-                            worldInfo = worldBooks;
-                            console.log('✅ TavernHelper.getWorldBooks() 成功，数量:', worldBooks.length);
-                        }
-                    } catch (error) {
-                        console.error('❌ TavernHelper.getWorldBooks() 失败:', error);
-                    }
-                }
-                
-                // 备用方案2: 尝试从DOM获取世界书
-                if (!worldInfo) {
-                    const worldBookElements = document.querySelectorAll('.world_book, [data-world-book], .world_info');
-                    if (worldBookElements.length > 0) {
-                        console.log('✅ 从DOM找到世界书元素，数量:', worldBookElements.length);
-                        worldInfo = [];
-                        worldBookElements.forEach((element, index) => {
-                            const title = element.querySelector('.title, .world_title')?.textContent?.trim() || `世界书${index + 1}`;
-                            const content = element.querySelector('.content, .world_content')?.textContent?.trim() || '';
-                            if (content) {
-                                worldInfo.push({
-                                    title: title,
-                                    content: content,
-                                    keys: '',
-                                    priority: 'default'
-                                });
-                            }
-                        });
-                        console.log('📄 从DOM获取的世界书:', worldInfo);
-                    }
-                }
+            // 提取系统提示词
+            if (result?.system_prompt) {
+                systemPrompt = result.system_prompt;
+                console.log('✅ 从SillyTavern获取到系统提示词');
             }
             
-            // 处理消息，只保留最近5条
-            if (result && result.messages) {
-                const recentMessages = result.messages.slice(-limit);
-                console.log('\n--- 最近对话消息 ---');
-                console.log('📄 原始消息数量:', result.messages.length);
-                console.log('📄 截取最近消息数量:', recentMessages.length);
-                console.log('📄 最近消息内容:');
-                recentMessages.forEach((msg, i) => {
-                    console.log(`   ${i+1}. [${msg.role}] ${msg.content.substring(0, 100)}...`);
-                });
-                console.log('📄 完整最近消息:', JSON.stringify(recentMessages, null, 2));
-                
-                // 返回简化后的上下文
-                const simplifiedContext = {
-                    messages: recentMessages,
-                    character: characterInfo,
-                    world_info: worldInfo,
-                    system_prompt: result.system_prompt,
-                    original_message_count: result.messages.length
-                };
-                
-                console.log('\n=== 上下文数据获取完成 ===');
-                console.log('📊 返回消息数量:', recentMessages.length);
-                console.log('📊 包含角色设定:', !!characterInfo);
-                console.log('📊 包含世界书:', !!worldInfo);
-                console.log('📊 包含系统提示词:', !!result.system_prompt);
-                
-                return simplifiedContext;
-            } else {
-                console.log('❌ SillyTavern.getContext() 未返回消息数据');
-                console.log('🔍 尝试备用方案获取消息...');
-                
-                // 备用方案1: 尝试从DOM获取消息
-                const chatMessages = document.querySelectorAll('#chat .mes');
-                if (chatMessages.length > 0) {
-                    console.log('✅ 从DOM获取到消息，数量:', chatMessages.length);
-                    const messages = [];
-                    chatMessages.forEach((mes, index) => {
-                        // 更精确的角色判断
-                        let role = 'user';
-                        if (mes.classList.contains('swiper-slide') || 
-                            mes.classList.contains('assistant') || 
-                            mes.querySelector('.avatar') ||
-                            mes.getAttribute('data-is-user') === 'false') {
-                            role = 'assistant';
-                        }
-                        
-                        // 获取消息内容
-                        const contentElement = mes.querySelector('.mes_text') || mes.querySelector('.message') || mes;
-                        const content = contentElement.textContent?.trim() || '';
-                        
-                        if (content && content.length > 0) {
-                            messages.push({ role, content });
-                            console.log(`📄 消息 ${index + 1}: [${role}] ${content.substring(0, 50)}...`);
-                        }
-                    });
-                    
-                    if (messages.length > 0) {
-                        const recentMessages = messages.slice(-limit);
-                        console.log('📄 从DOM获取的最近消息:', recentMessages);
-                        
-                        return {
-                            messages: recentMessages,
-                            character: characterInfo,
-                            world_info: worldInfo,
-                            system_prompt: result?.system_prompt,
-                            original_message_count: messages.length
-                        };
-                    } else {
-                        console.log('❌ DOM消息内容为空');
-                    }
-                } else {
-                    console.log('❌ 未找到DOM消息元素');
-                }
-                
-                // 备用方案2: 尝试TavernHelper
-                if (typeof window.TavernHelper?.getMessages === 'function') {
-                    try {
-                        console.log('🔍 尝试使用TavernHelper.getMessages()...');
-                        const messages = window.TavernHelper.getMessages();
-                        if (messages && messages.length > 0) {
-                            console.log('✅ TavernHelper.getMessages() 成功，数量:', messages.length);
-                            const recentMessages = messages.slice(-limit);
-                            return {
-                                messages: recentMessages,
-                                character: characterInfo,
-                                world_info: worldInfo,
-                                system_prompt: result?.system_prompt,
-                                original_message_count: messages.length
-                            };
-                        }
-                    } catch (error) {
-                        console.error('❌ TavernHelper.getMessages() 失败:', error);
-                    }
-                }
-                
-                console.log('❌ 所有备用方案都失败，返回空消息数组');
-                return { messages: [] };
-            }
         } catch (error) {
             console.error('❌ SillyTavern.getContext() 失败:', error);
-            return { messages: [] };
         }
     } else {
         console.log('❌ SillyTavern.getContext() 不可用');
-        return { messages: [] };
     }
+    
+    // 方案2: 尝试TavernHelper API
+    console.log('\n--- 方案2: 尝试TavernHelper API ---');
+    
+    // 获取角色信息
+    if (!characterInfo && typeof window.TavernHelper?.getCharacter === 'function') {
+        try {
+            console.log('🔍 尝试TavernHelper.getCharacter()...');
+            const charData = window.TavernHelper.getCharacter();
+            if (charData) {
+                characterInfo = charData;
+                console.log('✅ TavernHelper.getCharacter() 成功');
+            }
+        } catch (error) {
+            console.error('❌ TavernHelper.getCharacter() 失败:', error);
+        }
+    }
+    
+    // 获取世界书信息
+    if (!worldInfo && typeof window.TavernHelper?.getWorldBooks === 'function') {
+        try {
+            console.log('🔍 尝试TavernHelper.getWorldBooks()...');
+            const worldBooks = window.TavernHelper.getWorldBooks();
+            if (worldBooks && Array.isArray(worldBooks) && worldBooks.length > 0) {
+                worldInfo = worldBooks;
+                console.log('✅ TavernHelper.getWorldBooks() 成功，数量:', worldBooks.length);
+            }
+        } catch (error) {
+            console.error('❌ TavernHelper.getWorldBooks() 失败:', error);
+        }
+    }
+    
+    // 获取消息
+    if (messages.length === 0 && typeof window.TavernHelper?.getMessages === 'function') {
+        try {
+            console.log('🔍 尝试TavernHelper.getMessages()...');
+            const allMessages = window.TavernHelper.getMessages();
+            if (allMessages && Array.isArray(allMessages)) {
+                messages = allMessages.slice(-limit);
+                console.log('✅ TavernHelper.getMessages() 成功，数量:', messages.length);
+            }
+        } catch (error) {
+            console.error('❌ TavernHelper.getMessages() 失败:', error);
+        }
+    }
+    
+    // 方案3: 从DOM获取信息
+    console.log('\n--- 方案3: 从DOM获取信息 ---');
+    
+    // 从DOM获取角色信息
+    if (!characterInfo) {
+        console.log('🔍 从DOM查找角色信息...');
+        const characterSelectors = [
+            '#character_info',
+            '.character_info', 
+            '[data-character]',
+            '.char_name',
+            '.character_name',
+            '#char_name',
+            '.char_info'
+        ];
+        
+        for (const selector of characterSelectors) {
+            const element = document.querySelector(selector);
+            if (element) {
+                console.log(`✅ 找到角色元素: ${selector}`);
+                
+                // 尝试获取角色名称
+                const nameSelectors = ['.char_name', '.character_name', '.name', 'h1', 'h2', 'h3'];
+                let charName = null;
+                for (const nameSelector of nameSelectors) {
+                    const nameElement = element.querySelector(nameSelector);
+                    if (nameElement && nameElement.textContent.trim()) {
+                        charName = nameElement.textContent.trim();
+                        break;
+                    }
+                }
+                
+                // 尝试获取角色描述
+                const descSelectors = ['.char_desc', '.character_description', '.description', '.desc', 'p'];
+                let charDesc = null;
+                for (const descSelector of descSelectors) {
+                    const descElement = element.querySelector(descSelector);
+                    if (descElement && descElement.textContent.trim()) {
+                        charDesc = descElement.textContent.trim();
+                        break;
+                    }
+                }
+                
+                if (charName || charDesc) {
+                    characterInfo = {
+                        name: charName || '未知角色',
+                        description: charDesc || '无描述'
+                    };
+                    console.log('✅ 从DOM获取到角色信息:', characterInfo);
+                    break;
+                }
+            }
+        }
+    }
+    
+    // 从DOM获取世界书信息
+    if (!worldInfo) {
+        console.log('🔍 从DOM查找世界书信息...');
+        const worldBookSelectors = [
+            '.world_book',
+            '[data-world-book]',
+            '.world_info',
+            '.worldbook',
+            '.world-info'
+        ];
+        
+        for (const selector of worldBookSelectors) {
+            const elements = document.querySelectorAll(selector);
+            if (elements.length > 0) {
+                console.log(`✅ 找到世界书元素: ${selector}，数量: ${elements.length}`);
+                worldInfo = [];
+                
+                elements.forEach((element, index) => {
+                    // 获取标题
+                    const titleSelectors = ['.title', '.world_title', '.name', 'h1', 'h2', 'h3'];
+                    let title = null;
+                    for (const titleSelector of titleSelectors) {
+                        const titleElement = element.querySelector(titleSelector);
+                        if (titleElement && titleElement.textContent.trim()) {
+                            title = titleElement.textContent.trim();
+                            break;
+                        }
+                    }
+                    
+                    // 获取内容
+                    const contentSelectors = ['.content', '.world_content', '.text', '.description', 'p'];
+                    let content = null;
+                    for (const contentSelector of contentSelectors) {
+                        const contentElement = element.querySelector(contentSelector);
+                        if (contentElement && contentElement.textContent.trim()) {
+                            content = contentElement.textContent.trim();
+                            break;
+                        }
+                    }
+                    
+                    if (content) {
+                        worldInfo.push({
+                            title: title || `世界书${index + 1}`,
+                            content: content,
+                            keys: '',
+                            priority: 'default'
+                        });
+                    }
+                });
+                
+                if (worldInfo.length > 0) {
+                    console.log('✅ 从DOM获取到世界书信息，数量:', worldInfo.length);
+                    break;
+                }
+            }
+        }
+    }
+    
+    // 从DOM获取消息
+    if (messages.length === 0) {
+        console.log('🔍 从DOM查找消息...');
+        const messageSelectors = [
+            '#chat .mes',
+            '.chat .message',
+            '.message',
+            '.mes',
+            '[data-message]'
+        ];
+        
+        for (const selector of messageSelectors) {
+            const messageElements = document.querySelectorAll(selector);
+            if (messageElements.length > 0) {
+                console.log(`✅ 找到消息元素: ${selector}，数量: ${messageElements.length}`);
+                
+                messageElements.forEach((mes, index) => {
+                    // 判断角色
+                    let role = 'user';
+                    if (mes.classList.contains('swiper-slide') || 
+                        mes.classList.contains('assistant') || 
+                        mes.classList.contains('ai') ||
+                        mes.querySelector('.avatar') ||
+                        mes.getAttribute('data-is-user') === 'false' ||
+                        mes.getAttribute('data-role') === 'assistant') {
+                        role = 'assistant';
+                    }
+                    
+                    // 获取消息内容
+                    const contentSelectors = ['.mes_text', '.message', '.text', '.content'];
+                    let content = null;
+                    for (const contentSelector of contentSelectors) {
+                        const contentElement = mes.querySelector(contentSelector);
+                        if (contentElement && contentElement.textContent.trim()) {
+                            content = contentElement.textContent.trim();
+                            break;
+                        }
+                    }
+                    
+                    // 如果没有找到内容，使用元素本身的文本
+                    if (!content) {
+                        content = mes.textContent.trim();
+                    }
+                    
+                    if (content && content.length > 0) {
+                        messages.push({ role, content });
+                    }
+                });
+                
+                if (messages.length > 0) {
+                    messages = messages.slice(-limit);
+                    console.log('✅ 从DOM获取到消息，数量:', messages.length);
+                    break;
+                }
+            }
+        }
+    }
+    
+    // 方案4: 尝试其他可能的API
+    console.log('\n--- 方案4: 尝试其他API ---');
+    
+    // 尝试其他可能的全局对象
+    const possibleAPIs = [
+        'window.SillyTavern',
+        'window.TavernHelper', 
+        'window.CharacterHelper',
+        'window.ChatHelper',
+        'window.ContextHelper'
+    ];
+    
+    for (const apiName of possibleAPIs) {
+        try {
+            const api = eval(apiName);
+            if (api && typeof api === 'object') {
+                console.log(`🔍 检查API: ${apiName}`);
+                console.log(`📄 可用方法:`, Object.keys(api).filter(key => typeof api[key] === 'function'));
+            }
+        } catch (error) {
+            // 忽略错误
+        }
+    }
+    
+    // 返回最终结果
+    const finalContext = {
+        messages: messages,
+        character: characterInfo,
+        world_info: worldInfo,
+        system_prompt: systemPrompt,
+        original_message_count: messages.length
+    };
+    
+    console.log('\n=== 上下文数据获取完成 ===');
+    console.log('📊 最终结果:');
+    console.log('  - 消息数量:', messages.length);
+    console.log('  - 角色信息:', !!characterInfo);
+    console.log('  - 世界书数量:', worldInfo ? worldInfo.length : 0);
+    console.log('  - 系统提示词:', !!systemPrompt);
+    
+    if (characterInfo) {
+        console.log('  - 角色名称:', characterInfo.name || '未设置');
+    }
+    
+    if (worldInfo && worldInfo.length > 0) {
+        console.log('  - 世界书标题:', worldInfo.map(w => w.title || '未命名').join(', '));
+    }
+    
+    return finalContext;
+    return finalContext;
 }
 
 // 在建议生成/选择后定期分析
@@ -951,8 +1177,8 @@ export class OptionsGenerator {
     static isGenerating = false;
     static selectedOptions = []; // 手动模式下选中的选项
     
-    static showGeneratingUI = showGeneratingUI;
-    static hideGeneratingUI = hideGeneratingUI;
+    static showGeneratingUI = UIManager.showGeneratingUI;
+    static hideGeneratingUI = UIManager.hideGeneratingUI;
     static displayOptions = displayOptions;
     static displayOptionsStreaming = displayOptionsStreaming;
     static generateOptions = generateOptions;

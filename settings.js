@@ -1,16 +1,32 @@
 import { extension_settings } from '../../../extensions.js';
 
+// 常量定义
+export const CONSTANTS = {
+    MODULE_NAME: 'typing_indicator',
+    DEFAULT_API_TYPE: 'openai',
+    DEFAULT_MODEL: 'gemini-2.5-flash-free',
+    DEFAULT_BASE_URL: 'https://newapi.sisuo.de/v1',
+    DEFAULT_PACE_MODE: 'normal',
+    DEFAULT_SEND_MODE: 'auto',
+    DEFAULT_AUTO_GEN_MODE: 'auto',
+    MAX_CONTEXT_MESSAGES: 5,
+    MAX_WORLD_INFO_ITEMS: 3,
+    ANIMATION_DURATION: 2000,
+    CACHE_DURATION: 5000
+};
+
+// 默认设置
 export const defaultSettings = {
     // 选项生成功能设置
     optionsGenEnabled: true, // 默认开启
-    optionsApiType: 'openai',
+    optionsApiType: CONSTANTS.DEFAULT_API_TYPE,
     optionsApiKey: '',
-    optionsApiModel: 'gemini-2.5-flash-free',
-    optionsBaseUrl: 'https://newapi.sisuo.de/v1',
-    sendMode: 'auto',
+    optionsApiModel: CONSTANTS.DEFAULT_MODEL,
+    optionsBaseUrl: CONSTANTS.DEFAULT_BASE_URL,
+    sendMode: CONSTANTS.DEFAULT_SEND_MODE,
     streamOptions: false, // true=流式, false=非流式
-    paceMode: 'normal', // 推进节奏：normal=正常, fast=快速, jump=跳跃
-    autoGenMode: 'auto', // 选项生成模式：auto=自动生成, manual=手动生成
+    paceMode: CONSTANTS.DEFAULT_PACE_MODE, // 推进节奏：normal=正常, fast=快速, jump=跳跃
+    autoGenMode: CONSTANTS.DEFAULT_AUTO_GEN_MODE, // 选项生成模式：auto=自动生成, manual=手动生成
     
     // 底部快捷面板设置
     showQuickPanel: true, // 是否显示底部快捷面板
@@ -163,7 +179,7 @@ export const PACE_PROMPTS = {
 };
 
 // 剧情走向提示模板
-const PLOT_PROMPTS = {
+export const PLOT_PROMPTS = {
     normal: `
 你是我的AI叙事导演。分析最近对话，为我生成4个正常剧情行动建议（每条用【】包裹）。
 
@@ -227,16 +243,61 @@ const PLOT_PROMPTS = {
 
 export const MERGED_DIRECTOR_PROMPT = PACE_PROMPTS.normal; // 默认使用正常模式
 
-const MODULE = 'typing_indicator';
-
-export function getSettings() {
-    if (extension_settings[MODULE] === undefined) {
-        extension_settings[MODULE] = structuredClone(defaultSettings);
+// 设置管理类
+class SettingsManager {
+    constructor() {
+        this._cache = null;
+        this._lastUpdate = 0;
     }
-    for (const key in defaultSettings) {
-        if (extension_settings[MODULE][key] === undefined) {
-            extension_settings[MODULE][key] = defaultSettings[key];
+    
+    // 获取设置，带缓存优化
+    getSettings() {
+        const now = Date.now();
+        
+        // 如果缓存存在且未过期，直接返回
+        if (this._cache && (now - this._lastUpdate) < CONSTANTS.CACHE_DURATION) {
+            return this._cache;
         }
+        
+        // 初始化设置
+        if (extension_settings[CONSTANTS.MODULE_NAME] === undefined) {
+            extension_settings[CONSTANTS.MODULE_NAME] = structuredClone(defaultSettings);
+        }
+        
+        // 确保所有默认设置都存在
+        for (const key in defaultSettings) {
+            if (extension_settings[CONSTANTS.MODULE_NAME][key] === undefined) {
+                extension_settings[CONSTANTS.MODULE_NAME][key] = defaultSettings[key];
+            }
+        }
+        
+        // 更新缓存
+        this._cache = extension_settings[CONSTANTS.MODULE_NAME];
+        this._lastUpdate = now;
+        
+        return this._cache;
     }
-    return extension_settings[MODULE];
+    
+    // 清除缓存
+    clearCache() {
+        this._cache = null;
+        this._lastUpdate = 0;
+    }
+    
+    // 更新设置
+    updateSettings(newSettings) {
+        Object.assign(extension_settings[CONSTANTS.MODULE_NAME], newSettings);
+        this.clearCache(); // 清除缓存，确保下次获取最新设置
+    }
 }
+
+// 创建单例实例
+const settingsManager = new SettingsManager();
+
+// 导出兼容函数
+export function getSettings() {
+    return settingsManager.getSettings();
+}
+
+// 导出设置管理器（供高级用法）
+export { settingsManager };
