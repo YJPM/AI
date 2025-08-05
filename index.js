@@ -42,31 +42,13 @@ class EventHandler {
     
     // 处理消息发送事件
     handleMessageSent() {
-        const settings = getSettings();
-        const sendMode = settings.sendMode || CONSTANTS.DEFAULT_SEND_MODE;
-        
-        if (sendMode === 'manual') {
-            logger.log('MESSAGE_SENT: 手动模式，清除选中的选项状态');
-            this.resetManualModeState();
-            return;
-        }
-        
-        logger.log('MESSAGE_SENT: 清除选项，等待AI回复');
+        logger.log('MESSAGE_SENT: 用户发送消息，自动清除选项');
         this.clearOptions();
     }
     
     // 处理生成开始事件
     handleGenerationStarted() {
-        const settings = getSettings();
-        const sendMode = settings.sendMode || CONSTANTS.DEFAULT_SEND_MODE;
-        
-        if (sendMode === 'manual') {
-            logger.log('GENERATION_STARTED: 手动模式，清除选中的选项状态');
-            this.resetManualModeState();
-            return;
-        }
-        
-        logger.log('GENERATION_STARTED: 清除选项，等待AI回复');
+        logger.log('GENERATION_STARTED: 生成开始，自动清除选项');
         this.clearOptions();
     }
     
@@ -102,29 +84,12 @@ class EventHandler {
     
     // 处理聊天切换事件
     handleChatChanged() {
-        const settings = getSettings();
-        const sendMode = settings.sendMode || CONSTANTS.DEFAULT_SEND_MODE;
-        
-        if (sendMode === 'manual') {
-            logger.log('CHAT_CHANGED: 手动模式，不清除选项');
-            return;
-        }
-        
-        logger.log('CHAT_CHANGED: 清除选项');
+        logger.log('CHAT_CHANGED: 聊天切换，自动清除选项');
         this.clearOptions();
     }
     
     // 清除选项
     clearOptions() {
-        const settings = getSettings();
-        const sendMode = settings.sendMode || CONSTANTS.DEFAULT_SEND_MODE;
-        
-        // 在手动模式下不清除选项容器
-        if (sendMode === 'manual') {
-            logger.log('手动模式，不清除选项容器');
-            return;
-        }
-        
         const oldContainer = document.getElementById('ti-options-container');
         if (oldContainer) {
             logger.log('清除已存在的选项容器');

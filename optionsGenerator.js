@@ -1,4 +1,4 @@
-import { getSettings, PACE_PROMPTS, PLOT_PROMPTS, CONSTANTS } from './settings.js';
+import { getSettings, PACE_PROMPTS, CONSTANTS } from './settings.js';
 import { logger } from './logger.js';
 import { saveSettingsDebounced } from '../../../../script.js';
 import { showPacePanelLoading, hidePacePanelLoading } from './ui.js';
@@ -283,47 +283,7 @@ class UIManager {
     }
 }
 
-// 流式选项显示函数
-async function displayOptionsStreaming(content) {
-    const suggestions = Utils.extractSuggestions(content);
-    
-    // 获取或创建容器
-    let container = document.getElementById(OPTIONS_CONSTANTS.OPTIONS_CONTAINER_ID);
-    if (!container) {
-        container = UIManager.createOptionsContainer();
-        if (!container) return;
-    }
-    
-    // 获取当前发送模式
-    const settings = getSettings();
-    const sendMode = settings.sendMode || 'manual';
-    
-    // 在手动模式下，重置选中的选项
-    if (sendMode === 'manual') {
-        OptionsGenerator.selectedOptions = [];
-    }
-    
-    // 更新或创建按钮
-    suggestions.forEach((text, index) => {
-        let btn = container.querySelector(`[data-option-index="${index}"]`);
-        if (!btn) {
-            btn = UIManager.createOptionButton(text, index, sendMode);
-            if (btn) {
-                container.appendChild(btn);
-            }
-        } else {
-            btn.textContent = text;
-        }
-    });
-    
-    // 移除多余的按钮
-    const existingButtons = container.querySelectorAll('button');
-    existingButtons.forEach((btn, index) => {
-        if (index >= suggestions.length) {
-            btn.remove();
-        }
-    });
-}
+
 
 async function displayOptions(options, isStreaming = false) {
     const oldContainer = document.getElementById('ti-options-container');
@@ -453,7 +413,7 @@ async function displayOptions(options, isStreaming = false) {
 }
 
 // 简化上下文提取 - 只使用SillyTavern.getContext()
-async function getContextCompatible(limit = 5) {
+async function getContextCompatible(limit = 10) {
     console.log('=== 开始获取SillyTavern上下文数据 ===');
     
     // 初始化结果对象
@@ -992,15 +952,19 @@ async function getContextCompatible(limit = 5) {
     console.log('  - 消息数量:', messages.length);
     console.log('  - 角色信息:', !!characterInfo);
     console.log('  - 世界书数量:', safeWorldInfo.length);
-    console.log('  - 系统提示词:', !!systemPrompt);
-    console.log('  - 聊天摘要:', !!chatSummary);
     
     if (characterInfo) {
         console.log('  - 角色名称:', characterInfo.name || '未设置');
+        console.log('  - 角色描述:', characterInfo.description || '未设置');
+        console.log('  - 角色人格:', characterInfo.personality || '未设置');
     }
     
     if (safeWorldInfo.length > 0) {
-        console.log('  - 世界书标题:', safeWorldInfo.map(w => w.title || '未命名').join(', '));
+        console.log('  - 世界书信息:');
+        safeWorldInfo.forEach((world, index) => {
+            console.log(`    世界书 ${index + 1}: ${world.title || '未命名'}`);
+            console.log(`      内容: ${world.content || '无内容'}`);
+        });
     }
     
     return finalContext;
@@ -1024,39 +988,19 @@ async function generateOptions() {
     OptionsGenerator.isGenerating = true;
     
     try {
-        // 根据推进节奏和模板类型选择提示模板
+        // 根据推进节奏选择提示模板
         const paceMode = settings.paceMode || 'normal';
-        const templateMode = settings.templateMode || 'discovery';
         console.log('[generateOptions] 当前推进节奏:', paceMode);
-        console.log('[generateOptions] 当前模板类型:', templateMode);
-        let promptTemplate;
-        
-        // 根据推进节奏和剧情走向组合选择模板
-        const plotMode = settings.plotMode || 'normal';
         
         // 获取推进节奏模板
-        const paceTemplate = PACE_PROMPTS[paceMode] || PACE_PROMPTS.normal;
-        
-        // 获取剧情走向模板
-        const plotTemplate = PLOT_PROMPTS[plotMode] || PLOT_PROMPTS.normal;
-        
-        // 组合模板：推进节奏 + 剧情走向
-        promptTemplate = `
-${paceTemplate}
-
-## 剧情走向要求
-${plotTemplate.split('## 核心要求')[1].split('## 最近对话')[0]}
-
-## 最近对话
-{{context}}
-        `.trim();
+        const promptTemplate = PACE_PROMPTS[paceMode] || PACE_PROMPTS.normal;
         
         // 组装合并prompt
         console.log('[generateOptions] 开始获取上下文...');
         const context = await getContextCompatible();
         console.log('[generateOptions] 上下文获取完成，消息数量:', context.messages.length);
         
-        // 构建简化的上下文提示词
+        // 构建简化的上下文提示词 - 只包含世界书和角色设定
         let fullContextText = '';
         
         // 1. 添加角色设定信息
@@ -1082,33 +1026,12 @@ ${plotTemplate.split('## 核心要求')[1].split('## 最近对话')[0]}
             });
         }
         
-        // 3. 添加聊天摘要
-        if (context.chat_summary) {
-            fullContextText += '## 聊天摘要\n';
-            fullContextText += context.chat_summary + '\n\n';
-        }
-        
-        // 4. 添加系统提示词
-        if (context.system_prompt) {
-            fullContextText += '## 系统提示词\n';
-            fullContextText += context.system_prompt + '\n\n';
-        }
-        
-        // 5. 添加最近对话消息
+        // 3. 添加最近对话消息（保持原有的消息处理）
         if (context.messages && context.messages.length > 0) {
             fullContextText += '## 最近对话历史\n';
             fullContextText += context.messages.map(m => `[${m.role}] ${m.content}`).join('\n');
             fullContextText += '\n\n';
         }
-        
-        // 6. 添加统计信息
-        fullContextText += '## 上下文统计\n';
-        fullContextText += `原始消息总数: ${context.original_message_count || 0}\n`;
-        fullContextText += `当前使用消息数: ${context.messages ? context.messages.length : 0}\n`;
-        fullContextText += `包含角色设定: ${!!context.character}\n`;
-        fullContextText += `包含世界书: ${!!(context.world_info && Array.isArray(context.world_info) && context.world_info.length > 0)}\n`;
-        fullContextText += `包含聊天摘要: ${!!context.chat_summary}\n`;
-        fullContextText += `包含系统提示词: ${!!context.system_prompt}\n\n`;
         
         const prompt = promptTemplate
             .replace(/{{context}}/g, fullContextText);
@@ -1126,13 +1049,8 @@ ${plotTemplate.split('## 核心要求')[1].split('## 最近对话')[0]}
             // Google Gemini API
             const modelName = settings.optionsApiModel || 'gemini-pro';
             
-            if (settings.streamOptions) {
-                // 流式生成使用streamGenerateContent
-                apiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:streamGenerateContent?key=${settings.optionsApiKey}`;
-            } else {
-                // 非流式生成使用generateContent
-                apiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${settings.optionsApiKey}`;
-            }
+            // 非流式生成使用generateContent
+            apiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${settings.optionsApiKey}`;
             
             headers = {
                 'Content-Type': 'application/json',
@@ -1155,7 +1073,6 @@ ${plotTemplate.split('## 核心要求')[1].split('## 最近对话')[0]}
             console.log('[generateOptions] 使用Google Gemini API');
             console.log('[generateOptions] API URL:', apiUrl);
             console.log('[generateOptions] 模型:', modelName);
-            console.log('[generateOptions] 流式模式:', settings.streamOptions);
         } else {
             // OpenAI兼容API
             apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
@@ -1169,7 +1086,7 @@ ${plotTemplate.split('## 核心要求')[1].split('## 最近对话')[0]}
                 model: settings.optionsApiModel,
                 messages: finalMessages,
                 temperature: 0.8,
-                stream: settings.streamOptions,
+                stream: false,
             };
             
             console.log('[generateOptions] 使用OpenAI兼容API');
@@ -1177,131 +1094,42 @@ ${plotTemplate.split('## 核心要求')[1].split('## 最近对话')[0]}
             console.log('[generateOptions] 模型:', settings.optionsApiModel);
         }
         
-        if (settings.streamOptions) {
-            console.log('[generateOptions] 使用流式生成...');
-            // 流式生成
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify(requestBody),
-            });
-            
-            console.log('[generateOptions] API响应状态:', response.status);
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('[generateOptions] API响应错误:', errorText);
-                logger.error('API 响应错误 (raw):', errorText);
-                throw new Error('API 请求失败');
-            }
-            
-            console.log('[generateOptions] 开始处理流式响应...');
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            
-            if (apiType === 'gemini') {
-                // Gemini API的流式响应处理
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split('\n');
-                    
-                    for (const line of lines) {
-                        if (line.trim() === '') continue;
-                        
-                        try {
-                            const parsed = JSON.parse(line);
-                            if (parsed.candidates && parsed.candidates[0] && parsed.candidates[0].content) {
-                                const delta = parsed.candidates[0].content.parts[0]?.text || '';
-                                content += delta;
-                                
-                                // 实时更新选项显示
-                                await displayOptionsStreaming(content);
-                            }
-                        } catch (e) {
-                            // 忽略解析错误
-                        }
-                    }
-                }
-            } else {
-                // OpenAI兼容API的流式响应处理
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split('\n');
-                    
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            const data = line.slice(6);
-                            if (data === '[DONE]') break;
-                            
-                            try {
-                                const parsed = JSON.parse(data);
-                                const delta = parsed.choices?.[0]?.delta?.content || '';
-                                content += delta;
-                                
-                                // 实时更新选项显示
-                                await displayOptionsStreaming(content);
-                            } catch (e) {
-                                // 忽略解析错误
-                            }
-                        }
-                    }
-                }
-            }
-            
-            console.log('[generateOptions] 流式生成完成，总内容长度:', content.length);
-            // 流式生成完成
-            // 解析建议
-            const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
-            console.log('[generateOptions] 解析到选项数量:', suggestions.length);
-            console.log('[generateOptions] 选项内容:', suggestions);
-            
-            // 等待选项完全显示后再隐藏loading
-            await displayOptions(suggestions, true); // true表示流式显示
-            hidePacePanelLoading();
-        } else {
-            console.log('[generateOptions] 使用非流式生成...');
-            // 非流式生成
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify(requestBody),
-            });
-            
-            console.log('[generateOptions] API响应状态:', response.status);
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('[generateOptions] API响应错误:', errorText);
-                logger.error('API 响应错误 (raw):', errorText);
-                throw new Error('API 请求失败');
-            }
-            
-            const data = await response.json();
-            
-            // 根据API类型解析响应
-            if (apiType === 'gemini') {
-                content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            } else {
-                content = data.choices?.[0]?.message?.content || '';
-            }
-            
-            console.log('[generateOptions] 非流式生成完成，内容长度:', content.length);
-            
-            // 解析建议
-            const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
-            console.log('[generateOptions] 解析到选项数量:', suggestions.length);
-            console.log('[generateOptions] 选项内容:', suggestions);
-            
-            // 等待选项完全显示后再隐藏loading
-            await displayOptions(suggestions, false); // false表示非流式显示
-            hidePacePanelLoading();
+        console.log('[generateOptions] 使用非流式生成...');
+        // 非流式生成
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(requestBody),
+        });
+        
+        console.log('[generateOptions] API响应状态:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[generateOptions] API响应错误:', errorText);
+            logger.error('API 响应错误 (raw):', errorText);
+            throw new Error('API 请求失败');
         }
+        
+        const data = await response.json();
+        
+        // 根据API类型解析响应
+        if (apiType === 'gemini') {
+            content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        } else {
+            content = data.choices?.[0]?.message?.content || '';
+        }
+        
+        console.log('[generateOptions] 非流式生成完成，内容长度:', content.length);
+        
+        // 解析建议
+        const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+        console.log('[generateOptions] 解析到选项数量:', suggestions.length);
+        console.log('[generateOptions] 选项内容:', suggestions);
+        
+        // 等待选项完全显示后再隐藏loading
+        await displayOptions(suggestions, false); // false表示非流式显示
+        hidePacePanelLoading();
     } catch (error) {
         console.error('[generateOptions] 生成选项时出错:', error);
         logger.error('生成选项时出错:', error);
@@ -1442,7 +1270,7 @@ export class OptionsGenerator {
     static showGeneratingUI = UIManager.showGeneratingUI;
     static hideGeneratingUI = UIManager.hideGeneratingUI;
     static displayOptions = displayOptions;
-    static displayOptionsStreaming = displayOptionsStreaming;
+
     static generateOptions = generateOptions;
     static testApiConnection = testApiConnection;
     
@@ -1533,7 +1361,7 @@ export class OptionsGenerator {
         console.log('=== 开始测试上下文获取 ===');
         
         try {
-            const context = await getContextCompatible(5);
+            const context = await getContextCompatible(10);
             console.log('✅ 上下文获取测试完成');
             console.log('📊 获取到的消息数量:', context.messages?.length || 0);
             console.log('📊 包含角色设定:', !!context.character);

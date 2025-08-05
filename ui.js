@@ -161,7 +161,7 @@ export function addExtensionSettings(settings) {
             modelInput.value = settings.optionsApiModel;
             baseUrlInput.value = settings.optionsBaseUrl;
             sendModeSelect.value = settings.sendMode;
-            streamCheckbox.checked = settings.streamOptions;
+
             paceSelect.value = settings.paceMode;
             autoGenSelect.value = settings.autoGenMode;
             quickPanelCheckbox.checked = settings.showQuickPanel;
@@ -530,23 +530,7 @@ export function addExtensionSettings(settings) {
     optionsContainer.appendChild(apiKeyContainer);
     optionsContainer.appendChild(connectionStatusDiv);
     
-    // 流式选项生成
-    const streamLabel = document.createElement('label');
-    streamLabel.classList.add('checkbox_label');
-    streamLabel.style.marginTop = '8px';
-    const streamCheckbox = document.createElement('input');
-    streamCheckbox.type = 'checkbox';
-    streamCheckbox.checked = settings.streamOptions;
-    streamCheckbox.addEventListener('change', () => {
-        settings.streamOptions = streamCheckbox.checked;
-        saveSettingsDebounced();
-    });
-    const streamText = document.createElement('span');
-    streamText.textContent = '启用流式选项生成（实时显示生成过程）';
-    streamText.style.fontSize = '16px';
-    streamText.style.color = 'var(--SmartThemeBodyColor, #222)';
-    streamLabel.append(streamCheckbox, streamText);
-    optionsContainer.appendChild(streamLabel);
+
     
     apiTypeSelect.addEventListener('change', () => {
         settings.optionsApiType = apiTypeSelect.value;
@@ -570,13 +554,6 @@ function updateQuickPanelFromSettings() {
         { value: 'fast', color: '#4CAF50' }
     ];
     
-    // 定义剧情走向模式
-    const plotModes = [
-        { value: 'normal', color: '#2196F3' },
-        { value: 'twist', color: '#9C27B0' },
-        { value: 'nsfw', color: '#E91E63' }
-    ];
-    
     // 更新推进节奏按钮状态
     panel.querySelectorAll('button[data-pace-mode]').forEach((btn) => {
         const btnPaceMode = btn.getAttribute('data-pace-mode');
@@ -584,19 +561,6 @@ function updateQuickPanelFromSettings() {
         
         if (btnMode) {
             const isBtnActive = settings.paceMode === btnMode.value;
-            btn.style.background = isBtnActive ? btnMode.color : 'rgba(255, 255, 255, 0.9)';
-            btn.style.color = isBtnActive ? 'white' : btnMode.color;
-            btn.style.boxShadow = isBtnActive ? `0 2px 8px ${btnMode.color}40` : '0 1px 3px rgba(0,0,0,0.1)';
-        }
-    });
-    
-    // 更新剧情走向按钮状态
-    panel.querySelectorAll('button[data-plot-mode]').forEach((btn) => {
-        const btnPlotMode = btn.getAttribute('data-plot-mode');
-        const btnMode = plotModes.find(m => m.value === btnPlotMode);
-        
-        if (btnMode) {
-            const isBtnActive = settings.plotMode === btnMode.value;
             btn.style.background = isBtnActive ? btnMode.color : 'rgba(255, 255, 255, 0.9)';
             btn.style.color = isBtnActive ? 'white' : btnMode.color;
             btn.style.boxShadow = isBtnActive ? `0 2px 8px ${btnMode.color}40` : '0 1px 3px rgba(0,0,0,0.1)';
@@ -857,65 +821,7 @@ export function createQuickPacePanel() {
     `;
     panel.appendChild(separator2);
     
-    // 创建剧情走向按钮
-    const plotModes = [
-        { value: 'normal', text: '正常', color: '#2196F3' },
-        { value: 'twist', text: '转折', color: '#9C27B0' },
-        { value: 'nsfw', text: '成人', color: '#E91E63' }
-    ];
-    
-    // 创建剧情走向按钮
-    plotModes.forEach((mode) => {
-        const button = document.createElement('button');
-        button.textContent = mode.text;
-        button.setAttribute('data-plot-mode', mode.value);
-        button.title = `剧情走向: ${mode.text}`;
-        
-        // 检查当前设置是否匹配这个模式
-        const isActive = settings.plotMode === mode.value;
-        
-        button.style.cssText = `
-            padding: 6px 10px;
-            border: 1px solid ${mode.color};
-            border-radius: 8px;
-            background: ${isActive ? mode.color : 'rgba(255, 255, 255, 0.9)'};
-            color: ${isActive ? 'white' : mode.color};
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 600;
-            transition: all 0.2s ease;
-            min-width: 55px;
-            text-align: center;
-            line-height: 1.2;
-            margin: 1px;
-            box-shadow: ${isActive ? `0 2px 8px ${mode.color}40` : '0 1px 3px rgba(0,0,0,0.1)'};
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-        `;
-        
-        button.addEventListener('click', () => {
-            // 剧情走向是单选
-            settings.plotMode = mode.value;
-            saveSettingsDebounced();
-            
-            // 更新所有剧情走向按钮状态
-            panel.querySelectorAll('button[data-plot-mode]').forEach((btn) => {
-                const btnPlotMode = btn.getAttribute('data-plot-mode');
-                const btnMode = plotModes.find(m => m.value === btnPlotMode);
-                
-                if (btnMode) {
-                    const isBtnActive = settings.plotMode === btnMode.value;
-                    btn.style.background = isBtnActive ? btnMode.color : 'rgba(255, 255, 255, 0.9)';
-                    btn.style.color = isBtnActive ? 'white' : btnMode.color;
-                    btn.style.boxShadow = isBtnActive ? `0 2px 8px ${btnMode.color}40` : '0 1px 3px rgba(0,0,0,0.1)';
-                }
-            });
-            
-            console.log('[plotMode] 已切换到:', mode.text, '(', mode.value, ')');
-        });
-        
-        panel.appendChild(button);
-    });
+
     
     // 添加分隔符
     const separator = document.createElement('div');
