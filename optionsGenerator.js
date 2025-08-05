@@ -1177,7 +1177,22 @@ async function generateOptions() {
         const referenceMatch = content.match(/## 引用说明\s*\n(.*?)(?=\n##|$)/s);
         if (referenceMatch) {
             const referenceText = referenceMatch[1].trim();
-            console.log('[generateOptions] 引用说明:', referenceText);
+            console.log('[generateOptions] 📝 引用说明:', referenceText);
+            
+            // 解析具体的引用内容
+            const characterRefs = referenceText.match(/角色设定[：:]\s*参考了角色的([^，。\n]+)/g);
+            const worldBookRefs = referenceText.match(/世界书引用[：:]\s*参考了[""]([^""]+)[""]中的([^，。\n]+)/g);
+            
+            if (characterRefs) {
+                console.log('[generateOptions] 🎭 角色设定引用:', characterRefs.map(ref => ref.replace('角色设定：参考了角色的', '')));
+            }
+            
+            if (worldBookRefs) {
+                console.log('[generateOptions] 📚 世界书引用:', worldBookRefs.map(ref => {
+                    const match = ref.match(/参考了[""]([^""]+)[""]中的([^，。\n]+)/);
+                    return match ? `条目"${match[1]}" - ${match[2]}` : ref;
+                }));
+            }
         }
         
         // 记录上下文传输情况
@@ -1188,6 +1203,16 @@ async function generateOptions() {
             characterDetails: contextSummary.characterDetails,
             worldBookDetails: contextSummary.worldBookDetails
         });
+        
+        // 详细显示世界书条目信息
+        if (contextSummary.worldBookDetails.length > 0) {
+            console.log('[generateOptions] 📚 世界书条目详情:');
+            contextSummary.worldBookDetails.forEach((world, index) => {
+                console.log(`  ${index + 1}. "${world.title}"`);
+                console.log(`     内容: ${world.content.substring(0, 100)}...`);
+                console.log(`     关键词: ${world.keys}`);
+            });
+        }
         
         // 等待选项完全显示后再隐藏loading
         await displayOptions(suggestions, false); // false表示非流式显示
