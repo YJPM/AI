@@ -33,3 +33,63 @@
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
+
+/* ===== AI场景分析可视化面板 ===== */
+.context-visualization {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 380px;
+    max-height: 80vh;
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    overflow: auto;
+    border: 1px solid #eee;
+    font-size: 13px;
+    color: #222;
+}
+.viz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+.viz-title { font-weight: 600; font-size: 14px; }
+.viz-controls { display: flex; gap: 8px; }
+.viz-controls button {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    border-radius: 6px;
+    padding: 6px 8px;
+    color: white;
+    cursor: pointer;
+}
+.viz-content { padding: 16px; }
+.viz-section { margin-bottom: 18px; }
+.viz-section h4 { margin: 0 0 8px 0; font-size: 13px; color: #333; font-weight: 600; }
+.analysis-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.analysis-item { display: flex; align-items: center; padding: 8px; background: #f7f8fa; border-radius: 6px; }
+.analysis-icon { font-size: 18px; margin-right: 10px; }
+.analysis-label { font-size: 11px; color: #666; }
+.analysis-value { font-size: 13px; font-weight: 500; color: #333; }
+.flow-timeline { max-height: 120px; overflow-y: auto; }
+.flow-item { display: flex; align-items: flex-start; margin-bottom: 8px; }
+.flow-marker { display: flex; flex-direction: column; align-items: center; margin-right: 10px; }
+.flow-avatar { font-size: 15px; }
+.flow-time { font-size: 10px; color: #999; }
+.flow-content { flex: 1; }
+.flow-text { font-size: 12px; color: #333; margin-bottom: 2px; }
+.flow-meta { display: flex; gap: 8px; font-size: 10px; color: #999; }
+.reasoning-list { display: flex; flex-direction: column; gap: 10px; }
+.reasoning-item { padding: 8px; background: #f7f8fa; border-radius: 6px; }
+.reasoning-header { font-size: 12px; font-weight: 600; color: #333; margin-bottom: 4px; }
+.reasoning-content { margin-bottom: 4px; }
+.reasoning-text { font-size: 12px; color: #333; margin-bottom: 2px; }
+.reasoning-explanation { display: flex; align-items: flex-start; gap: 6px; }
+.explanation-icon { font-size: 12px; color: #FF9800; }
+.explanation-text { font-size: 11px; color: #666; }
