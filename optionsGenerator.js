@@ -546,8 +546,8 @@ class ContextVisualization {
             <div class="viz-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <div class="viz-title">🎯 AI场景分析</div>
                 <div class="viz-controls" style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
-                    <button class="viz-refresh" title="刷新分析">🔄</button>
                     <button class="viz-toggle" title="切换显示">👁️</button>
+                    <button class="viz-refresh" title="刷新分析">🔄</button>
                 </div>
             </div>
             <div class="viz-content">
@@ -572,25 +572,24 @@ class ContextVisualization {
     }
     setupDrag() {
         const header = this.visualizationContainer.querySelector('.viz-header');
-        let startX, startY, startLeft, startBottom;
+        let startX, startY, startLeft, startTop;
         let dragging = false;
         const onMouseMove = (e) => {
             if (!dragging) return;
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
             let newLeft = startLeft + dx;
-            let newBottom = startBottom - dy;
+            let newTop = startTop + dy;
             // 限制在窗口内
             const minLeft = 0;
-            const minBottom = 0;
+            const minTop = 0;
             const maxLeft = window.innerWidth - this.visualizationContainer.offsetWidth;
-            const maxBottom = window.innerHeight - this.visualizationContainer.offsetHeight;
+            const maxTop = window.innerHeight - this.visualizationContainer.offsetHeight;
             newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
-            newBottom = Math.max(minBottom, Math.min(newBottom, maxBottom));
+            newTop = Math.max(minTop, Math.min(newTop, maxTop));
             this.visualizationContainer.style.left = newLeft + 'px';
-            this.visualizationContainer.style.bottom = newBottom + 'px';
+            this.visualizationContainer.style.top = newTop + 'px';
             this.visualizationContainer.style.right = 'auto';
-            this.visualizationContainer.style.top = 'auto';
         };
         header.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return;
@@ -599,7 +598,7 @@ class ContextVisualization {
             startY = e.clientY;
             const rect = this.visualizationContainer.getBoundingClientRect();
             startLeft = rect.left;
-            startBottom = window.innerHeight - rect.bottom;
+            startTop = rect.top;
             document.body.style.userSelect = 'none';
             document.addEventListener('mousemove', onMouseMove);
         });
@@ -608,6 +607,19 @@ class ContextVisualization {
                 dragging = false;
                 document.body.style.userSelect = '';
                 document.removeEventListener('mousemove', onMouseMove);
+                // 拖动结束后自动吸附到右侧边缘
+                const rect = this.visualizationContainer.getBoundingClientRect();
+                const rightEdge = window.innerWidth - rect.right;
+                const leftEdge = rect.left;
+                if (rightEdge < leftEdge) {
+                    // 吸附到右侧
+                    this.visualizationContainer.style.left = '';
+                    this.visualizationContainer.style.right = '12px';
+                } else {
+                    // 吸附到左侧
+                    this.visualizationContainer.style.left = '12px';
+                    this.visualizationContainer.style.right = '';
+                }
             }
         });
     }
@@ -697,7 +709,13 @@ class ContextVisualization {
         const refreshBtn = this.visualizationContainer.querySelector('.viz-refresh');
         toggleBtn.addEventListener('click', () => {
             this.visualizationContainer.classList.toggle('collapsed');
-            toggleBtn.textContent = this.visualizationContainer.classList.contains('collapsed') ? '🔍' : '👁️';
+            toggleBtn.textContent = this.visualizationContainer.classList.contains('collapsed') ? '👁️' : '👁️';
+            // 展开时吸附右上角
+            if (!this.visualizationContainer.classList.contains('collapsed')) {
+                this.visualizationContainer.style.top = '80px';
+                this.visualizationContainer.style.right = '24px';
+                this.visualizationContainer.style.left = '';
+            }
         });
         refreshBtn.addEventListener('click', () => {
             if (typeof window.OptionsGenerator?.generateOptions === 'function') {
