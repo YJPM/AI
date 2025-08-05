@@ -285,13 +285,12 @@ class UIManager {
 
 
 
-async function displayOptions(options, isStreaming = false) {
+async function displayOptions(sceneAnalysis, options, isStreaming = false) {
     const oldContainer = document.getElementById('ti-options-container');
     if (oldContainer) oldContainer.remove();
     const sendForm = document.getElementById('send_form');
     if (!sendForm || !options || options.length === 0) {
         if (!options || options.length === 0) {
-            // 只有在没有其他提示时才显示错误提示
             const loadingContainer = document.getElementById('ti-loading-container');
             if (!loadingContainer) {
                 UIManager.showGeneratingUI('未能生成有效选项', 3000);
@@ -303,113 +302,146 @@ async function displayOptions(options, isStreaming = false) {
     container.id = 'ti-options-container';
     sendForm.insertAdjacentElement('beforebegin', container);
     const sleep = ms => new Promise(res => setTimeout(res, ms));
-    
-    // 获取当前发送模式
-    const settings = getSettings();
-    const sendMode = settings.sendMode || 'manual';
-    
-    // 在手动模式下，记录已选择的选项
-    if (sendMode === 'manual') {
-        // 重置选中的选项
-        OptionsGenerator.selectedOptions = [];
+
+    // ===== 上下文可视化区域 =====
+    if (sceneAnalysis) {
+        const viz = document.createElement('div');
+        viz.className = 'context-viz';
+        viz.innerHTML = `
+            <div class="viz-header">📊 当前场景分析</div>
+            <div class="viz-content">
+                <div class="viz-item"><span class="label">场景类型:</span><span class="value">${sceneAnalysis.scene_type || ''}</span></div>
+                <div class="viz-item"><span class="label">我的情绪:</span><span class="value">${sceneAnalysis.user_mood || sceneAnalysis.my_mood || ''}</span></div>
+                <div class="viz-item"><span class="label">叙事重点:</span><span class="value">${sceneAnalysis.narrative_focus || ''}</span></div>
+                <div class="viz-item"><span class="label">故事方向:</span><span class="value">${sceneAnalysis.story_direction || ''}</span></div>
+            </div>
+        `;
+        container.appendChild(viz);
     }
-    
-    // 设置容器样式，确保按钮布局
+
+    // ===== 选项展示区域 =====
     container.style.cssText = `
         display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+        flex-direction: column;
+        gap: 12px;
         margin: 10px 0;
     `;
-    
-    for (const text of options) {
+    const optionsRow = document.createElement('div');
+    optionsRow.style.display = 'flex';
+    optionsRow.style.flexWrap = 'wrap';
+    optionsRow.style.gap = '8px';
+    container.appendChild(optionsRow);
+
+    // ===== 反馈统计面板（可选） =====
+    const feedbackStats = document.createElement('div');
+    feedbackStats.className = 'feedback-panel';
+    feedbackStats.style.display = 'none'; // 默认隐藏
+    feedbackStats.innerHTML = `
+        <div class="feedback-header"><b>📊 选项反馈统计</b></div>
+        <div class="feedback-stats">
+            <span>👍有用: <span id="useful-count">0</span></span>
+            <span>👎无用: <span id="useless-count">0</span></span>
+            <span>⚠️报告: <span id="report-count">0</span></span>
+        </div>
+    `;
+    container.appendChild(feedbackStats);
+
+    // ===== 选项按钮及反馈 =====
+    options.forEach((text, idx) => {
+        const btnWrap = document.createElement('div');
+        btnWrap.style.display = 'flex';
+        btnWrap.style.flexDirection = 'column';
+        btnWrap.style.alignItems = 'center';
+        btnWrap.style.margin = '4px';
+        btnWrap.style.flex = '0 0 calc(25% - 6px)';
+        // 选项按钮
         const btn = document.createElement('button');
         btn.className = 'qr--button menu_button interactable ti-options-capsule';
-        btn.style.cssText = `
-            flex: 0 0 calc(25% - 6px);
-            min-width: 150px;
-            padding: 8px 12px;
-            border: 1px solid var(--SmartThemeBorderColor, #ccc);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: none;
-            word-wrap: break-word;
-            white-space: normal;
-        `;
-        
-        // 添加轻微的hover效果
-        btn.addEventListener('mouseover', () => {
-            btn.style.borderColor = 'rgb(28 35 48)';
-            btn.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-        });
-        
-        btn.addEventListener('mouseout', () => {
-            btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
-            btn.style.boxShadow = 'none';
-        });
-        container.appendChild(btn);
-        
-        if (isStreaming) {
-            // 流式显示：快速打字机效果
-            for (let i = 0; i < text.length; i++) {
-                btn.textContent = text.substring(0, i + 1);
-                await sleep(1); // 从15ms减少到5ms，加快速度
-            }
-        } else {
-            // 非流式显示：一次性显示完整文字
-            btn.textContent = text;
-        }
-        
+        btn.textContent = text;
+        btn.style.cssText = `min-width: 150px; padding: 8px 12px; margin-bottom: 4px;`;
         btn.onclick = () => {
             const textarea = document.querySelector('#send_textarea, .send_textarea');
             const sendButton = document.querySelector('#send_but, .send_but, button[onclick*="send"], button[onclick*="Send"]');
-            
             if (textarea) {
-                if (sendMode === 'manual') {
-                    // 手动模式：多选功能
-                    const isSelected = OptionsGenerator.selectedOptions.includes(text);
-                    
-                    if (isSelected) {
-                        // 取消选择
-                        OptionsGenerator.selectedOptions = OptionsGenerator.selectedOptions.filter(option => option !== text);
-                        btn.style.background = 'var(--SmartThemeBackgroundColor, #fff)';
-                        btn.style.color = 'var(--SmartThemeBodyColor, #222)';
-                        btn.style.borderColor = 'var(--SmartThemeBorderColor, #ccc)';
-                    } else {
-                        // 添加选择
-                        OptionsGenerator.selectedOptions.push(text);
-                        btn.style.background = 'var(--SmartThemeBlurple, #007bff)';
-                        btn.style.color = 'white';
-                        btn.style.borderColor = 'var(--SmartThemeBlurple, #007bff)';
-                    }
-                    
-                    // 拼接选中的选项到输入框
-                    if (OptionsGenerator.selectedOptions.length > 0) {
-                        textarea.value = OptionsGenerator.selectedOptions.join(' ');
-                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                        textarea.focus();
-                    } else {
-                        textarea.value = '';
-                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                        textarea.focus();
-                    }
-                    
-                    // 手动模式下不清除选项容器
-                } else {
-                    // 自动模式：原有行为
-                    textarea.value = text;
-                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                    textarea.focus();
-                    
-                    // 根据发送模式决定是否自动发送
-                    if (sendMode === 'auto' && sendButton) {
-                        sendButton.click();
-                    }
-                    container.remove();
-                }
+                textarea.value = text;
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                textarea.focus();
+                if (sendButton) sendButton.click();
+                container.remove();
             }
         };
+        btnWrap.appendChild(btn);
+        // 反馈按钮
+        const feedbackDiv = document.createElement('div');
+        feedbackDiv.className = 'option-feedback';
+        feedbackDiv.style.display = 'flex';
+        feedbackDiv.style.gap = '4px';
+        feedbackDiv.innerHTML = `
+            <button class="feedback-btn useful" title="有用">👍</button>
+            <button class="feedback-btn useless" title="无用">👎</button>
+            <button class="feedback-btn report" title="报告">⚠️</button>
+        `;
+        feedbackDiv.querySelectorAll('button').forEach(btnEl => {
+            btnEl.onclick = (e) => {
+                const type = btnEl.classList.contains('useful') ? 'useful' : btnEl.classList.contains('useless') ? 'useless' : 'report';
+                submitFeedback(idx, text, type, sceneAnalysis);
+                btnEl.style.background = type === 'useful' ? '#4CAF50' : type === 'useless' ? '#f44336' : '#ff9800';
+                btnEl.style.color = 'white';
+                setTimeout(() => {
+                    btnEl.style.background = '';
+                    btnEl.style.color = '';
+                }, 1200);
+                updateFeedbackStats(feedbackStats);
+            };
+        });
+        btnWrap.appendChild(feedbackDiv);
+        optionsRow.appendChild(btnWrap);
+    });
+    // 初始统计
+    updateFeedbackStats(feedbackStats);
+}
+
+// ===== 反馈存储与统计 =====
+function submitFeedback(optionIndex, optionText, feedbackType, sceneAnalysis) {
+    const feedbackData = {
+        timestamp: Date.now(),
+        optionIndex,
+        optionText,
+        feedbackType,
+        sceneAnalysis,
+        userAgent: navigator.userAgent,
+        sessionId: getSessionId()
+    };
+    // 存储到本地
+    saveFeedbackLocally(feedbackData);
+    // 预留：可上传到服务器
+    // updateUserPreferences(feedbackData); // 预留自适应学习
+    console.log('📝 反馈已记录:', feedbackData);
+}
+function saveFeedbackLocally(feedbackData) {
+    const existing = JSON.parse(localStorage.getItem('ai_assistant_feedback') || '[]');
+    existing.push(feedbackData);
+    if (existing.length > 1000) existing.splice(0, existing.length - 1000);
+    localStorage.setItem('ai_assistant_feedback', JSON.stringify(existing));
+}
+function updateFeedbackStats(panel) {
+    if (!panel) return;
+    const feedback = JSON.parse(localStorage.getItem('ai_assistant_feedback') || '[]');
+    const useful = feedback.filter(f => f.feedbackType === 'useful').length;
+    const useless = feedback.filter(f => f.feedbackType === 'useless').length;
+    const report = feedback.filter(f => f.feedbackType === 'report').length;
+    panel.querySelector('#useful-count').textContent = useful;
+    panel.querySelector('#useless-count').textContent = useless;
+    panel.querySelector('#report-count').textContent = report;
+    panel.style.display = 'block';
+}
+function getSessionId() {
+    let sid = localStorage.getItem('ai_assistant_session_id');
+    if (!sid) {
+        sid = Math.random().toString(36).slice(2) + Date.now();
+        localStorage.setItem('ai_assistant_session_id', sid);
     }
+    return sid;
 }
 
 // 简化上下文提取 - 只获取最近10条消息，不传输角色卡和世界书
@@ -659,15 +691,34 @@ async function generateOptions() {
         
         console.log('[generateOptions] 非流式生成完成，内容长度:', content.length);
         
-        // 解析建议
-        const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+        // 解析建议和场景分析
+        let sceneAnalysis = null;
+        let suggestions = [];
+        if (apiType === 'gemini') {
+            content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        } else {
+            content = data.choices?.[0]?.message?.content || '';
+        }
+        // 尝试提取场景分析（JSON）
+        const sceneMatch = content.match(/场景分析[：:]?\s*([\s\S]*?)建议列表[：:]?/);
+        if (sceneMatch) {
+            try {
+                // 兼容多种格式，尝试提取JSON
+                const jsonText = sceneMatch[1].trim();
+                sceneAnalysis = JSON.parse(jsonText);
+            } catch (e) {
+                // 解析失败，忽略
+            }
+        }
+        // 提取建议
+        suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
         console.log('[generateOptions] 解析到选项数量:', suggestions.length);
         console.log('[generateOptions] 选项内容:', suggestions);
         
 
         
         // 等待选项完全显示后再隐藏loading
-        await displayOptions(suggestions, false); // false表示非流式显示
+        await displayOptions(sceneAnalysis, suggestions, false); // false表示非流式显示
         hidePacePanelLoading();
     } catch (error) {
         console.error('[generateOptions] 生成选项时出错:', error);
