@@ -461,45 +461,118 @@ async function getContextCompatible(limit = 5) {
     let worldInfo = null;
     let messages = [];
     let systemPrompt = null;
+    let chatSummary = null;
     
-    // 方案1: 尝试SillyTavern原生API
-    console.log('\n--- 方案1: 尝试SillyTavern原生API ---');
-    if (typeof window.SillyTavern?.getContext === 'function') {
-        try {
-            const result = await window.SillyTavern.getContext({ tokenLimit: 8192 });
-            console.log('✅ SillyTavern.getContext() 成功');
-            console.log('📄 返回数据类型:', typeof result);
-            console.log('📄 返回数据结构:', Object.keys(result || {}));
-            
-            // 提取角色信息
-            if (result?.character) {
-                characterInfo = result.character;
-                console.log('✅ 从SillyTavern获取到角色信息');
+    // 方案1: 使用SillyTavern脚本命令获取角色信息
+    console.log('\n--- 方案1: 使用SillyTavern脚本命令获取角色信息 ---');
+    
+    // 获取角色信息 - 使用 getcharbook 命令
+    try {
+        // 尝试获取角色卡信息
+        if (typeof window.getcharbook === 'function') {
+            console.log('🔍 尝试使用 getcharbook 获取角色信息...');
+            const charBook = window.getcharbook();
+            if (charBook) {
+                characterInfo = {
+                    name: charBook.name || '未知角色',
+                    description: charBook.description || charBook.personality || '无描述',
+                    personality: charBook.personality || charBook.description || '无描述',
+                    scenario: charBook.scenario || '无场景',
+                    first_mes: charBook.first_mes || '无首条消息',
+                    mes_example: charBook.mes_example || '无对话示例'
+                };
+                console.log('✅ 通过 getcharbook 获取到角色信息');
             }
-            
-            // 提取世界书信息
-            if (result?.world_info && Array.isArray(result.world_info)) {
-                worldInfo = result.world_info;
-                console.log('✅ 从SillyTavern获取到世界书信息，数量:', worldInfo.length);
-            }
-            
-            // 提取消息
-            if (result?.messages && Array.isArray(result.messages)) {
-                messages = result.messages.slice(-limit);
-                console.log('✅ 从SillyTavern获取到消息，数量:', messages.length);
-            }
-            
-            // 提取系统提示词
-            if (result?.system_prompt) {
-                systemPrompt = result.system_prompt;
-                console.log('✅ 从SillyTavern获取到系统提示词');
-            }
-            
-        } catch (error) {
-            console.error('❌ SillyTavern.getContext() 失败:', error);
         }
-    } else {
-        console.log('❌ SillyTavern.getContext() 不可用');
+        
+        // 如果 getcharbook 不可用，尝试其他方法
+        if (!characterInfo && window.character) {
+            console.log('🔍 尝试从 window.character 获取角色信息...');
+            const char = window.character;
+            characterInfo = {
+                name: char.name || '未知角色',
+                description: char.description || char.personality || '无描述',
+                personality: char.personality || char.description || '无描述',
+                scenario: char.scenario || '无场景',
+                first_mes: char.first_mes || '无首条消息',
+                mes_example: char.mes_example || '无对话示例'
+            };
+            console.log('✅ 从 window.character 获取到角色信息');
+        }
+        
+    } catch (error) {
+        console.error('❌ 获取角色信息失败:', error);
+    }
+    
+    // 获取世界书信息 - 使用多种脚本命令
+    try {
+        console.log('🔍 尝试获取世界书信息...');
+        
+        // 检查世界书状态
+        if (typeof window.world === 'function') {
+            try {
+                const worldStatus = window.world();
+                console.log('🌍 世界书状态:', worldStatus);
+            } catch (error) {
+                console.log('⚠️ 无法获取世界书状态:', error.message);
+            }
+        }
+        
+        // 尝试获取聊天世界书
+        if (typeof window.getchatbook === 'function') {
+            const chatBook = window.getchatbook();
+            if (chatBook && Array.isArray(chatBook) && chatBook.length > 0) {
+                worldInfo = chatBook;
+                console.log('✅ 通过 getchatbook 获取到世界书信息，数量:', worldInfo.length);
+            }
+        }
+        
+        // 尝试获取角色世界书
+        if ((!worldInfo || worldInfo.length === 0) && typeof window.getpersonabook === 'function') {
+            const personaBook = window.getpersonabook();
+            if (personaBook && Array.isArray(personaBook) && personaBook.length > 0) {
+                worldInfo = personaBook;
+                console.log('✅ 通过 getpersonabook 获取到世界书信息，数量:', worldInfo.length);
+            }
+        }
+        
+        // 尝试获取全局世界书
+        if ((!worldInfo || worldInfo.length === 0) && typeof window.getglobalbooks === 'function') {
+            const globalBooks = window.getglobalbooks();
+            if (globalBooks && Array.isArray(globalBooks) && globalBooks.length > 0) {
+                worldInfo = globalBooks;
+                console.log('✅ 通过 getglobalbooks 获取到世界书信息，数量:', worldInfo.length);
+            }
+        }
+        
+        // 尝试使用 findentry 查找特定条目
+        if ((!worldInfo || worldInfo.length === 0) && typeof window.findentry === 'function') {
+            try {
+                const commonEntries = ['character', 'world', 'setting', 'background', 'location', 'story'];
+                for (const entry of commonEntries) {
+                    const foundEntry = window.findentry(entry);
+                    if (foundEntry) {
+                        if (!worldInfo) worldInfo = [];
+                        worldInfo.push(foundEntry);
+                        console.log(`✅ 通过 findentry 找到条目 "${entry}":`, foundEntry.title || '未命名');
+                    }
+                }
+            } catch (error) {
+                console.log('⚠️ findentry 查找失败:', error.message);
+            }
+        }
+        
+        // 如果脚本命令不可用，尝试从全局变量获取
+        if ((!worldInfo || worldInfo.length === 0) && window.world_info) {
+            const worldInfoData = window.world_info;
+            if (Array.isArray(worldInfoData)) {
+                worldInfo = worldInfoData;
+                console.log('✅ 从 window.world_info 获取到世界书信息，数量:', worldInfo.length);
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ 获取世界书信息失败:', error);
     }
     
     // 方案2: 尝试其他SillyTavern API
@@ -769,62 +842,113 @@ async function getContextCompatible(limit = 5) {
         }
     }
     
-    // 从DOM获取消息
-    if (messages.length === 0) {
-        console.log('🔍 从DOM查找消息...');
-        const messageSelectors = [
-            '#chat .mes',
-            '.chat .message',
-            '.message',
-            '.mes',
-            '[data-message]'
-        ];
+    // 获取消息历史 - 使用多种方法
+    try {
+        console.log('🔍 尝试获取消息历史...');
         
-        for (const selector of messageSelectors) {
-            const messageElements = document.querySelectorAll(selector);
-            if (messageElements.length > 0) {
-                console.log(`✅ 找到消息元素: ${selector}，数量: ${messageElements.length}`);
+        // 尝试使用 messages 命令获取消息
+        if (typeof window.messages === 'function') {
+            console.log('🔍 尝试使用 messages 命令获取消息...');
+            const messageHistory = window.messages();
+            if (messageHistory && Array.isArray(messageHistory) && messageHistory.length > 0) {
+                // 限制消息数量
+                messages = messageHistory.slice(-limit);
+                console.log('✅ 通过 messages 命令获取到消息，数量:', messages.length);
                 
-                messageElements.forEach((mes, index) => {
-                    // 判断角色
-                    let role = 'user';
-                    if (mes.classList.contains('swiper-slide') || 
-                        mes.classList.contains('assistant') || 
-                        mes.classList.contains('ai') ||
-                        mes.querySelector('.avatar') ||
-                        mes.getAttribute('data-is-user') === 'false' ||
-                        mes.getAttribute('data-role') === 'assistant') {
-                        role = 'assistant';
-                    }
-                    
-                    // 获取消息内容
-                    const contentSelectors = ['.mes_text', '.message', '.text', '.content'];
-                    let content = null;
-                    for (const contentSelector of contentSelectors) {
-                        const contentElement = mes.querySelector(contentSelector);
-                        if (contentElement && contentElement.textContent.trim()) {
-                            content = contentElement.textContent.trim();
-                            break;
-                        }
-                    }
-                    
-                    // 如果没有找到内容，使用元素本身的文本
-                    if (!content) {
-                        content = mes.textContent.trim();
-                    }
-                    
-                    if (content && content.length > 0) {
-                        messages.push({ role, content });
-                    }
-                });
-                
+                // 记录最新消息信息
                 if (messages.length > 0) {
-                    messages = messages.slice(-limit);
-                    console.log('✅ 从DOM获取到消息，数量:', messages.length);
-                    break;
+                    const lastMessage = messages[messages.length - 1];
+                    console.log('📝 最新消息:', {
+                        role: lastMessage.role || '未知',
+                        content: lastMessage.content ? lastMessage.content.substring(0, 100) + '...' : '无内容'
+                    });
                 }
             }
         }
+        
+        // 如果 messages 命令不可用，尝试从全局变量获取
+        if (messages.length === 0 && window.chat && Array.isArray(window.chat)) {
+            messages = window.chat.slice(-limit);
+            console.log('✅ 从 window.chat 获取到消息，数量:', messages.length);
+        }
+        
+        // 如果还是没有消息，尝试从DOM获取
+        if (messages.length === 0) {
+            console.log('🔍 从DOM查找消息...');
+            const messageSelectors = [
+                '#chat .mes',
+                '.chat .message',
+                '.message',
+                '.mes',
+                '[data-message]'
+            ];
+            
+            for (const selector of messageSelectors) {
+                const messageElements = document.querySelectorAll(selector);
+                if (messageElements.length > 0) {
+                    console.log(`✅ 找到消息元素: ${selector}，数量: ${messageElements.length}`);
+                    
+                    messageElements.forEach((mes, index) => {
+                        // 判断角色
+                        let role = 'user';
+                        if (mes.classList.contains('swiper-slide') || 
+                            mes.classList.contains('assistant') || 
+                            mes.classList.contains('ai') ||
+                            mes.querySelector('.avatar') ||
+                            mes.getAttribute('data-is-user') === 'false' ||
+                            mes.getAttribute('data-role') === 'assistant') {
+                            role = 'assistant';
+                        }
+                        
+                        // 获取消息内容
+                        const contentSelectors = ['.mes_text', '.message', '.text', '.content'];
+                        let content = null;
+                        for (const contentSelector of contentSelectors) {
+                            const contentElement = mes.querySelector(contentSelector);
+                            if (contentElement && contentElement.textContent.trim()) {
+                                content = contentElement.textContent.trim();
+                                break;
+                            }
+                        }
+                        
+                        // 如果没有找到内容，使用元素本身的文本
+                        if (!content) {
+                            content = mes.textContent.trim();
+                        }
+                        
+                        if (content && content.length > 0) {
+                            messages.push({ role, content });
+                        }
+                    });
+                    
+                    if (messages.length > 0) {
+                        messages = messages.slice(-limit);
+                        console.log('✅ 从DOM获取到消息，数量:', messages.length);
+                        break;
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('❌ 获取消息历史失败:', error);
+    }
+    
+    // 尝试获取聊天摘要
+    try {
+        console.log('🔍 尝试获取聊天摘要...');
+        
+        // 检查是否有聊天摘要功能
+        if (window.summary) {
+            chatSummary = window.summary;
+            console.log('✅ 获取到聊天摘要:', chatSummary.substring(0, 200) + '...');
+        } else if (window.chat_summary) {
+            chatSummary = window.chat_summary;
+            console.log('✅ 获取到聊天摘要:', chatSummary.substring(0, 200) + '...');
+        } else {
+            console.log('⚠️ 未找到聊天摘要');
+        }
+    } catch (error) {
+        console.log('⚠️ 获取聊天摘要失败:', error.message);
     }
     
     // 方案4: 尝试其他可能的API
@@ -859,6 +983,7 @@ async function getContextCompatible(limit = 5) {
         character: characterInfo,
         world_info: safeWorldInfo,
         system_prompt: systemPrompt,
+        chat_summary: chatSummary,
         original_message_count: messages.length
     };
     
@@ -868,6 +993,7 @@ async function getContextCompatible(limit = 5) {
     console.log('  - 角色信息:', !!characterInfo);
     console.log('  - 世界书数量:', safeWorldInfo.length);
     console.log('  - 系统提示词:', !!systemPrompt);
+    console.log('  - 聊天摘要:', !!chatSummary);
     
     if (characterInfo) {
         console.log('  - 角色名称:', characterInfo.name || '未设置');
@@ -877,7 +1003,6 @@ async function getContextCompatible(limit = 5) {
         console.log('  - 世界书标题:', safeWorldInfo.map(w => w.title || '未命名').join(', '));
     }
     
-    return finalContext;
     return finalContext;
 }
 
@@ -949,25 +1074,32 @@ async function generateOptions() {
             });
         }
         
-        // 3. 添加系统提示词
+        // 3. 添加聊天摘要
+        if (context.chat_summary) {
+            fullContextText += '## 聊天摘要\n';
+            fullContextText += context.chat_summary + '\n\n';
+        }
+        
+        // 4. 添加系统提示词
         if (context.system_prompt) {
             fullContextText += '## 系统提示词\n';
             fullContextText += context.system_prompt + '\n\n';
         }
         
-        // 4. 添加最近对话消息
+        // 5. 添加最近对话消息
         if (context.messages && context.messages.length > 0) {
             fullContextText += '## 最近对话历史\n';
             fullContextText += context.messages.map(m => `[${m.role}] ${m.content}`).join('\n');
             fullContextText += '\n\n';
         }
         
-        // 5. 添加统计信息
+        // 6. 添加统计信息
         fullContextText += '## 上下文统计\n';
         fullContextText += `原始消息总数: ${context.original_message_count || 0}\n`;
         fullContextText += `当前使用消息数: ${context.messages ? context.messages.length : 0}\n`;
         fullContextText += `包含角色设定: ${!!context.character}\n`;
         fullContextText += `包含世界书: ${!!(context.world_info && Array.isArray(context.world_info) && context.world_info.length > 0)}\n`;
+        fullContextText += `包含聊天摘要: ${!!context.chat_summary}\n`;
         fullContextText += `包含系统提示词: ${!!context.system_prompt}\n\n`;
         
         const prompt = promptTemplate

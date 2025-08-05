@@ -13,7 +13,14 @@
 ### 🔧 修改
 - **optionsGenerator.js**:
   - 移除 `testTavernHelper()` 函数
-  - 优化 `getContextCompatible()` 函数，移除 TavernHelper 相关代码
+  - **完全重写 `getContextCompatible()` 函数**: 使用 SillyTavern 脚本命令获取数据
+- 使用 `getcharbook` 命令获取角色信息
+- 使用 `getchatbook`、`getpersonabook`、`getglobalbooks` 命令获取世界书信息
+- 使用 `messages` 命令获取消息历史
+- **新增世界书状态检查**: 使用 `world` 命令检查世界书状态
+- **新增条目查找功能**: 使用 `findentry` 命令查找特定世界书条目
+- **新增聊天摘要获取**: 支持获取聊天摘要信息
+- **增强消息处理**: 记录最新消息信息，支持多种消息获取方式
   - 更新 `diagnoseInterfaces()` 函数，专注于 SillyTavern 原生 API
   - **修复 worldInfo 类型错误**: 确保 worldInfo 始终是数组类型
   - 增强类型安全检查，防止 `worldInfo.map is not a function` 错误
@@ -66,6 +73,8 @@
 - 添加新的诊断命令和工具使用说明
 - 新增提示模板使用指南 (PROMPT_GUIDE.md)
 - 添加模板类型说明和使用技巧
+- 新增 SillyTavern 脚本命令测试脚本 (test-script-commands.js)
+- 参考 [SillyTavern 脚本命令自查手册](https://rentry.org/sillytavern-script-book#getcharbook) 更新数据获取方法
 
 ### ⚠️ 重要变更
 - **不再需要安装 TavernHelper 扩展**
