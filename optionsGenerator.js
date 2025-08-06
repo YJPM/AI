@@ -231,17 +231,26 @@ class UIManager {
         
         // 添加事件监听器
         btn.addEventListener('mouseover', () => {
+            console.log('[createOptionButton] mouseover 事件触发', { text, index, hasOptionTooltip: !!optionTooltip });
             btn.style.background = '#f8f9fa';
             btn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
             btn.style.transform = 'translateY(-1px)';
             
+            // 确保悬浮提示已初始化
+            if (!optionTooltip) {
+                initOptionTooltip();
+            }
+            
             // 显示思维链分析
             if (optionTooltip) {
                 optionTooltip.show(btn, index);
+            } else {
+                console.error('[createOptionButton] optionTooltip 初始化失败');
             }
         });
         
         btn.addEventListener('mouseout', () => {
+            console.log('[createOptionButton] mouseout 事件触发');
             btn.style.background = 'rgba(255, 255, 255, 0.9)';
             btn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.08)';
             btn.style.transform = 'translateY(0)';
@@ -615,16 +624,32 @@ class OptionTooltip {
     }
 
     show(button, optionIndex) {
+        console.log('[OptionTooltip] show 被调用', { optionIndex, hasTooltip: !!this.tooltip, hasAnalysis: !!this.currentAnalysis, hasOptions: !!this.currentOptions });
+        
         if (!this.tooltip) {
             this.createTooltip();
         }
         
-        if (!this.currentAnalysis || !this.currentOptions[optionIndex]) {
+        // 如果没有分析数据，提供默认分析
+        if (!this.currentAnalysis) {
+            this.currentAnalysis = {
+                scene_type: '对话场景',
+                user_mood: '平静',
+                narrative_focus: '推进剧情',
+                story_direction: '继续发展',
+                character_motivation: '探索和互动'
+            };
+        }
+        
+        if (!this.currentOptions || !this.currentOptions[optionIndex]) {
+            console.log('[OptionTooltip] 没有找到选项数据', { currentOptions: this.currentOptions, optionIndex });
             return;
         }
 
         const option = this.currentOptions[optionIndex];
         const thinkingChain = this.generateThinkingChain(option, this.currentAnalysis);
+        
+        console.log('[OptionTooltip] 生成思维链', { option, thinkingChain });
         
         this.tooltip.innerHTML = `
             <div style="margin-bottom: 8px; font-weight: 600; color: #ffd700;">🧠 思维链分析</div>
@@ -651,6 +676,8 @@ class OptionTooltip {
         this.tooltip.style.top = top + 'px';
         this.tooltip.style.opacity = '1';
         this.tooltip.style.transform = 'translateY(0)';
+        
+        console.log('[OptionTooltip] 提示已显示', { left, top, opacity: this.tooltip.style.opacity });
     }
 
     hide() {
@@ -830,8 +857,14 @@ async function generateOptions() {
             }
         }
         // 初始化并更新悬浮提示
+        console.log('[generateOptions] 初始化悬浮提示', { analysis, suggestionsCount: suggestions.length });
         initOptionTooltip();
-        optionTooltip.updateAnalysis(analysis, suggestions);
+        if (optionTooltip) {
+            optionTooltip.updateAnalysis(analysis, suggestions);
+            console.log('[generateOptions] 悬浮提示更新完成');
+        } else {
+            console.error('[generateOptions] optionTooltip 初始化失败');
+        }
         
         // 等待选项完全显示后再隐藏loading
         await displayOptions(suggestions, false); // false表示非流式显示
@@ -1160,6 +1193,63 @@ export class OptionsGenerator {
 
 // 将OptionsGenerator导出到全局作用域，以便在控制台中调用
 window.OptionsGenerator = OptionsGenerator;
+
+// 添加测试悬浮提示的函数
+window.testOptionTooltip = function() {
+    console.log('[testOptionTooltip] 开始测试悬浮提示功能');
+    
+    // 初始化悬浮提示
+    initOptionTooltip();
+    
+    if (!optionTooltip) {
+        console.error('[testOptionTooltip] optionTooltip 初始化失败');
+        return;
+    }
+    
+    // 设置测试数据
+    const testAnalysis = {
+        scene_type: '测试场景',
+        user_mood: '好奇',
+        narrative_focus: '探索新功能',
+        story_direction: '向前发展',
+        character_motivation: '测试和验证'
+    };
+    
+    const testOptions = ['测试选项1', '测试选项2', '测试选项3'];
+    
+    optionTooltip.updateAnalysis(testAnalysis, testOptions);
+    
+    // 创建一个测试按钮
+    const testButton = document.createElement('button');
+    testButton.textContent = '测试悬浮提示';
+    testButton.style.cssText = `
+        position: fixed;
+        top: 100px;
+        left: 100px;
+        z-index: 9999;
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    `;
+    
+    testButton.addEventListener('mouseover', () => {
+        console.log('[testOptionTooltip] 测试按钮悬浮');
+        optionTooltip.show(testButton, 0);
+    });
+    
+    testButton.addEventListener('mouseout', () => {
+        console.log('[testOptionTooltip] 测试按钮离开');
+        optionTooltip.hide();
+    });
+    
+    document.body.appendChild(testButton);
+    
+    console.log('[testOptionTooltip] 测试按钮已创建，悬浮在按钮上查看效果');
+    console.log('[testOptionTooltip] 测试数据:', { testAnalysis, testOptions });
+};
 
 // 输入消息后自动清除面板和选项
 if (typeof eventSource !== 'undefined' && eventSource.on) {
