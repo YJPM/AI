@@ -234,12 +234,22 @@ class UIManager {
             btn.style.background = '#f8f9fa';
             btn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
             btn.style.transform = 'translateY(-1px)';
+            
+            // 显示思维链分析
+            if (optionTooltip) {
+                optionTooltip.show(btn, index);
+            }
         });
         
         btn.addEventListener('mouseout', () => {
             btn.style.background = 'rgba(255, 255, 255, 0.9)';
             btn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.08)';
             btn.style.transform = 'translateY(0)';
+            
+            // 隐藏思维链分析
+            if (optionTooltip) {
+                optionTooltip.hide();
+            }
         });
         
         btn.addEventListener('click', () => {
@@ -530,221 +540,148 @@ async function getContextCompatible(limit = 10) {
     return finalContext;
 }
 
-// ===== 上下文可视化组件 =====
-class ContextVisualization {
+// 移除整个ContextVisualization类，替换为悬浮提示功能
+class OptionTooltip {
     constructor() {
-        this.currentContext = null;
-        this.visualizationContainer = null;
-        this.isDragging = false;
-        this.offsetX = 0;
-        this.offsetY = 0;
+        this.tooltip = null;
+        this.currentAnalysis = null;
+        this.currentOptions = [];
     }
-    createMainVisualization() {
-        const container = document.createElement('div');
-        container.className = 'context-visualization';
-        container.innerHTML = `
-            <div class="viz-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <div class="viz-title">🎯 AI场景分析</div>
-                <div class="viz-controls" style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
-                    <button class="viz-toggle" title="切换显示">👁️</button>
-                </div>
-            </div>
-            <div class="viz-content">
-                <div class="viz-section scene-analysis">
-                    <h4>📊 场景分析</h4>
-                    <div class="analysis-grid"></div>
-                </div>
-                <div class="viz-section option-reasoning">
-                    <h4>💡 选项推理</h4>
-                    <div class="reasoning-list"></div>
-                </div>
-            </div>
+
+    createTooltip() {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'option-tooltip';
+        tooltip.style.cssText = `
+            position: fixed;
+            z-index: 10000;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 16px;
+            border-radius: 12px;
+            max-width: 400px;
+            font-size: 14px;
+            line-height: 1.5;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            pointer-events: none;
         `;
-        this.visualizationContainer = container;
-        this.setupEventListeners();
-        this.setupDrag();
-        return container;
+        this.tooltip = tooltip;
+        document.body.appendChild(tooltip);
+        return tooltip;
     }
-    setupDrag() {
-        const header = this.visualizationContainer.querySelector('.viz-header');
-        let startX, startY, startLeft, startTop;
-        let dragging = false;
-        const onMouseMove = (e) => {
-            if (!dragging) return;
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-            let newLeft = startLeft + dx;
-            let newTop = startTop + dy;
-            // 限制在窗口内
-            const minLeft = 0;
-            const minTop = 0;
-            const maxLeft = window.innerWidth - this.visualizationContainer.offsetWidth;
-            const maxTop = window.innerHeight - this.visualizationContainer.offsetHeight;
-            newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
-            newTop = Math.max(minTop, Math.min(newTop, maxTop));
-            this.visualizationContainer.style.left = newLeft + 'px';
-            this.visualizationContainer.style.top = newTop + 'px';
-            this.visualizationContainer.style.right = 'auto';
-        };
-        header.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return;
-            dragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            const rect = this.visualizationContainer.getBoundingClientRect();
-            startLeft = rect.left;
-            startTop = rect.top;
-            document.body.style.userSelect = 'none';
-            document.addEventListener('mousemove', onMouseMove);
-        });
-        document.addEventListener('mouseup', () => {
-            if (dragging) {
-                dragging = false;
-                document.body.style.userSelect = '';
-                document.removeEventListener('mousemove', onMouseMove);
-                // 拖动结束后自动吸附到右侧边缘
-                const rect = this.visualizationContainer.getBoundingClientRect();
-                const rightEdge = window.innerWidth - rect.right;
-                const leftEdge = rect.left;
-                if (rightEdge < leftEdge) {
-                    // 吸附到右侧
-                    this.visualizationContainer.style.left = '';
-                    this.visualizationContainer.style.right = '12px';
-                } else {
-                    // 吸附到左侧
-                    this.visualizationContainer.style.left = '12px';
-                    this.visualizationContainer.style.right = '';
-                }
-            }
-        });
+
+    updateAnalysis(analysis, options) {
+        this.currentAnalysis = analysis;
+        this.currentOptions = options;
     }
-    updateSceneAnalysis(analysis) {
-        const analysisGrid = this.visualizationContainer.querySelector('.analysis-grid');
-        const analysisItems = [
-            { key: 'scene_type', label: '场景类型', icon: '🎭' },
-            { key: 'user_mood', label: '我的情绪', icon: '😊' },
-            { key: 'narrative_focus', label: '叙事重点', icon: '🎯' },
-            { key: 'character_motivation', label: '我的动机', icon: '💪' },
-            { key: 'relationship_dynamics', label: '关系状态', icon: '🤝' },
-            { key: 'story_direction', label: '故事方向', icon: '📈' },
-            { key: 'time_progression', label: '时间推进', icon: '⏩' },
-            { key: 'scene_transition', label: '场景转换', icon: '🚪' }
-        ];
-        analysisGrid.innerHTML = analysisItems.filter(item => analysis[item.key]).map(item => `
-            <div class="analysis-item">
-                <div class="analysis-icon">${item.icon}</div>
-                <div class="analysis-content">
-                    <div class="analysis-label">${item.label}</div>
-                    <div class="analysis-value" data-key="${item.key}">
-                        ${analysis[item.key] || '未分析'}
-                    </div>
-                </div>
-            </div>
-        `).join('');
-    }
-    updateOptionReasoning(options, analysis) {
-        const reasoningList = this.visualizationContainer.querySelector('.reasoning-list');
-        const reasoningItems = options.map((option, index) => {
-            const detail = this.generateDetailedExplanation(option, analysis);
-            return `
-                <div class="reasoning-item" data-option="${index}">
-                    <div class="reasoning-header">
-                        <span class="reasoning-number">选项 ${index + 1}</span>
-                    </div>
-                    <div class="reasoning-content">
-                        <button class="reasoning-text option-insert-btn" data-option-text="${option.replace(/"/g, '&quot;')}">${option}</button>
-                        <div class="reasoning-explanation">
-                            <div class="explanation-icon">💡</div>
-                            <div class="explanation-text">${detail}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        reasoningList.innerHTML = reasoningItems;
-        // 绑定点击事件，点击选项填写到输入框
-        reasoningList.querySelectorAll('.option-insert-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const text = btn.getAttribute('data-option-text');
-                const textarea = document.querySelector('#send_textarea, .send_textarea');
-                if (textarea) {
-                    textarea.value = text;
-                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                    textarea.focus();
-                }
-            });
-        });
-    }
-    generateDetailedExplanation(option, analysis) {
-        // 更详细的推理说明
-        let reasons = [];
-        if (option.includes('出发') || option.includes('到达') || option.includes('现场')) {
-            reasons.push('该选项体现了场景的推进或转换，有助于推动故事发展。');
-        }
-        if (option.includes('问') || option.includes('说') || option.includes('答应')) {
-            reasons.push('该选项有助于对话深入，推动人物关系。');
-        }
-        if (option.includes('检查') || option.includes('准备') || option.includes('整理')) {
-            reasons.push('该选项有助于任务或行动的顺利进行。');
+
+    generateThinkingChain(option, analysis) {
+        const chains = [];
+        
+        // 场景分析思维链
+        if (analysis.scene_type) {
+            chains.push(`🎭 场景类型：${analysis.scene_type}`);
         }
         if (analysis.user_mood) {
-            reasons.push(`当前情绪为「${analysis.user_mood}」，该选项与情绪状态相符。`);
+            chains.push(`😊 当前情绪：${analysis.user_mood}`);
         }
         if (analysis.narrative_focus) {
-            reasons.push(`叙事重点为「${analysis.narrative_focus}」，该选项有助于突出重点。`);
+            chains.push(`🎯 叙事重点：${analysis.narrative_focus}`);
+        }
+        
+        // 选项推理思维链
+        chains.push(`💡 选项分析：`);
+        if (option.includes('出发') || option.includes('到达') || option.includes('现场')) {
+            chains.push(`  • 推动场景转换，推进故事发展`);
+        }
+        if (option.includes('问') || option.includes('说') || option.includes('答应')) {
+            chains.push(`  • 深化对话交流，推动人物关系`);
+        }
+        if (option.includes('检查') || option.includes('准备') || option.includes('整理')) {
+            chains.push(`  • 促进任务执行，推动行动进展`);
         }
         if (analysis.story_direction) {
-            reasons.push(`故事方向为「${analysis.story_direction}」，该选项有助于剧情自然发展。`);
+            chains.push(`  • 符合故事方向：${analysis.story_direction}`);
         }
-        if (reasons.length === 0) {
-            reasons.push('该选项与当前场景分析相关，有助于剧情自然发展。');
+        if (analysis.character_motivation) {
+            chains.push(`  • 体现动机：${analysis.character_motivation}`);
         }
-        return reasons.map(r => `<div>• ${r}</div>`).join('');
+        
+        return chains.join('\n');
     }
-    setupEventListeners() {
-        const toggleBtn = this.visualizationContainer.querySelector('.viz-toggle');
-        toggleBtn.addEventListener('click', () => {
-            this.visualizationContainer.classList.toggle('collapsed');
-            toggleBtn.textContent = this.visualizationContainer.classList.contains('collapsed') ? '👁️' : '👁️';
-            if (!this.visualizationContainer.classList.contains('collapsed')) {
-                this.visualizationContainer.style.top = '80px';
-                this.visualizationContainer.style.right = '24px';
-                this.visualizationContainer.style.left = '';
-            }
-        });
+
+    show(button, optionIndex) {
+        if (!this.tooltip) {
+            this.createTooltip();
+        }
+        
+        if (!this.currentAnalysis || !this.currentOptions[optionIndex]) {
+            return;
+        }
+
+        const option = this.currentOptions[optionIndex];
+        const thinkingChain = this.generateThinkingChain(option, this.currentAnalysis);
+        
+        this.tooltip.innerHTML = `
+            <div style="margin-bottom: 8px; font-weight: 600; color: #ffd700;">🧠 思维链分析</div>
+            <div style="white-space: pre-line; font-size: 13px;">${thinkingChain}</div>
+        `;
+
+        // 计算位置
+        const rect = button.getBoundingClientRect();
+        const tooltipRect = this.tooltip.getBoundingClientRect();
+        
+        let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+        let top = rect.top - tooltipRect.height - 10;
+        
+        // 确保不超出视窗
+        if (left < 10) left = 10;
+        if (left + tooltipRect.width > window.innerWidth - 10) {
+            left = window.innerWidth - tooltipRect.width - 10;
+        }
+        if (top < 10) {
+            top = rect.bottom + 10;
+        }
+        
+        this.tooltip.style.left = left + 'px';
+        this.tooltip.style.top = top + 'px';
+        this.tooltip.style.opacity = '1';
+        this.tooltip.style.transform = 'translateY(0)';
     }
-    refreshVisualization() {
-        if (this.currentContext) {
-            this.updateSceneAnalysis(this.currentContext.analysis);
-            this.updateOptionReasoning(this.currentContext.options, this.currentContext.analysis);
+
+    hide() {
+        if (this.tooltip) {
+            this.tooltip.style.opacity = '0';
+            this.tooltip.style.transform = 'translateY(10px)';
         }
     }
-    updateVisualization(context, options) {
-        this.currentContext = { ...context, options };
-        this.updateSceneAnalysis(context.analysis);
-        this.updateOptionReasoning(options, context.analysis);
-    }
+
     clear() {
-        if (this.visualizationContainer && this.visualizationContainer.parentNode) {
-            this.visualizationContainer.parentNode.removeChild(this.visualizationContainer);
+        if (this.tooltip && this.tooltip.parentNode) {
+            this.tooltip.parentNode.removeChild(this.tooltip);
         }
-        this.visualizationContainer = null;
-        this.currentContext = null;
+        this.tooltip = null;
+        this.currentAnalysis = null;
+        this.currentOptions = [];
     }
 }
 
-let contextVisualization = null;
-function initContextVisualization() {
-    if (!contextVisualization) {
-        contextVisualization = new ContextVisualization();
-        const vizContainer = contextVisualization.createMainVisualization();
-        document.body.appendChild(vizContainer);
+let optionTooltip = null;
+
+function initOptionTooltip() {
+    if (!optionTooltip) {
+        optionTooltip = new OptionTooltip();
     }
 }
-function clearContextVisualization() {
-    if (contextVisualization) {
-        contextVisualization.clear();
-        contextVisualization = null;
+
+function clearOptionTooltip() {
+    if (optionTooltip) {
+        optionTooltip.clear();
+        optionTooltip = null;
     }
 }
 
@@ -892,16 +829,9 @@ async function generateOptions() {
                 analysis = {};
             }
         }
-        // 重新获取选项时先清空面板
-        clearContextVisualization();
-        // 初始化并更新可视化（获得选项后再展示）
-        setTimeout(() => {
-            initContextVisualization();
-            contextVisualization.updateVisualization({
-                analysis,
-                messages: context.messages
-            }, suggestions);
-        }, 0);
+        // 初始化并更新悬浮提示
+        initOptionTooltip();
+        optionTooltip.updateAnalysis(analysis, suggestions);
         
         // 等待选项完全显示后再隐藏loading
         await displayOptions(suggestions, false); // false表示非流式显示
@@ -1234,7 +1164,7 @@ window.OptionsGenerator = OptionsGenerator;
 // 输入消息后自动清除面板和选项
 if (typeof eventSource !== 'undefined' && eventSource.on) {
     eventSource.on(event_types.MESSAGE_SENT, () => {
-        clearContextVisualization();
+        clearOptionTooltip();
         // 选项清除已由原有逻辑处理
     });
 }
