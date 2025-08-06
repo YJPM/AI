@@ -238,11 +238,13 @@ class UIManager {
             
             // 确保悬浮提示已初始化
             if (!optionTooltip) {
+                console.log('[createOptionButton] 悬浮提示未初始化，尝试初始化');
                 initOptionTooltip();
             }
             
             // 显示思维链分析
             if (optionTooltip) {
+                console.log('[createOptionButton] 调用悬浮提示显示', { index, hasAnalysis: !!optionTooltip.currentAnalysis, hasOptions: !!optionTooltip.currentOptions });
                 optionTooltip.show(btn, index);
             } else {
                 console.error('[createOptionButton] optionTooltip 初始化失败');
@@ -624,14 +626,23 @@ class OptionTooltip {
     }
 
     show(button, optionIndex) {
-        console.log('[OptionTooltip] show 被调用', { optionIndex, hasTooltip: !!this.tooltip, hasAnalysis: !!this.currentAnalysis, hasOptions: !!this.currentOptions });
+        console.log('[OptionTooltip] show 被调用', { 
+            optionIndex, 
+            hasTooltip: !!this.tooltip, 
+            hasAnalysis: !!this.currentAnalysis, 
+            hasOptions: !!this.currentOptions,
+            currentOptionsLength: this.currentOptions?.length,
+            currentAnalysisKeys: this.currentAnalysis ? Object.keys(this.currentAnalysis) : []
+        });
         
         if (!this.tooltip) {
+            console.log('[OptionTooltip] 创建悬浮提示元素');
             this.createTooltip();
         }
         
         // 如果没有分析数据，提供默认分析
         if (!this.currentAnalysis) {
+            console.log('[OptionTooltip] 使用默认分析数据');
             this.currentAnalysis = {
                 scene_type: '对话场景',
                 user_mood: '平静',
@@ -642,7 +653,11 @@ class OptionTooltip {
         }
         
         if (!this.currentOptions || !this.currentOptions[optionIndex]) {
-            console.log('[OptionTooltip] 没有找到选项数据', { currentOptions: this.currentOptions, optionIndex });
+            console.log('[OptionTooltip] 没有找到选项数据', { 
+                currentOptions: this.currentOptions, 
+                optionIndex,
+                currentOptionsLength: this.currentOptions?.length 
+            });
             return;
         }
 
@@ -658,27 +673,53 @@ class OptionTooltip {
 
         // 计算位置 - 优先显示在按钮上方
         const rect = button.getBoundingClientRect();
+        
+        // 先设置内容，然后获取实际尺寸
+        this.tooltip.style.visibility = 'hidden';
+        this.tooltip.style.opacity = '1';
+        this.tooltip.style.transform = 'translateY(0)';
+        
         const tooltipRect = this.tooltip.getBoundingClientRect();
         
         let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
-        let top = rect.top - tooltipRect.height - 8; // 减少间距，更贴近按钮
+        let top = rect.top - tooltipRect.height - 8; // 优先显示在按钮上方
         
         // 确保不超出视窗
         if (left < 10) left = 10;
         if (left + tooltipRect.width > window.innerWidth - 10) {
             left = window.innerWidth - tooltipRect.width - 10;
         }
+        
         // 如果上方空间不足，则显示在下方
         if (top < 10) {
             top = rect.bottom + 8;
         }
+        
+        // 重新隐藏，准备显示动画
+        this.tooltip.style.visibility = 'visible';
+        this.tooltip.style.opacity = '0';
+        this.tooltip.style.transform = 'translateY(8px)';
         
         this.tooltip.style.left = left + 'px';
         this.tooltip.style.top = top + 'px';
         this.tooltip.style.opacity = '1';
         this.tooltip.style.transform = 'translateY(0)';
         
-        console.log('[OptionTooltip] 提示已显示', { left, top, opacity: this.tooltip.style.opacity });
+        console.log('[OptionTooltip] 提示已显示', { left, top });
+        
+        // 添加更多调试信息
+        setTimeout(() => {
+            console.log('[OptionTooltip] 显示后状态检查:', {
+                opacity: this.tooltip.style.opacity,
+                visibility: this.tooltip.style.visibility,
+                transform: this.tooltip.style.transform,
+                left: this.tooltip.style.left,
+                top: this.tooltip.style.top,
+                display: this.tooltip.style.display,
+                zIndex: this.tooltip.style.zIndex,
+                isVisible: this.tooltip.offsetParent !== null
+            });
+        }, 100);
     }
 
     hide() {
@@ -857,8 +898,11 @@ async function generateOptions() {
                 analysis = {};
             }
         }
-        // 初始化并更新悬浮提示
-        console.log('[generateOptions] 初始化悬浮提示', { analysis, suggestionsCount: suggestions.length });
+        // 等待选项完全显示后再隐藏loading
+        await displayOptions(suggestions, false); // false表示非流式显示
+        
+        // 选项显示完成后，初始化并更新悬浮提示
+        console.log('[generateOptions] 选项显示完成，初始化悬浮提示', { analysis, suggestionsCount: suggestions.length });
         initOptionTooltip();
         if (optionTooltip) {
             optionTooltip.updateAnalysis(analysis, suggestions);
@@ -866,9 +910,6 @@ async function generateOptions() {
         } else {
             console.error('[generateOptions] optionTooltip 初始化失败');
         }
-        
-        // 等待选项完全显示后再隐藏loading
-        await displayOptions(suggestions, false); // false表示非流式显示
         hidePacePanelLoading();
     } catch (error) {
         console.error('[generateOptions] 生成选项时出错:', error);
@@ -1250,6 +1291,84 @@ window.testOptionTooltip = function() {
     
     console.log('[testOptionTooltip] 测试按钮已创建，悬浮在按钮上查看效果');
     console.log('[testOptionTooltip] 测试数据:', { testAnalysis, testOptions });
+};
+
+// 添加调试悬浮提示状态的函数
+window.debugOptionTooltip = function() {
+    console.log('[debugOptionTooltip] 当前悬浮提示状态:', {
+        hasOptionTooltip: !!optionTooltip,
+        tooltipElement: optionTooltip?.tooltip,
+        currentAnalysis: optionTooltip?.currentAnalysis,
+        currentOptions: optionTooltip?.currentOptions,
+        currentOptionsLength: optionTooltip?.currentOptions?.length
+    });
+    
+    if (optionTooltip) {
+        console.log('[debugOptionTooltip] 悬浮提示详细信息:', {
+            tooltipStyle: optionTooltip.tooltip?.style,
+            tooltipInnerHTML: optionTooltip.tooltip?.innerHTML,
+            tooltipVisibility: optionTooltip.tooltip?.style.visibility,
+            tooltipOpacity: optionTooltip.tooltip?.style.opacity
+        });
+    }
+};
+
+// 添加强制测试悬浮提示的函数
+window.forceTestTooltip = function() {
+    console.log('[forceTestTooltip] 强制测试悬浮提示');
+    
+    // 初始化悬浮提示
+    initOptionTooltip();
+    
+    if (!optionTooltip) {
+        console.error('[forceTestTooltip] 无法初始化悬浮提示');
+        return;
+    }
+    
+    // 设置测试数据
+    optionTooltip.updateAnalysis({
+        scene_type: '强制测试场景',
+        user_mood: '测试中',
+        narrative_focus: '验证功能',
+        story_direction: '向前发展'
+    }, ['测试选项1', '测试选项2', '测试选项3']);
+    
+    // 创建一个测试按钮
+    const testBtn = document.createElement('button');
+    testBtn.textContent = '强制测试悬浮提示';
+    testBtn.style.cssText = `
+        position: fixed;
+        top: 200px;
+        left: 200px;
+        z-index: 9999;
+        padding: 15px 25px;
+        background: #28a745;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+    `;
+    
+    testBtn.addEventListener('mouseover', () => {
+        console.log('[forceTestTooltip] 鼠标悬浮，显示提示');
+        optionTooltip.show(testBtn, 0);
+    });
+    
+    testBtn.addEventListener('mouseout', () => {
+        console.log('[forceTestTooltip] 鼠标离开，隐藏提示');
+        optionTooltip.hide();
+    });
+    
+    document.body.appendChild(testBtn);
+    
+    console.log('[forceTestTooltip] 强制测试按钮已创建，悬浮查看效果');
+    console.log('[forceTestTooltip] 当前悬浮提示状态:', {
+        hasTooltip: !!optionTooltip.tooltip,
+        hasAnalysis: !!optionTooltip.currentAnalysis,
+        hasOptions: !!optionTooltip.currentOptions
+    });
 };
 
 // 输入消息后自动清除面板和选项

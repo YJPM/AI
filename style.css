@@ -53,4 +53,5 @@
     transition: all 0.25s ease;
     pointer-events: none;
     font-weight: 400;
+    visibility: hidden;
 }
