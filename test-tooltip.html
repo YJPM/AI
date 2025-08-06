@@ -39,20 +39,21 @@
         .option-tooltip {
             position: fixed;
             z-index: 10000;
-            background: rgba(0, 0, 0, 0.85);
-            color: white;
-            padding: 16px;
-            border-radius: 12px;
-            max-width: 400px;
-            font-size: 14px;
-            line-height: 1.5;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 350px;
+            font-size: 13px;
+            line-height: 1.4;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.06);
             opacity: 0;
-            transform: translateY(10px);
-            transition: all 0.3s ease;
+            transform: translateY(8px);
+            transition: all 0.25s ease;
             pointer-events: none;
+            font-weight: 400;
         }
     </style>
 </head>
@@ -70,10 +71,11 @@
         <div style="margin-top: 50px;">
             <h3>测试说明：</h3>
             <ul>
-                <li>悬浮在按钮上应该显示半透明的黑色提示框</li>
-                <li>提示框包含思维链分析内容</li>
+                <li>悬浮在按钮上应该显示半透明的白色提示框</li>
+                <li>提示框显示在按钮上方，更加贴近</li>
+                <li>提示框包含思维链分析内容，颜色与选项一致</li>
                 <li>鼠标移开时提示框应该消失</li>
-                <li>提示框应该有平滑的动画效果</li>
+                <li>提示框应该有平滑的动画效果，不会突兀</li>
             </ul>
         </div>
     </div>
@@ -155,22 +157,23 @@
                 const thinkingChain = this.generateThinkingChain(option, this.currentAnalysis);
                 
                 this.tooltip.innerHTML = `
-                    <div style="margin-bottom: 8px; font-weight: 600; color: #ffd700;">🧠 思维链分析</div>
-                    <div style="white-space: pre-line; font-size: 13px;">${thinkingChain}</div>
+                    <div style="margin-bottom: 6px; font-weight: 600; color: #555; font-size: 12px;">🧠 思维链分析</div>
+                    <div style="white-space: pre-line; font-size: 12px; color: #666;">${thinkingChain}</div>
                 `;
 
                 const rect = button.getBoundingClientRect();
                 const tooltipRect = this.tooltip.getBoundingClientRect();
                 
                 let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
-                let top = rect.top - tooltipRect.height - 10;
+                let top = rect.top - tooltipRect.height - 8; // 减少间距，更贴近按钮
                 
                 if (left < 10) left = 10;
                 if (left + tooltipRect.width > window.innerWidth - 10) {
                     left = window.innerWidth - tooltipRect.width - 10;
                 }
+                // 如果上方空间不足，则显示在下方
                 if (top < 10) {
-                    top = rect.bottom + 10;
+                    top = rect.bottom + 8;
                 }
                 
                 this.tooltip.style.left = left + 'px';
@@ -184,7 +187,7 @@
             hide() {
                 if (this.tooltip) {
                     this.tooltip.style.opacity = '0';
-                    this.tooltip.style.transform = 'translateY(10px)';
+                    this.tooltip.style.transform = 'translateY(8px)';
                 }
             }
 

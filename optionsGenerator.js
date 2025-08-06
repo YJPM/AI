@@ -652,24 +652,25 @@ class OptionTooltip {
         console.log('[OptionTooltip] 生成思维链', { option, thinkingChain });
         
         this.tooltip.innerHTML = `
-            <div style="margin-bottom: 8px; font-weight: 600; color: #ffd700;">🧠 思维链分析</div>
-            <div style="white-space: pre-line; font-size: 13px;">${thinkingChain}</div>
+            <div style="margin-bottom: 6px; font-weight: 600; color: #555; font-size: 12px;">🧠 思维链分析</div>
+            <div style="white-space: pre-line; font-size: 12px; color: #666;">${thinkingChain}</div>
         `;
 
-        // 计算位置
+        // 计算位置 - 优先显示在按钮上方
         const rect = button.getBoundingClientRect();
         const tooltipRect = this.tooltip.getBoundingClientRect();
         
         let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
-        let top = rect.top - tooltipRect.height - 10;
+        let top = rect.top - tooltipRect.height - 8; // 减少间距，更贴近按钮
         
         // 确保不超出视窗
         if (left < 10) left = 10;
         if (left + tooltipRect.width > window.innerWidth - 10) {
             left = window.innerWidth - tooltipRect.width - 10;
         }
+        // 如果上方空间不足，则显示在下方
         if (top < 10) {
-            top = rect.bottom + 10;
+            top = rect.bottom + 8;
         }
         
         this.tooltip.style.left = left + 'px';
