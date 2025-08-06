@@ -231,36 +231,15 @@ class UIManager {
         
         // 添加事件监听器
         btn.addEventListener('mouseover', () => {
-            console.log('[createOptionButton] mouseover 事件触发', { text, index, hasOptionTooltip: !!optionTooltip });
             btn.style.background = '#f8f9fa';
             btn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
             btn.style.transform = 'translateY(-1px)';
-            
-            // 确保悬浮提示已初始化
-            if (!optionTooltip) {
-                console.log('[createOptionButton] 悬浮提示未初始化，尝试初始化');
-                initOptionTooltip();
-            }
-            
-            // 显示思维链分析
-            if (optionTooltip) {
-                console.log('[createOptionButton] 调用悬浮提示显示', { index, hasAnalysis: !!optionTooltip.currentAnalysis, hasOptions: !!optionTooltip.currentOptions });
-                optionTooltip.show(btn, index);
-            } else {
-                console.error('[createOptionButton] optionTooltip 初始化失败');
-            }
         });
         
         btn.addEventListener('mouseout', () => {
-            console.log('[createOptionButton] mouseout 事件触发');
             btn.style.background = 'rgba(255, 255, 255, 0.9)';
             btn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.08)';
             btn.style.transform = 'translateY(0)';
-            
-            // 隐藏思维链分析
-            if (optionTooltip) {
-                optionTooltip.hide();
-            }
         });
         
         btn.addEventListener('click', () => {
@@ -552,496 +531,25 @@ async function getContextCompatible(limit = 10) {
 }
 
 // 移除整个ContextVisualization类，替换为悬浮提示功能
-class OptionTooltip {
-    constructor() {
-        this.tooltip = null;
-        this.currentAnalysis = null;
-        this.currentOptions = [];
+// 删除悬浮提示相关代码
+// 删除OptionTooltip类和相关函数
+// 删除悬浮提示相关的事件监听器
+
+// 输入消息后自动清除面板和选项
+eventSource.on(event_types.MESSAGE_SENT, () => {
+    console.log('[EventHandler] 消息已发送，清除选项面板');
+    const container = document.getElementById('ti-options-container');
+    if (container) {
+        container.remove();
     }
-
-    createTooltip() {
-        const tooltip = document.createElement('div');
-        tooltip.className = 'option-tooltip';
-        tooltip.style.cssText = `
-            position: fixed;
-            z-index: 10000;
-            background: rgba(0, 0, 0, 0.85);
-            color: white;
-            padding: 16px;
-            border-radius: 12px;
-            max-width: 400px;
-            font-size: 14px;
-            line-height: 1.5;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            opacity: 0;
-            transform: translateY(10px);
-            transition: all 0.3s ease;
-            pointer-events: none;
-        `;
-        this.tooltip = tooltip;
-        document.body.appendChild(tooltip);
-        return tooltip;
-    }
-
-    updateAnalysis(analysis, options) {
-        this.currentAnalysis = analysis;
-        this.currentOptions = options;
-    }
-
-    generateThinkingChain(option, analysis) {
-        const chains = [];
-        
-        // 场景分析思维链
-        if (analysis.scene_type) {
-            chains.push(`🎭 场景类型：${analysis.scene_type}`);
-        }
-        if (analysis.user_mood) {
-            chains.push(`😊 当前情绪：${analysis.user_mood}`);
-        }
-        if (analysis.narrative_focus) {
-            chains.push(`🎯 叙事重点：${analysis.narrative_focus}`);
-        }
-        
-        // 选项推理思维链
-        chains.push(`💡 选项分析：`);
-        if (option.includes('出发') || option.includes('到达') || option.includes('现场')) {
-            chains.push(`  • 推动场景转换，推进故事发展`);
-        }
-        if (option.includes('问') || option.includes('说') || option.includes('答应')) {
-            chains.push(`  • 深化对话交流，推动人物关系`);
-        }
-        if (option.includes('检查') || option.includes('准备') || option.includes('整理')) {
-            chains.push(`  • 促进任务执行，推动行动进展`);
-        }
-        if (analysis.story_direction) {
-            chains.push(`  • 符合故事方向：${analysis.story_direction}`);
-        }
-        if (analysis.character_motivation) {
-            chains.push(`  • 体现动机：${analysis.character_motivation}`);
-        }
-        
-        return chains.join('\n');
-    }
-
-    show(button, optionIndex) {
-        console.log('[OptionTooltip] show 被调用', { 
-            optionIndex, 
-            hasTooltip: !!this.tooltip, 
-            hasAnalysis: !!this.currentAnalysis, 
-            hasOptions: !!this.currentOptions,
-            currentOptionsLength: this.currentOptions?.length,
-            currentAnalysisKeys: this.currentAnalysis ? Object.keys(this.currentAnalysis) : []
-        });
-        
-        if (!this.tooltip) {
-            console.log('[OptionTooltip] 创建悬浮提示元素');
-            this.createTooltip();
-        }
-        
-        // 如果没有分析数据，提供默认分析
-        if (!this.currentAnalysis) {
-            console.log('[OptionTooltip] 使用默认分析数据');
-            this.currentAnalysis = {
-                scene_type: '对话场景',
-                user_mood: '平静',
-                narrative_focus: '推进剧情',
-                story_direction: '继续发展',
-                character_motivation: '探索和互动'
-            };
-        }
-        
-        if (!this.currentOptions || !this.currentOptions[optionIndex]) {
-            console.log('[OptionTooltip] 没有找到选项数据', { 
-                currentOptions: this.currentOptions, 
-                optionIndex,
-                currentOptionsLength: this.currentOptions?.length 
-            });
-            return;
-        }
-
-        const option = this.currentOptions[optionIndex];
-        const thinkingChain = this.generateThinkingChain(option, this.currentAnalysis);
-        
-        console.log('[OptionTooltip] 生成思维链', { option, thinkingChain });
-        
-        this.tooltip.innerHTML = `
-            <div style="margin-bottom: 6px; font-weight: 600; color: #555; font-size: 12px;">🧠 思维链分析</div>
-            <div style="white-space: pre-line; font-size: 12px; color: #666;">${thinkingChain}</div>
-        `;
-
-        // 计算位置 - 优先显示在按钮上方
-        const rect = button.getBoundingClientRect();
-        
-        // 先设置内容，然后获取实际尺寸
-        this.tooltip.style.visibility = 'hidden';
-        this.tooltip.style.opacity = '1';
-        this.tooltip.style.transform = 'translateY(0)';
-        
-        const tooltipRect = this.tooltip.getBoundingClientRect();
-        
-        let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
-        let top = rect.top - tooltipRect.height - 8; // 优先显示在按钮上方
-        
-        // 确保不超出视窗
-        if (left < 10) left = 10;
-        if (left + tooltipRect.width > window.innerWidth - 10) {
-            left = window.innerWidth - tooltipRect.width - 10;
-        }
-        
-        // 如果上方空间不足，则显示在下方
-        if (top < 10) {
-            top = rect.bottom + 8;
-        }
-        
-        // 重新隐藏，准备显示动画
-        this.tooltip.style.visibility = 'visible';
-        this.tooltip.style.opacity = '0';
-        this.tooltip.style.transform = 'translateY(8px)';
-        
-        this.tooltip.style.left = left + 'px';
-        this.tooltip.style.top = top + 'px';
-        this.tooltip.style.opacity = '1';
-        this.tooltip.style.transform = 'translateY(0)';
-        
-        console.log('[OptionTooltip] 提示已显示', { left, top });
-        
-        // 添加更多调试信息
-        setTimeout(() => {
-            console.log('[OptionTooltip] 显示后状态检查:', {
-                opacity: this.tooltip.style.opacity,
-                visibility: this.tooltip.style.visibility,
-                transform: this.tooltip.style.transform,
-                left: this.tooltip.style.left,
-                top: this.tooltip.style.top,
-                display: this.tooltip.style.display,
-                zIndex: this.tooltip.style.zIndex,
-                isVisible: this.tooltip.offsetParent !== null
-            });
-        }, 100);
-    }
-
-    hide() {
-        if (this.tooltip) {
-            this.tooltip.style.opacity = '0';
-            this.tooltip.style.transform = 'translateY(10px)';
-        }
-    }
-
-    clear() {
-        if (this.tooltip && this.tooltip.parentNode) {
-            this.tooltip.parentNode.removeChild(this.tooltip);
-        }
-        this.tooltip = null;
-        this.currentAnalysis = null;
-        this.currentOptions = [];
-    }
-}
-
-let optionTooltip = null;
-
-function initOptionTooltip() {
-    if (!optionTooltip) {
-        optionTooltip = new OptionTooltip();
-    }
-}
-
-function clearOptionTooltip() {
-    if (optionTooltip) {
-        optionTooltip.clear();
-        optionTooltip = null;
-    }
-}
-
-// 修改 generateOptions 集成可视化
-async function generateOptions() {
-    console.log('[generateOptions] 开始生成选项...');
-    const settings = getSettings();
-    if (OptionsGenerator.isGenerating) {
-        console.log('[generateOptions] 正在生成中，跳过...');
-        return;
-    }
+    
+    // 清除选中的选项
+    OptionsGenerator.selectedOptions = [];
+    
+    // 重置生成状态
+    OptionsGenerator.isGenerating = false;
     OptionsGenerator.isManuallyStopped = false;
-    if (!settings.optionsGenEnabled || !settings.optionsApiKey) {
-        console.log('[generateOptions] 选项生成未启用或缺少API密钥');
-        return;
-    }
-    
-    console.log('[generateOptions] 设置检查通过，开始生成...');
-    OptionsGenerator.isGenerating = true;
-    
-    try {
-        // 根据推进节奏选择提示模板
-        const paceMode = settings.paceMode || 'normal';
-        console.log('[generateOptions] 当前推进节奏:', paceMode);
-        
-        // 获取推进节奏模板
-        const promptTemplate = PACE_PROMPTS[paceMode] || PACE_PROMPTS.normal;
-        
-        // 组装合并prompt
-        console.log('[generateOptions] 开始获取上下文...');
-        const context = await getContextCompatible();
-        console.log('[generateOptions] 上下文获取完成，消息数量:', context.messages.length);
-        
-        // 构建简化的上下文提示词 - 只包含最近对话消息
-        let fullContextText = '';
-        
-        // 添加最近对话消息
-        if (context.messages && context.messages.length > 0) {
-            fullContextText += '## 最近对话历史\n';
-            fullContextText += context.messages.map(m => `[${m.role}] ${m.content}`).join('\n');
-            fullContextText += '\n\n';
-        }
-        
-        const prompt = promptTemplate
-            .replace(/{{context}}/g, fullContextText);
-        console.log('[generateOptions] 提示词组装完成，长度:', prompt.length);
-        console.log('[generateOptions] 完整上下文数据已包含在提示词中');
-        
-        const finalMessages = [{ role: 'user', content: prompt }];
-        let content = '';
-        
-        // 根据API类型构建不同的请求
-        const apiType = settings.optionsApiType || 'openai';
-        let apiUrl, requestBody, headers;
-        
-        if (apiType === 'gemini') {
-            // Google Gemini API
-            const modelName = settings.optionsApiModel || 'gemini-pro';
-            
-            // 非流式生成使用generateContent
-            apiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${settings.optionsApiKey}`;
-            
-            headers = {
-                'Content-Type': 'application/json',
-            };
-            
-            requestBody = {
-                contents: [{
-                    parts: [{
-                        text: prompt
-                    }]
-                }],
-                generationConfig: {
-                    temperature: 0.8,
-                    topK: 40,
-                    topP: 0.95,
-                    maxOutputTokens: 2048,
-                }
-            };
-            
-            console.log('[generateOptions] 使用Google Gemini API');
-            console.log('[generateOptions] API URL:', apiUrl);
-            console.log('[generateOptions] 模型:', modelName);
-        } else {
-            // OpenAI兼容API
-            apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
-            
-            headers = {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${settings.optionsApiKey}`,
-            };
-            
-            requestBody = {
-                model: settings.optionsApiModel,
-                messages: finalMessages,
-                temperature: 0.8,
-                stream: false,
-            };
-            
-            console.log('[generateOptions] 使用OpenAI兼容API');
-            console.log('[generateOptions] API URL:', apiUrl);
-            console.log('[generateOptions] 模型:', settings.optionsApiModel);
-        }
-        
-        console.log('[generateOptions] 使用非流式生成...');
-        // 非流式生成
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify(requestBody),
-        });
-        
-        console.log('[generateOptions] API响应状态:', response.status);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[generateOptions] API响应错误:', errorText);
-            logger.error('API 响应错误 (raw):', errorText);
-            throw new Error('API 请求失败');
-        }
-        
-        const data = await response.json();
-        
-        // 根据API类型解析响应
-        if (apiType === 'gemini') {
-            content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        } else {
-            content = data.choices?.[0]?.message?.content || '';
-        }
-        
-        console.log('[generateOptions] 非流式生成完成，内容长度:', content.length);
-        
-        // 解析AI返回内容，提取场景分析和建议
-        const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
-        console.log('[generateOptions] 解析到选项数量:', suggestions.length);
-        console.log('[generateOptions] 选项内容:', suggestions);
-        
-        // 新增：解析场景分析
-        let analysis = {};
-        const analysisMatch = content.match(/场景分析[：:][\s\S]*?\{([\s\S]*?)\}/);
-        if (analysisMatch) {
-            try {
-                analysis = JSON.parse('{' + analysisMatch[1] + '}');
-            } catch (e) {
-                analysis = {};
-            }
-        }
-        // 等待选项完全显示后再隐藏loading
-        await displayOptions(suggestions, false); // false表示非流式显示
-        
-        // 选项显示完成后，初始化并更新悬浮提示
-        console.log('[generateOptions] 选项显示完成，初始化悬浮提示', { analysis, suggestionsCount: suggestions.length });
-        initOptionTooltip();
-        if (optionTooltip) {
-            optionTooltip.updateAnalysis(analysis, suggestions);
-            console.log('[generateOptions] 悬浮提示更新完成');
-        } else {
-            console.error('[generateOptions] optionTooltip 初始化失败');
-        }
-        hidePacePanelLoading();
-    } catch (error) {
-        console.error('[generateOptions] 生成选项时出错:', error);
-        logger.error('生成选项时出错:', error);
-        hidePacePanelLoading();
-    } finally {
-        console.log('[generateOptions] 生成完成，重置状态');
-        OptionsGenerator.isGenerating = false;
-    }
-}
-
-/**
- * 测试API连接并获取模型列表
- * @returns {Promise<Object>} 包含连接状态、错误信息和模型列表的对象
- */
-async function testApiConnection() {
-    const settings = getSettings();
-    try {
-        // 获取当前设置
-        const apiKey = settings.optionsApiKey;
-        const apiType = settings.optionsApiType;
-        const model = settings.optionsApiModel;
-        const baseUrl = settings.optionsBaseUrl || 'https://api.openai.com/v1';
-        
-        // 验证API密钥
-        if (!apiKey) {
-            return {
-                success: false,
-                message: '请输入API密钥'
-            };
-        }
-        
-        // 根据API类型构建不同的请求
-        if (apiType === 'gemini') {
-            // Google Gemini API
-            try {
-                // 构建Gemini API URL
-                const geminiBaseUrl = 'https://generativelanguage.googleapis.com/v1';
-                
-                // 获取模型列表
-                const modelsResponse = await fetch(`${geminiBaseUrl}/models?key=${apiKey}`);
-                
-                if (!modelsResponse.ok) {
-                    const errorData = await modelsResponse.json();
-                    return {
-                        success: false,
-                        message: `连接失败: ${errorData.error?.message || '未知错误'}`
-                    };
-                }
-                
-                const modelsData = await modelsResponse.json();
-                
-                // 过滤出Gemini模型
-                const geminiModels = modelsData.models.filter(m => 
-                    m.name.includes('gemini') || 
-                    m.displayName?.includes('Gemini')
-                );
-                
-                // 查找当前设置的模型
-                const currentModel = geminiModels.find(m => m.name === model) || 
-                                    geminiModels.find(m => m.name.includes(model)) || 
-                                    geminiModels[0];
-                
-                // 获取API实际返回的模型名称，而不是用户设置的模型名称
-                const actualModelName = currentModel?.displayName || currentModel?.name || '未知模型';
-                return {
-                    success: true,
-                    message: '连接成功!',
-                    models: geminiModels,
-                    currentModel: currentModel?.name,
-                    actualModelName: actualModelName
-                };
-            } catch (error) {
-                logger.error('Gemini API连接测试失败:', error);
-                return {
-                    success: false,
-                    message: `连接失败: ${error.message}`
-                };
-            }
-        } else {
-            // OpenAI兼容API
-            try {
-                // 构建请求URL
-                const modelsUrl = `${baseUrl}/models`;
-                
-                // 发送请求获取模型列表
-                const response = await fetch(modelsUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ error: { message: '未知错误' } }));
-                    return {
-                        success: false,
-                        message: `连接失败: ${errorData.error?.message || '未知错误'}`
-                    };
-                }
-                
-                const data = await response.json();
-                
-                // 查找当前设置的模型
-                const currentModel = data.data.find(m => m.id === model) || data.data[0];
-                
-                // 获取API实际返回的模型名称，而不是用户设置的模型名称
-                const actualModelName = currentModel?.id || '未知模型';
-                return {
-                    success: true,
-                    message: '连接成功!',
-                    models: data.data,
-                    currentModel: currentModel?.id,
-                    actualModelName: actualModelName
-                };
-            } catch (error) {
-                logger.error('OpenAI API连接测试失败:', error);
-                return {
-                    success: false,
-                    message: `连接失败: ${error.message}`
-                };
-            }
-        }
-    } catch (error) {
-        logger.error('API连接测试失败:', error);
-        return {
-            success: false,
-            message: `连接失败: ${error.message}`
-        };
-    }
-}
+});
 
 export class OptionsGenerator {
     static isManuallyStopped = false;
@@ -1236,145 +744,148 @@ export class OptionsGenerator {
 // 将OptionsGenerator导出到全局作用域，以便在控制台中调用
 window.OptionsGenerator = OptionsGenerator;
 
-// 添加测试悬浮提示的函数
-window.testOptionTooltip = function() {
-    console.log('[testOptionTooltip] 开始测试悬浮提示功能');
-    
-    // 初始化悬浮提示
-    initOptionTooltip();
-    
-    if (!optionTooltip) {
-        console.error('[testOptionTooltip] optionTooltip 初始化失败');
+// 修改 generateOptions 函数
+async function generateOptions() {
+    console.log('[generateOptions] 开始生成选项...');
+    const settings = getSettings();
+    if (OptionsGenerator.isGenerating) {
+        console.log('[generateOptions] 正在生成中，跳过...');
+        return;
+    }
+    OptionsGenerator.isManuallyStopped = false;
+    if (!settings.optionsGenEnabled || !settings.optionsApiKey) {
+        console.log('[generateOptions] 选项生成未启用或缺少API密钥');
         return;
     }
     
-    // 设置测试数据
-    const testAnalysis = {
-        scene_type: '测试场景',
-        user_mood: '好奇',
-        narrative_focus: '探索新功能',
-        story_direction: '向前发展',
-        character_motivation: '测试和验证'
-    };
+    console.log('[generateOptions] 设置检查通过，开始生成...');
+    OptionsGenerator.isGenerating = true;
     
-    const testOptions = ['测试选项1', '测试选项2', '测试选项3'];
-    
-    optionTooltip.updateAnalysis(testAnalysis, testOptions);
-    
-    // 创建一个测试按钮
-    const testButton = document.createElement('button');
-    testButton.textContent = '测试悬浮提示';
-    testButton.style.cssText = `
-        position: fixed;
-        top: 100px;
-        left: 100px;
-        z-index: 9999;
-        padding: 10px 20px;
-        background: #007bff;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-    `;
-    
-    testButton.addEventListener('mouseover', () => {
-        console.log('[testOptionTooltip] 测试按钮悬浮');
-        optionTooltip.show(testButton, 0);
-    });
-    
-    testButton.addEventListener('mouseout', () => {
-        console.log('[testOptionTooltip] 测试按钮离开');
-        optionTooltip.hide();
-    });
-    
-    document.body.appendChild(testButton);
-    
-    console.log('[testOptionTooltip] 测试按钮已创建，悬浮在按钮上查看效果');
-    console.log('[testOptionTooltip] 测试数据:', { testAnalysis, testOptions });
-};
-
-// 添加调试悬浮提示状态的函数
-window.debugOptionTooltip = function() {
-    console.log('[debugOptionTooltip] 当前悬浮提示状态:', {
-        hasOptionTooltip: !!optionTooltip,
-        tooltipElement: optionTooltip?.tooltip,
-        currentAnalysis: optionTooltip?.currentAnalysis,
-        currentOptions: optionTooltip?.currentOptions,
-        currentOptionsLength: optionTooltip?.currentOptions?.length
-    });
-    
-    if (optionTooltip) {
-        console.log('[debugOptionTooltip] 悬浮提示详细信息:', {
-            tooltipStyle: optionTooltip.tooltip?.style,
-            tooltipInnerHTML: optionTooltip.tooltip?.innerHTML,
-            tooltipVisibility: optionTooltip.tooltip?.style.visibility,
-            tooltipOpacity: optionTooltip.tooltip?.style.opacity
+    try {
+        // 使用融合的提示模板
+        console.log('[generateOptions] 使用融合提示模板');
+        
+        // 获取融合提示模板
+        const promptTemplate = PACE_PROMPTS.unified;
+        
+        // 组装合并prompt
+        console.log('[generateOptions] 开始获取上下文...');
+        const context = await getContextCompatible();
+        console.log('[generateOptions] 上下文获取完成，消息数量:', context.messages.length);
+        
+        // 构建简化的上下文提示词 - 只包含最近对话消息
+        let fullContextText = '';
+        
+        // 添加最近对话消息
+        if (context.messages && context.messages.length > 0) {
+            fullContextText += '## 最近对话历史\n';
+            fullContextText += context.messages.map(m => `[${m.role}] ${m.content}`).join('\n');
+            fullContextText += '\n\n';
+        }
+        
+        const prompt = promptTemplate
+            .replace(/{{context}}/g, fullContextText);
+        console.log('[generateOptions] 提示词组装完成，长度:', prompt.length);
+        console.log('[generateOptions] 完整上下文数据已包含在提示词中');
+        
+        const finalMessages = [{ role: 'user', content: prompt }];
+        let content = '';
+        
+        // 根据API类型构建不同的请求
+        const apiType = settings.optionsApiType || 'openai';
+        let apiUrl, requestBody, headers;
+        
+        if (apiType === 'gemini') {
+            // Google Gemini API
+            const modelName = settings.optionsApiModel || 'gemini-pro';
+            
+            // 非流式生成使用generateContent
+            apiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${settings.optionsApiKey}`;
+            
+            headers = {
+                'Content-Type': 'application/json',
+            };
+            
+            requestBody = {
+                contents: [{
+                    parts: [{
+                        text: prompt
+                    }]
+                }],
+                generationConfig: {
+                    temperature: 0.8,
+                    topK: 40,
+                    topP: 0.95,
+                    maxOutputTokens: 2048,
+                }
+            };
+            
+            console.log('[generateOptions] 使用Google Gemini API');
+            console.log('[generateOptions] API URL:', apiUrl);
+            console.log('[generateOptions] 模型:', modelName);
+        } else {
+            // OpenAI兼容API
+            apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
+            
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${settings.optionsApiKey}`,
+            };
+            
+            requestBody = {
+                model: settings.optionsApiModel,
+                messages: finalMessages,
+                temperature: 0.8,
+                stream: false,
+            };
+            
+            console.log('[generateOptions] 使用OpenAI兼容API');
+            console.log('[generateOptions] API URL:', apiUrl);
+            console.log('[generateOptions] 模型:', settings.optionsApiModel);
+        }
+        
+        console.log('[generateOptions] 使用非流式生成...');
+        // 非流式生成
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(requestBody),
         });
+        
+        console.log('[generateOptions] API响应状态:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[generateOptions] API响应错误:', errorText);
+            logger.error('API 响应错误 (raw):', errorText);
+            throw new Error('API 请求失败');
+        }
+        
+        const data = await response.json();
+        
+        // 根据API类型解析响应
+        if (apiType === 'gemini') {
+            content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        } else {
+            content = data.choices?.[0]?.message?.content || '';
+        }
+        
+        console.log('[generateOptions] 非流式生成完成，内容长度:', content.length);
+        
+        // 解析AI返回内容，提取场景分析和建议
+        const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+        console.log('[generateOptions] 解析到选项数量:', suggestions.length);
+        console.log('[generateOptions] 选项内容:', suggestions);
+        
+        // 等待选项完全显示后再隐藏loading
+        await displayOptions(suggestions, false); // false表示非流式显示
+        hidePacePanelLoading();
+    } catch (error) {
+        console.error('[generateOptions] 生成选项时出错:', error);
+        logger.error('生成选项时出错:', error);
+        hidePacePanelLoading();
+    } finally {
+        console.log('[generateOptions] 生成完成，重置状态');
+        OptionsGenerator.isGenerating = false;
     }
-};
-
-// 添加强制测试悬浮提示的函数
-window.forceTestTooltip = function() {
-    console.log('[forceTestTooltip] 强制测试悬浮提示');
-    
-    // 初始化悬浮提示
-    initOptionTooltip();
-    
-    if (!optionTooltip) {
-        console.error('[forceTestTooltip] 无法初始化悬浮提示');
-        return;
-    }
-    
-    // 设置测试数据
-    optionTooltip.updateAnalysis({
-        scene_type: '强制测试场景',
-        user_mood: '测试中',
-        narrative_focus: '验证功能',
-        story_direction: '向前发展'
-    }, ['测试选项1', '测试选项2', '测试选项3']);
-    
-    // 创建一个测试按钮
-    const testBtn = document.createElement('button');
-    testBtn.textContent = '强制测试悬浮提示';
-    testBtn.style.cssText = `
-        position: fixed;
-        top: 200px;
-        left: 200px;
-        z-index: 9999;
-        padding: 15px 25px;
-        background: #28a745;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 16px;
-        font-weight: bold;
-    `;
-    
-    testBtn.addEventListener('mouseover', () => {
-        console.log('[forceTestTooltip] 鼠标悬浮，显示提示');
-        optionTooltip.show(testBtn, 0);
-    });
-    
-    testBtn.addEventListener('mouseout', () => {
-        console.log('[forceTestTooltip] 鼠标离开，隐藏提示');
-        optionTooltip.hide();
-    });
-    
-    document.body.appendChild(testBtn);
-    
-    console.log('[forceTestTooltip] 强制测试按钮已创建，悬浮查看效果');
-    console.log('[forceTestTooltip] 当前悬浮提示状态:', {
-        hasTooltip: !!optionTooltip.tooltip,
-        hasAnalysis: !!optionTooltip.currentAnalysis,
-        hasOptions: !!optionTooltip.currentOptions
-    });
-};
-
-// 输入消息后自动清除面板和选项
-if (typeof eventSource !== 'undefined' && eventSource.on) {
-    eventSource.on(event_types.MESSAGE_SENT, () => {
-        clearOptionTooltip();
-        // 选项清除已由原有逻辑处理
-    });
 }
