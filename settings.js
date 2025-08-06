@@ -4,7 +4,7 @@ import { extension_settings } from '../../../extensions.js';
 export const CONSTANTS = {
     MODULE_NAME: 'typing_indicator',
     DEFAULT_API_TYPE: 'openai',
-    DEFAULT_MODEL: 'gemini-2.5-pro-free',
+    DEFAULT_MODEL: 'gemini-2.5-flash-free',
     DEFAULT_BASE_URL: 'https://newapi.sisuo.de/v1',
     DEFAULT_SEND_MODE: 'auto',
     DEFAULT_AUTO_GEN_MODE: 'auto',

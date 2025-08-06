@@ -1,6 +1,5 @@
 import { getSettings, PACE_PROMPTS, CONSTANTS } from './settings.js';
 import { logger } from './logger.js';
-import { eventSource, event_types } from '../../../../script.js';
 import { saveSettingsDebounced } from '../../../../script.js';
 import { showPacePanelLoading, hidePacePanelLoading } from './ui.js';
 
@@ -531,171 +530,26 @@ async function getContextCompatible(limit = 10) {
     return finalContext;
 }
 
-// 修改 generateOptions 函数
-async function generateOptions() {
-    console.log('[generateOptions] 开始生成选项...');
-    const settings = getSettings();
-    if (OptionsGenerator.isGenerating) {
-        console.log('[generateOptions] 正在生成中，跳过...');
-        return;
-    }
-    OptionsGenerator.isManuallyStopped = false;
-    if (!settings.optionsGenEnabled || !settings.optionsApiKey) {
-        console.log('[generateOptions] 选项生成未启用或缺少API密钥');
-        return;
-    }
-    
-    console.log('[generateOptions] 设置检查通过，开始生成...');
-    OptionsGenerator.isGenerating = true;
-    
-    try {
-        // 使用融合的提示模板
-        console.log('[generateOptions] 使用融合提示模板');
-        
-        // 获取融合提示模板
-        const promptTemplate = PACE_PROMPTS.unified;
-        
-        // 组装合并prompt
-        console.log('[generateOptions] 开始获取上下文...');
-        const context = await getContextCompatible();
-        console.log('[generateOptions] 上下文获取完成，消息数量:', context.messages.length);
-        
-        // 构建简化的上下文提示词 - 只包含最近对话消息
-        let fullContextText = '';
-        
-        // 添加最近对话消息
-        if (context.messages && context.messages.length > 0) {
-            fullContextText += '## 最近对话历史\n';
-            fullContextText += context.messages.map(m => `[${m.role}] ${m.content}`).join('\n');
-            fullContextText += '\n\n';
-        }
-        
-        const prompt = promptTemplate
-            .replace(/{{context}}/g, fullContextText);
-        console.log('[generateOptions] 提示词组装完成，长度:', prompt.length);
-        console.log('[generateOptions] 完整上下文数据已包含在提示词中');
-        
-        const finalMessages = [{ role: 'user', content: prompt }];
-        let content = '';
-        
-        // 根据API类型构建不同的请求
-        const apiType = settings.optionsApiType || 'openai';
-        let apiUrl, requestBody, headers;
-        
-        if (apiType === 'gemini') {
-            // Google Gemini API
-            const modelName = settings.optionsApiModel || 'gemini-pro';
-            
-            // 非流式生成使用generateContent
-            apiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${settings.optionsApiKey}`;
-            
-            headers = {
-                'Content-Type': 'application/json',
-            };
-            
-            requestBody = {
-                contents: [{
-                    parts: [{
-                        text: prompt
-                    }]
-                }],
-                generationConfig: {
-                    temperature: 0.8,
-                    topK: 40,
-                    topP: 0.95,
-                    maxOutputTokens: 2048,
-                }
-            };
-            
-            console.log('[generateOptions] 使用Google Gemini API');
-            console.log('[generateOptions] API URL:', apiUrl);
-            console.log('[generateOptions] 模型:', modelName);
-        } else {
-            // OpenAI兼容API
-            apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
-            
-            headers = {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${settings.optionsApiKey}`,
-            };
-            
-            requestBody = {
-                model: settings.optionsApiModel,
-                messages: finalMessages,
-                temperature: 0.8,
-                stream: false,
-            };
-            
-            console.log('[generateOptions] 使用OpenAI兼容API');
-            console.log('[generateOptions] API URL:', apiUrl);
-            console.log('[generateOptions] 模型:', settings.optionsApiModel);
-        }
-        
-        console.log('[generateOptions] 使用非流式生成...');
-        // 非流式生成
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify(requestBody),
-        });
-        
-        console.log('[generateOptions] API响应状态:', response.status);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[generateOptions] API响应错误:', errorText);
-            logger.error('API 响应错误 (raw):', errorText);
-            throw new Error('API 请求失败');
-        }
-        
-        const data = await response.json();
-        
-        // 根据API类型解析响应
-        if (apiType === 'gemini') {
-            content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        } else {
-            content = data.choices?.[0]?.message?.content || '';
-        }
-        
-        console.log('[generateOptions] 非流式生成完成，内容长度:', content.length);
-        
-        // 解析AI返回内容，提取场景分析和建议
-        const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
-        console.log('[generateOptions] 解析到选项数量:', suggestions.length);
-        console.log('[generateOptions] 选项内容:', suggestions);
-        
-        // 等待选项完全显示后再隐藏loading
-        await displayOptions(suggestions, false); // false表示非流式显示
-        hidePacePanelLoading();
-    } catch (error) {
-        console.error('[generateOptions] 生成选项时出错:', error);
-        logger.error('生成选项时出错:', error);
-        hidePacePanelLoading();
-    } finally {
-        console.log('[generateOptions] 生成完成，重置状态');
-        OptionsGenerator.isGenerating = false;
-    }
-}
-
-// 删除重复的testApiConnection函数，保留类内部的版本
+// 移除整个ContextVisualization类，替换为悬浮提示功能
+// 删除悬浮提示相关代码
+// 删除OptionTooltip类和相关函数
+// 删除悬浮提示相关的事件监听器
 
 // 输入消息后自动清除面板和选项
-if (typeof eventSource !== 'undefined' && eventSource.on) {
-    eventSource.on(event_types.MESSAGE_SENT, () => {
-        console.log('[EventHandler] 消息已发送，清除选项面板');
-        const container = document.getElementById('ti-options-container');
-        if (container) {
-            container.remove();
-        }
-        
-        // 清除选中的选项
-        OptionsGenerator.selectedOptions = [];
-        
-        // 重置生成状态
-        OptionsGenerator.isGenerating = false;
-        OptionsGenerator.isManuallyStopped = false;
-    });
-}
+eventSource.on(event_types.MESSAGE_SENT, () => {
+    console.log('[EventHandler] 消息已发送，清除选项面板');
+    const container = document.getElementById('ti-options-container');
+    if (container) {
+        container.remove();
+    }
+    
+    // 清除选中的选项
+    OptionsGenerator.selectedOptions = [];
+    
+    // 重置生成状态
+    OptionsGenerator.isGenerating = false;
+    OptionsGenerator.isManuallyStopped = false;
+});
 
 export class OptionsGenerator {
     static isManuallyStopped = false;
@@ -889,3 +743,149 @@ export class OptionsGenerator {
 
 // 将OptionsGenerator导出到全局作用域，以便在控制台中调用
 window.OptionsGenerator = OptionsGenerator;
+
+// 修改 generateOptions 函数
+async function generateOptions() {
+    console.log('[generateOptions] 开始生成选项...');
+    const settings = getSettings();
+    if (OptionsGenerator.isGenerating) {
+        console.log('[generateOptions] 正在生成中，跳过...');
+        return;
+    }
+    OptionsGenerator.isManuallyStopped = false;
+    if (!settings.optionsGenEnabled || !settings.optionsApiKey) {
+        console.log('[generateOptions] 选项生成未启用或缺少API密钥');
+        return;
+    }
+    
+    console.log('[generateOptions] 设置检查通过，开始生成...');
+    OptionsGenerator.isGenerating = true;
+    
+    try {
+        // 使用融合的提示模板
+        console.log('[generateOptions] 使用融合提示模板');
+        
+        // 获取融合提示模板
+        const promptTemplate = PACE_PROMPTS.unified;
+        
+        // 组装合并prompt
+        console.log('[generateOptions] 开始获取上下文...');
+        const context = await getContextCompatible();
+        console.log('[generateOptions] 上下文获取完成，消息数量:', context.messages.length);
+        
+        // 构建简化的上下文提示词 - 只包含最近对话消息
+        let fullContextText = '';
+        
+        // 添加最近对话消息
+        if (context.messages && context.messages.length > 0) {
+            fullContextText += '## 最近对话历史\n';
+            fullContextText += context.messages.map(m => `[${m.role}] ${m.content}`).join('\n');
+            fullContextText += '\n\n';
+        }
+        
+        const prompt = promptTemplate
+            .replace(/{{context}}/g, fullContextText);
+        console.log('[generateOptions] 提示词组装完成，长度:', prompt.length);
+        console.log('[generateOptions] 完整上下文数据已包含在提示词中');
+        
+        const finalMessages = [{ role: 'user', content: prompt }];
+        let content = '';
+        
+        // 根据API类型构建不同的请求
+        const apiType = settings.optionsApiType || 'openai';
+        let apiUrl, requestBody, headers;
+        
+        if (apiType === 'gemini') {
+            // Google Gemini API
+            const modelName = settings.optionsApiModel || 'gemini-pro';
+            
+            // 非流式生成使用generateContent
+            apiUrl = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${settings.optionsApiKey}`;
+            
+            headers = {
+                'Content-Type': 'application/json',
+            };
+            
+            requestBody = {
+                contents: [{
+                    parts: [{
+                        text: prompt
+                    }]
+                }],
+                generationConfig: {
+                    temperature: 0.8,
+                    topK: 40,
+                    topP: 0.95,
+                    maxOutputTokens: 2048,
+                }
+            };
+            
+            console.log('[generateOptions] 使用Google Gemini API');
+            console.log('[generateOptions] API URL:', apiUrl);
+            console.log('[generateOptions] 模型:', modelName);
+        } else {
+            // OpenAI兼容API
+            apiUrl = `${settings.optionsBaseUrl.replace(/\/$/, '')}/chat/completions`;
+            
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${settings.optionsApiKey}`,
+            };
+            
+            requestBody = {
+                model: settings.optionsApiModel,
+                messages: finalMessages,
+                temperature: 0.8,
+                stream: false,
+            };
+            
+            console.log('[generateOptions] 使用OpenAI兼容API');
+            console.log('[generateOptions] API URL:', apiUrl);
+            console.log('[generateOptions] 模型:', settings.optionsApiModel);
+        }
+        
+        console.log('[generateOptions] 使用非流式生成...');
+        // 非流式生成
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(requestBody),
+        });
+        
+        console.log('[generateOptions] API响应状态:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[generateOptions] API响应错误:', errorText);
+            logger.error('API 响应错误 (raw):', errorText);
+            throw new Error('API 请求失败');
+        }
+        
+        const data = await response.json();
+        
+        // 根据API类型解析响应
+        if (apiType === 'gemini') {
+            content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        } else {
+            content = data.choices?.[0]?.message?.content || '';
+        }
+        
+        console.log('[generateOptions] 非流式生成完成，内容长度:', content.length);
+        
+        // 解析AI返回内容，提取场景分析和建议
+        const suggestions = (content.match(/【(.*?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim()).filter(Boolean);
+        console.log('[generateOptions] 解析到选项数量:', suggestions.length);
+        console.log('[generateOptions] 选项内容:', suggestions);
+        
+        // 等待选项完全显示后再隐藏loading
+        await displayOptions(suggestions, false); // false表示非流式显示
+        hidePacePanelLoading();
+    } catch (error) {
+        console.error('[generateOptions] 生成选项时出错:', error);
+        logger.error('生成选项时出错:', error);
+        hidePacePanelLoading();
+    } finally {
+        console.log('[generateOptions] 生成完成，重置状态');
+        OptionsGenerator.isGenerating = false;
+    }
+}

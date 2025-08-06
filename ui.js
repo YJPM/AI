@@ -162,6 +162,7 @@ export function addExtensionSettings(settings) {
             baseUrlInput.value = settings.optionsBaseUrl;
             sendModeSelect.value = settings.sendMode;
 
+            paceSelect.value = settings.paceMode;
             autoGenSelect.value = settings.autoGenMode;
             quickPanelCheckbox.checked = settings.showQuickPanel;
             
@@ -292,7 +293,42 @@ export function addExtensionSettings(settings) {
     quickPanelContainer.appendChild(quickPanelText);
     optionsContainer.appendChild(quickPanelContainer);
     
-    // 删除推进节奏设置，已融合为统一模式
+    // 推进节奏设置
+    const paceContainer = document.createElement('div');
+    paceContainer.style.marginTop = '8px';
+    
+    const paceLabel = document.createElement('label');
+    paceLabel.textContent = '推进节奏:';
+    applyUnifiedLabelStyle(paceLabel);
+    
+    const paceSelect = document.createElement('select');
+    
+    const paceOptions = [
+        { value: 'normal', text: '正常 (3-5个选项，标准推进)' },
+        { value: 'fast', text: '快速 (3-4个选项，有明显时间跨越)' },
+        { value: 'jump', text: '跳跃 (3-4个选项，场景直接跳转)' }
+    ];
+    
+    paceOptions.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option.value;
+        optionElement.textContent = option.text;
+        paceSelect.appendChild(optionElement);
+    });
+    
+    paceSelect.value = settings.paceMode || 'normal';
+    paceSelect.setAttribute('data-pace-select', 'true');
+    paceSelect.addEventListener('change', (e) => {
+        settings.paceMode = e.target.value;
+        saveSettingsDebounced();
+        
+        // 同步更新快捷面板
+        updateQuickPanelFromSettings();
+    });
+    
+    paceContainer.appendChild(paceLabel);
+    paceContainer.appendChild(paceSelect);
+    optionsContainer.appendChild(paceContainer);
     
     // API Type
     const apiTypeLabel = document.createElement('label');
@@ -512,7 +548,24 @@ function updateQuickPanelFromSettings() {
     const panel = document.getElementById('quick-pace-panel');
     if (!panel) return;
     
-    // 删除推进节奏按钮更新，已融合为统一模式
+    // 定义推进节奏模式
+    const paceModes = [
+        { value: 'normal', color: '#2196F3' },
+        { value: 'fast', color: '#4CAF50' }
+    ];
+    
+    // 更新推进节奏按钮状态
+    panel.querySelectorAll('button[data-pace-mode]').forEach((btn) => {
+        const btnPaceMode = btn.getAttribute('data-pace-mode');
+        const btnMode = paceModes.find(m => m.value === btnPaceMode);
+        
+        if (btnMode) {
+            const isBtnActive = settings.paceMode === btnMode.value;
+            btn.style.background = isBtnActive ? btnMode.color : 'rgba(255, 255, 255, 0.9)';
+            btn.style.color = isBtnActive ? 'white' : btnMode.color;
+            btn.style.boxShadow = isBtnActive ? `0 2px 8px ${btnMode.color}40` : '0 1px 3px rgba(0,0,0,0.1)';
+        }
+    });
 }
 
 // 创建快捷操作面板
@@ -582,8 +635,13 @@ export function createQuickPacePanel() {
     
     // 折叠面板函数
     const collapsePanel = () => {
+        const paceButtons = panel.querySelectorAll('button[data-pace-mode]');
         const plotButtons = panel.querySelectorAll('button[data-plot-mode]');
         const separators = panel.querySelectorAll('div[style*="background: #e0e0e0"]');
+        
+        paceButtons.forEach(btn => {
+            btn.style.display = 'none';
+        });
         
         plotButtons.forEach(btn => {
             btn.style.display = 'none';
@@ -603,8 +661,13 @@ export function createQuickPacePanel() {
     
     // 展开面板函数
     const expandPanel = () => {
+        const paceButtons = panel.querySelectorAll('button[data-pace-mode]');
         const plotButtons = panel.querySelectorAll('button[data-plot-mode]');
         const separators = panel.querySelectorAll('div[style*="background: #e0e0e0"]');
+        
+        paceButtons.forEach(btn => {
+            btn.style.display = 'inline-block';
+        });
         
         plotButtons.forEach(btn => {
             btn.style.display = 'inline-block';
@@ -683,7 +746,69 @@ export function createQuickPacePanel() {
     // 加载保存的状态
     setTimeout(loadPanelState, 100);
     
-    // 删除推进节奏按钮，已融合为统一模式
+    // 创建推进节奏按钮
+    const paceModes = [
+        { value: 'normal', text: '正常', color: '#2196F3' },
+        { value: 'fast', text: '快速', color: '#4CAF50' }
+    ];
+    
+    // 创建推进节奏按钮
+    paceModes.forEach((mode) => {
+        const button = document.createElement('button');
+        button.textContent = mode.text;
+        button.setAttribute('data-pace-mode', mode.value);
+        
+        // 检查当前设置是否匹配这个模式
+        const isActive = settings.paceMode === mode.value;
+        
+        button.style.cssText = `
+            padding: 6px 10px;
+            border: 1px solid ${mode.color};
+            border-radius: 8px;
+            background: ${isActive ? mode.color : 'rgba(255, 255, 255, 0.9)'};
+            color: ${isActive ? 'white' : mode.color};
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            min-width: 55px;
+            text-align: center;
+            line-height: 1.2;
+            margin: 1px;
+            box-shadow: ${isActive ? `0 2px 8px ${mode.color}40` : '0 1px 3px rgba(0,0,0,0.1)'};
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        `;
+        
+        button.addEventListener('click', () => {
+            // 推进节奏是单选
+            settings.paceMode = mode.value;
+            saveSettingsDebounced();
+            
+            // 更新所有推进节奏按钮状态
+            panel.querySelectorAll('button[data-pace-mode]').forEach((btn) => {
+                const btnPaceMode = btn.getAttribute('data-pace-mode');
+                const btnMode = paceModes.find(m => m.value === btnPaceMode);
+                
+                if (btnMode) {
+                    const isBtnActive = settings.paceMode === btnMode.value;
+                    btn.style.background = isBtnActive ? btnMode.color : 'rgba(255, 255, 255, 0.9)';
+                    btn.style.color = isBtnActive ? 'white' : btnMode.color;
+                    btn.style.boxShadow = isBtnActive ? `0 2px 8px ${btnMode.color}40` : '0 1px 3px rgba(0,0,0,0.1)';
+                }
+            });
+            
+            // 同步更新设置面板
+            const paceSelect = document.querySelector('[data-pace-select]');
+            if (paceSelect) {
+                paceSelect.value = settings.paceMode;
+            }
+            
+            console.log('[paceMode] 已切换到:', mode.text, '(', mode.value, ')');
+        });
+        
+        panel.appendChild(button);
+    });
     
     // 添加第二个分隔符
     const separator2 = document.createElement('div');
